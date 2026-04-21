@@ -93,6 +93,12 @@ public class FlagChecker(
                     scope.ServiceProvider.GetRequiredService<IGameNoticeRepository>();
                 var submissionRepository =
                     scope.ServiceProvider.GetRequiredService<ISubmissionRepository>();
+                var submissionRecordRepo =
+                    scope.ServiceProvider.GetRequiredService<ISubmissionRecordRepository>();
+
+                // Skip submissions already processed by ScoringService
+                if (await submissionRecordRepo.ExistsBySubmissionId(item.Id, token))
+                    continue;
 
                 try
                 {
