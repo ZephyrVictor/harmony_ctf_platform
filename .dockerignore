@@ -1,0 +1,17 @@
+**/node_modules
+**/bin
+**/obj
+**/.git
+**/.gitignore
+**/.env
+**/.env.*
+!.env.example
+**/Dockerfile
+**/docker-compose*.yml
+**/.dockerignore
+**/README.md
+**/LICENSE
+**/.vscode
+**/.idea
+**/*.md
+!docs/DEPLOYMENT.md

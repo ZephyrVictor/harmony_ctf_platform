@@ -1,0 +1,41 @@
+services:
+  gzctf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Database=Host=db;Port=5432;Database=gzctf;Username=gzctf;Password=${DB_PASSWORD:-gzctf_pass}
+      - XorKey=${XOR_KEY:-gzctf-xor-key}
+      - TZ=Asia/Shanghai
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=gzctf
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-gzctf_pass}
+      - POSTGRES_DB=gzctf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gzctf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+volumes:
+  pgdata:
