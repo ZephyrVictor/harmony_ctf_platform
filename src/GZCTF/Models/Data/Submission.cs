@@ -109,5 +109,11 @@ public class Submission
     [JsonIgnore]
     public GameChallenge? GameChallenge { get; set; }
 
+    /// <summary>
+    /// Extended submission record
+    /// </summary>
+    [JsonIgnore]
+    public SubmissionRecord? SubmissionRecord { get; set; }
+
     #endregion Db Relationship
 }

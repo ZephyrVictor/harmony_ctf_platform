@@ -41,6 +41,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<ExerciseDependency> ExerciseDependencies { get; set; } = null!;
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
     public DbSet<ApiToken> ApiTokens { get; set; } = null!;
+    public DbSet<ChallengeFlag> ChallengeFlags { get; set; } = null!;
+    public DbSet<ChallengePenalty> ChallengePenalties { get; set; } = null!;
+    public DbSet<SubmissionRecord> SubmissionRecords { get; set; } = null!;
+    public DbSet<Ticket> Tickets { get; set; } = null!;
+    public DbSet<BigScreenEvent> BigScreenEvents { get; set; } = null!;
+    public DbSet<CompetitionSetting> CompetitionSettings { get; set; } = null!;
 
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
@@ -446,6 +452,105 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Property(e => e.Status)
                 .HasConversion<string>()
                 .HasMaxLength(Limits.MaxLogStatusLength);
+        });
+
+        builder.Entity<ChallengeFlag>(entity =>
+        {
+            entity.HasIndex(e => new { e.ChallengeId, e.FlagValue }).IsUnique();
+
+            entity.HasOne(e => e.Challenge)
+                .WithMany()
+                .HasForeignKey(e => e.ChallengeId);
+
+            entity.HasMany(e => e.SubmissionRecords)
+                .WithOne(e => e.MatchedFlag)
+                .HasForeignKey(e => e.MatchedFlagId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<ChallengePenalty>(entity =>
+        {
+            entity.HasOne(e => e.Challenge)
+                .WithMany()
+                .HasForeignKey(e => e.ChallengeId);
+        });
+
+        builder.Entity<SubmissionRecord>(entity =>
+        {
+            entity.HasOne(e => e.Submission)
+                .WithOne(s => s.SubmissionRecord)
+                .HasForeignKey<SubmissionRecord>(e => e.SubmissionId);
+
+            entity.HasIndex(e => e.IsPenalty)
+                .HasFilter("\"IsPenalty\" = true");
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_SubmissionRecord_Penalty_NullFlag",
+                "\"IsPenalty\" = false OR \"MatchedFlagId\" IS NULL"));
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_SubmissionRecord_NonPenalty_RequiresFlag",
+                "\"IsPenalty\" = true OR (\"MatchedFlagId\" IS NOT NULL AND \"ScoreChange\" > 0)"));
+        });
+
+        builder.Entity<Ticket>(entity =>
+        {
+            entity.HasIndex(e => e.SubmissionId).IsUnique();
+
+            entity.HasOne(e => e.Submission)
+                .WithMany()
+                .HasForeignKey(e => e.SubmissionId);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Reviewer)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_Ticket_Pending_Nulls",
+                "\"Status\" <> 'Pending' OR (\"ReviewerId\" IS NULL AND \"ReviewComment\" IS NULL AND \"RefundScore\" = 0 AND \"BonusScore\" = 0 AND \"ReviewedAt\" IS NULL)"));
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_Ticket_Resolved_Reviewer",
+                "\"Status\" IN ('Pending') OR (\"ReviewerId\" IS NOT NULL AND \"ReviewedAt\" IS NOT NULL)"));
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_Ticket_Rejected_Comment",
+                "\"Status\" <> 'Rejected' OR \"ReviewComment\" IS NOT NULL"));
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_Ticket_Approved_Scores",
+                "\"Status\" <> 'Approved' OR (\"RefundScore\" >= 0 AND \"BonusScore\" >= 0)"));
+        });
+
+        builder.Entity<BigScreenEvent>(entity =>
+        {
+            entity.Property(e => e.EventType)
+                .HasConversion<string>()
+                .HasMaxLength(30);
+
+            entity.HasOne(e => e.Challenge)
+                .WithMany()
+                .HasForeignKey(e => e.ChallengeId);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<CompetitionSetting>(entity =>
+        {
+            entity.Property(e => e.Key).HasMaxLength(100);
         });
     }
 }
