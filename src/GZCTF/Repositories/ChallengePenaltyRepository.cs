@@ -18,10 +18,7 @@ public class ChallengePenaltyRepository(
         if (existing is not null)
             return existing;
 
-        var defaultPenaltyJson = await settingRepo.Get<string>("Scoring.DefaultPenaltyScore", token);
-        var defaultPenalty = 0;
-        if (defaultPenaltyJson is not null && int.TryParse(defaultPenaltyJson, out var parsed))
-            defaultPenalty = parsed;
+        var defaultPenalty = await settingRepo.Get("Scoring.DefaultPenaltyScore", 0, token);
 
         var penalty = new ChallengePenalty
         {
