@@ -532,6 +532,20 @@ public class GameRepository(
             scoreboardItem.LastSubmissionTime = item.SubmitTimeUtc;
         }
 
+        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses)
+        var recordScores = await Context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.Submission != null && items.Keys.Contains(r.Submission.ParticipationId))
+            .GroupBy(r => r.Submission!.ParticipationId)
+            .Select(g => new { ParticipationId = g.Key, TotalChange = g.Sum(r => (int?)r.ScoreChange) ?? 0 })
+            .ToListAsync(token);
+
+        foreach (var rs in recordScores)
+        {
+            if (items.TryGetValue(rs.ParticipationId, out var item))
+                item.Score += rs.TotalChange;
+        }
+
         // 6. sort scoreboard items by score and last submission time
         items = items.Values
             .OrderByDescending(i => i.Score)

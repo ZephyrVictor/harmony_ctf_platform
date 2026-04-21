@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Mime;
 using System.Security.Claims;
-using System.Threading.Channels;
 using GZCTF.Middlewares;
 using GZCTF.Models;
 using GZCTF.Models.Internal;
@@ -12,6 +11,7 @@ using GZCTF.Models.Request.Game;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using GZCTF.Services.Config;
+using GZCTF.Services.Scoring;
 using GZCTF.Storage.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +34,6 @@ namespace GZCTF.Controllers;
 public class GameController(
     ILogger<GameController> logger,
     UserManager<UserInfo> userManager,
-    ChannelWriter<Submission> channelWriter,
     CacheHelper cacheHelper,
     IBlobStorage storage,
     IConfigService configService,
@@ -52,7 +51,8 @@ public class GameController(
     IGameInstanceRepository gameInstanceRepository,
     IParticipationRepository participationRepository,
     IOptionsSnapshot<ContainerPolicy> containerPolicy,
-    IStringLocalizer<Program> localizer) : ControllerBase
+    IStringLocalizer<Program> localizer,
+    ScoringService scoringService) : ControllerBase
 {
     /// <summary>
     /// Get the recent games
@@ -1015,6 +1015,10 @@ public class GameController(
                     new RequestResponse(localizer[nameof(Resources.Program.Challenge_SubmissionLimitExceeded)]));
             }
 
+            // Process submission through scoring service
+            var scoreResult = await scoringService.ProcessSubmission(
+                instance.Challenge, context.Participation!, answer, token);
+
             Submission submission = new()
             {
                 Game = context.Game!,
@@ -1022,7 +1026,7 @@ public class GameController(
                 GameChallenge = instance.Challenge,
                 Team = context.Participation!.Team,
                 Participation = context.Participation!,
-                Status = AnswerResult.FlagSubmitted,
+                Status = scoreResult.Status,
                 SubmitTimeUtc = submitTime,
                 Answer = answer
             };
@@ -1030,10 +1034,18 @@ public class GameController(
             try
             {
                 submission = await submissionRepository.AddSubmission(submission, token);
+
+                if (scoreResult.ScoreChange != 0 || scoreResult.IsPenalty)
+                {
+                    await scoringService.CreateRecord(submission, scoreResult, token);
+                }
+
                 await transaction.CommitAsync(token);
 
-                await channelWriter.WriteAsync(submission, token);
-                return Ok(submission.Id);
+                // Send via SignalR for real-time updates
+                await submissionRepository.SendSubmission(submission);
+
+                return Ok(new { submission.Id, scoreResult.Message });
             }
             catch (DbUpdateConcurrencyException) when (retry < maxRetries - 1)
             {

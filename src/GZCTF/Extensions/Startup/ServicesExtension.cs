@@ -9,6 +9,7 @@ using GZCTF.Services.Config;
 using GZCTF.Services.Container;
 using GZCTF.Services.CronJob;
 using GZCTF.Services.Mail;
+using GZCTF.Services.Scoring;
 using GZCTF.Services.Token;
 using GZCTF.Services.Transfer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -80,6 +81,16 @@ internal static class ServicesExtension
             builder.Services.AddScoped<IExerciseInstanceRepository, ExerciseInstanceRepository>();
             builder.Services.AddScoped<IExerciseChallengeRepository, ExerciseChallengeRepository>();
             builder.Services.AddScoped<IDivisionRepository, DivisionRepository>();
+
+            // Extended scoring module
+            builder.Services.AddScoped<IChallengeFlagRepository, ChallengeFlagRepository>();
+            builder.Services.AddScoped<IChallengePenaltyRepository, ChallengePenaltyRepository>();
+            builder.Services.AddScoped<ISubmissionRecordRepository, SubmissionRecordRepository>();
+            builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+            builder.Services.AddScoped<IBigScreenEventRepository, BigScreenEventRepository>();
+            builder.Services.AddScoped<ICompetitionSettingRepository, CompetitionSettingRepository>();
+            builder.Services.AddScoped<ScoringService>();
+            builder.Services.AddScoped<CompetitionSettingsService>();
 
             builder.Services.AddScoped<ExcelHelper>();
             builder.Services.AddScoped<GameExportService>();
