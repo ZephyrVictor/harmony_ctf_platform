@@ -9,6 +9,7 @@
       "scoreboard": "Scoreboard",
       "submissionsheet": "Submissions"
     },
+    "create_ticket": "Appeal",
     "finished": "Game Ended",
     "hide_solved": "Hide Solved",
     "join": "Join",
@@ -93,6 +94,19 @@
     "traffic": {
       "delete_confirm": "Delete this traffic file?",
       "deleted_all_confirm": "Delete all listed traffic?"
+    },
+    "no_submissions": "No submissions yet",
+    "submission": {
+      "challenge": "Challenge",
+      "score_change": "Score Change",
+      "ticket": "Ticket",
+      "time": "Time"
+    },
+    "ticket": {
+      "create_title": "Create Ticket",
+      "description": "Description",
+      "my_tickets": "My Tickets",
+      "refund_bonus": "Refund / Bonus"
     },
     "writeup": {
       "current": "Current Writeup",
@@ -226,6 +240,7 @@
   },
   "tab": {
     "challenge": "Challenges",
+    "submissions": "Submissions",
     "monitor": {
       "cheatinfo": "Cheats",
       "events": "Events",

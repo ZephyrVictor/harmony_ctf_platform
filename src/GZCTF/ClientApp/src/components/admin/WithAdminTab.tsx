@@ -6,6 +6,7 @@ import {
   mdiFlagOutline,
   mdiPackageVariantClosed,
   mdiSitemapOutline,
+  mdiTrophyOutline,
 } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import React, { FC, useEffect, useState } from 'react'
@@ -37,6 +38,7 @@ export const WithAdminTab: FC<AdminTabProps> = ({ head, headProps, isLoading, ch
       path: 'instances',
     },
     { icon: mdiFileDocumentOutline, title: t('admin.tab.logs'), path: 'logs' },
+    { icon: mdiTrophyOutline, title: t('admin.tab.scoring'), path: 'scoringsettings' },
     { icon: mdiSitemapOutline, title: t('admin.tab.settings'), path: 'settings' },
   ]
   const getTab = (path: string) => pages.findIndex((page) => path.startsWith(`/admin/${page.path}`))

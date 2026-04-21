@@ -9,6 +9,7 @@
       "scoreboard": "下载积分榜",
       "submissionsheet": "下载全部提交"
     },
+    "create_ticket": "发起申诉",
     "finished": "比赛结束",
     "hide_solved": "隐藏已解出",
     "join": "报名参赛",
@@ -65,6 +66,19 @@
       ]
     },
     "no_challenge": "Ouch! 这个比赛还没有可用题目呢……",
+    "no_submissions": "暂无提交记录",
+    "submission": {
+      "challenge": "题目",
+      "score_change": "分数变化",
+      "ticket": "工单",
+      "time": "时间"
+    },
+    "ticket": {
+      "create_title": "发起工单",
+      "description": "申诉描述",
+      "my_tickets": "我的工单",
+      "refund_bonus": "返还 / 补偿"
+    },
     "no_cheat": {
       "comment": "看起来大家都很老实呢",
       "title": "暂时没有队伍作弊信息"
@@ -226,6 +240,7 @@
   },
   "tab": {
     "challenge": "比赛题目",
+    "submissions": "提交记录",
     "monitor": {
       "cheatinfo": "作弊信息",
       "events": "事件监控",

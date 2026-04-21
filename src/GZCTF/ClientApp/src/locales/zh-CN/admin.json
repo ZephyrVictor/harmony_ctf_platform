@@ -593,6 +593,70 @@
       "student_id": "00000000"
     }
   },
+  "flag": {
+    "add": "添加 Flag",
+    "column": {
+      "actions": "操作",
+      "score": "分值",
+      "sort": "排序",
+      "value": "Flag 值"
+    },
+    "confirm_delete": "确定删除此 Flag 吗？",
+    "edit": "编辑 Flag",
+    "empty_value": "Flag 值不能为空",
+    "invalid_score": "分值必须大于等于 1",
+    "no_flags": "暂无 Flag 配置，点击添加 Flag 创建",
+    "title": "Flag 管理",
+    "total_score": "总分"
+  },
+  "penalty": {
+    "description": "每次错误提交扣分值，0 表示不扣分",
+    "score": "扣分值",
+    "score_desc": "设为 0 则禁用扣分",
+    "title": "扣分配置"
+  },
+  "scoring": {
+    "auto_refund": "自动返还",
+    "auto_refund_desc": "审核通过时自动将返还分设为扣分值",
+    "default_penalty": "默认扣分",
+    "default_penalty_desc": "新建题目时的默认扣分值",
+    "enable_bonus": "启用加分事件",
+    "enable_bonus_desc": "向大屏播报加分事件",
+    "max_penalty": "单次扣分上限",
+    "max_penalty_desc": "每次错误提交最多扣分值",
+    "max_tickets": "单次提交工单上限",
+    "max_tickets_desc": "一次提交最多发起工单数",
+    "min_score": "最低分",
+    "min_score_desc": "选手总分下限",
+    "refund_ratio": "默认返还比例",
+    "refund_ratio_desc": "审核通过时默认返还比例（1.0=全额返还）",
+    "section": {
+      "big_screen": "大屏设置",
+      "scoring": "计分设置",
+      "ticket": "工单设置"
+    },
+    "title": "比赛计分设置"
+  },
+  "ticket": {
+    "approve": "通过",
+    "approve_title": "审核工单",
+    "bonus_score": "补偿分",
+    "col": {
+      "actions": "操作",
+      "answer": "提交内容",
+      "challenge": "题目",
+      "description": "描述",
+      "status": "状态",
+      "time": "时间",
+      "user": "选手"
+    },
+    "comment": "审核意见",
+    "empty": "暂无工单",
+    "refund_score": "返还分",
+    "reject": "驳回",
+    "reject_reason": "驳回理由",
+    "title": "工单管理"
+  },
   "tab": {
     "games": {
       "challenges": "题目管理",
@@ -601,10 +665,12 @@
       "info": "信息编辑",
       "notices": "比赛公告",
       "review": "队伍审核",
+      "tickets": "工单审核",
       "writeups": "Writeups"
     },
     "instances": "实例管理",
     "logs": "系统日志",
+    "scoring": "计分设置",
     "settings": "系统设置",
     "teams": "队伍管理",
     "users": "用户管理"

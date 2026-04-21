@@ -593,6 +593,70 @@
       "student_id": "00000000"
     }
   },
+  "flag": {
+    "add": "Add Flag",
+    "column": {
+      "actions": "Actions",
+      "score": "Score",
+      "sort": "Sort",
+      "value": "Flag Value"
+    },
+    "confirm_delete": "Are you sure you want to delete this flag?",
+    "edit": "Edit Flag",
+    "empty_value": "Flag value is required",
+    "invalid_score": "Score must be at least 1",
+    "no_flags": "No flags configured. Click Add Flag to create one.",
+    "title": "Flag Management",
+    "total_score": "Total"
+  },
+  "penalty": {
+    "description": "Score deducted for each incorrect submission. 0 means no penalty.",
+    "score": "Penalty Score",
+    "score_desc": "Set to 0 to disable penalty",
+    "title": "Penalty Configuration"
+  },
+  "scoring": {
+    "auto_refund": "Auto Refund",
+    "auto_refund_desc": "Automatically set refund score equal to penalty score on approval",
+    "default_penalty": "Default Penalty",
+    "default_penalty_desc": "Default penalty score for new challenges",
+    "enable_bonus": "Enable Bonus Events",
+    "enable_bonus_desc": "Broadcast bonus events to the big screen",
+    "max_penalty": "Max Penalty Per Submission",
+    "max_penalty_desc": "Maximum penalty score for a single wrong submission",
+    "max_tickets": "Max Tickets Per Submission",
+    "max_tickets_desc": "Maximum number of tickets per submission",
+    "min_score": "Minimum Score",
+    "min_score_desc": "Score floor for all participants",
+    "refund_ratio": "Default Refund Ratio",
+    "refund_ratio_desc": "Default ratio of penalty to refund on approval (1.0 = full refund)",
+    "section": {
+      "big_screen": "Big Screen",
+      "scoring": "Scoring",
+      "ticket": "Ticket"
+    },
+    "title": "Competition Scoring Settings"
+  },
+  "ticket": {
+    "approve": "Approve",
+    "approve_title": "Approve Ticket",
+    "bonus_score": "Bonus Score",
+    "col": {
+      "actions": "Actions",
+      "answer": "Answer",
+      "challenge": "Challenge",
+      "description": "Description",
+      "status": "Status",
+      "time": "Time",
+      "user": "User"
+    },
+    "comment": "Comment",
+    "empty": "No tickets found",
+    "refund_score": "Refund Score",
+    "reject": "Reject",
+    "reject_reason": "Reject Reason",
+    "title": "Ticket Management"
+  },
   "tab": {
     "games": {
       "challenges": "Challenges",
@@ -601,10 +665,12 @@
       "info": "Information",
       "notices": "Notices",
       "review": "Teams",
+      "tickets": "Tickets",
       "writeups": "Writeups"
     },
     "instances": "Instances",
     "logs": "Logs",
+    "scoring": "Scoring",
     "settings": "Settings",
     "teams": "Teams",
     "users": "Users"

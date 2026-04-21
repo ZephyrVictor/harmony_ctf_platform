@@ -14,6 +14,11 @@
     "uploading": "Uploading"
   },
   "content": {
+    "cancel": "Cancel",
+    "delete_success": "Deleted successfully",
+    "save": "Save",
+    "save_success": "Saved successfully",
+    "success": "Success",
     "404": {
       "text": "A desolation, why is it here",
       "title": "Page does not exist"
@@ -112,7 +117,8 @@
     "confirm": "Confirm",
     "confirm_delete": "Confirm delete",
     "confirm_update": "Confirm Update",
-    "delete": "Delete"
+    "delete": "Delete",
+    "save": "Save"
   },
   "tab": {
     "about": "About",
