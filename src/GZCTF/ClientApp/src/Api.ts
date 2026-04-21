@@ -5767,7 +5767,7 @@ export class Api<
       data: FlagSubmitModel,
       params: RequestParams = {},
     ) =>
-      this.request<number, RequestResponse>({
+      this.request<{ id: number; message?: string }, RequestResponse>({
         path: `/api/game/${id}/challenges/${challengeId}`,
         method: "POST",
         body: data,

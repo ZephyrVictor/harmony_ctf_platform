@@ -44,6 +44,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
 
   const [disabled, setDisabled] = useState(false)
   const [submitId, setSubmitId] = useState(0)
+  const [submitMessage, setSubmitMessage] = useState<string | undefined>(undefined)
   const [flag, setFlag] = useInputState('')
   const [solvedChallengeId, setSolvedChallengeId] = useState<number | null>(null)
 
@@ -147,7 +148,10 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       const res = await api.game.gameSubmit(gameId, challengeId, {
         flag: await encryptApiData(t, flag, config.apiPublicKey),
       })
-      setSubmitId(res.data)
+      const submitId = res.data.id
+      const message = res.data.message
+      setSubmitId(submitId)
+      setSubmitMessage(message)
       notifications.clean()
       showNotification({
         id: 'flag-submitted',
@@ -226,7 +230,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         id: 'flag-submitted',
         color: 'red',
         title: t('challenge.notification.flag.wrong'),
-        message: wrongFlagHints[Math.floor(Math.random() * wrongFlagHints.length)],
+        message: submitMessage ?? wrongFlagHints[Math.floor(Math.random() * wrongFlagHints.length)],
         icon: <Icon path={mdiClose} size={1} />,
         autoClose: 8000,
         loading: false,

@@ -650,6 +650,19 @@ export const showErrorMsg = (err: any, t: (key: string) => string) => {
   showErrorNotification(clientError.title, clientError.message)
 }
 
+const showSuccessNotification = (title: string, message: string) => {
+  showNotification({
+    color: 'green',
+    title,
+    message,
+    icon: <Icon path={mdiCheck} size={1} />,
+  })
+}
+
+export const showSuccessMsg = (message: string, t: (key: string) => string) => {
+  showSuccessNotification(t('common.content.success'), message)
+}
+
 export const getInputNumber = (value: string | number, float?: boolean): number => {
   if (typeof value === 'number') {
     return value

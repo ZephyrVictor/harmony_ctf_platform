@@ -1,6 +1,7 @@
 import {
   Button,
   ComboboxItem,
+  Divider,
   Grid,
   Group,
   Input,
@@ -23,8 +24,10 @@ import dayjs from 'dayjs'
 import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
+import { FlagEditor } from '@Components/admin/FlagEditor'
 import { HintList } from '@Components/HintList'
 import { InstanceEntry } from '@Components/InstanceEntry'
+import { PenaltyConfig } from '@Components/admin/PenaltyConfig'
 import { ChallengePreviewModal } from '@Components/admin/ChallengePreviewModal'
 import { SwitchLabel } from '@Components/admin/SwitchLabel'
 import { WithChallengeEdit } from '@Components/admin/WithChallengeEdit'
@@ -599,6 +602,14 @@ const GameChallengeEdit: FC = () => {
               />
             </Grid.Col>
           </Grid>
+        )}
+        {numCId > 0 && (
+          <>
+            <Divider />
+            <FlagEditor challengeId={numCId} />
+            <Divider />
+            <PenaltyConfig challengeId={numCId} />
+          </>
         )}
       </Stack>
       <ChallengePreviewModal
