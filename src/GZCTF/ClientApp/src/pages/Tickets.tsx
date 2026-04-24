@@ -1,7 +1,10 @@
 import {
   Badge,
   Center,
+  Code,
+  Grid,
   Group,
+  Modal,
   Pagination,
   ScrollArea,
   Stack,
@@ -9,6 +12,7 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +29,9 @@ const Tickets: FC = () => {
   const [page, setPage] = useState(1)
   const perPage = 20
 
+  const [detailModal, detailModalHandlers] = useDisclosure(false)
+  const [selectedTicket, setSelectedTicket] = useState<TicketDto | null>(null)
+
   const load = useCallback(async () => {
     try {
       const data = await getMyTickets(200, 0)
@@ -40,7 +47,15 @@ const Tickets: FC = () => {
     load()
   }, [load])
 
+  const openDetail = (ticket: TicketDto) => {
+    setSelectedTicket(ticket)
+    detailModalHandlers.open()
+  }
+
   const pagedTickets = tickets.slice((page - 1) * perPage, page * perPage)
+
+  const statusColor = (status: string) =>
+    status === 'Approved' ? 'green' : status === 'Rejected' ? 'red' : 'yellow'
 
   return (
     <WithNavBar width="90%">
@@ -54,7 +69,7 @@ const Tickets: FC = () => {
           ) : (
             <>
               <ScrollArea type="never" h="calc(100vh - 20rem)">
-                <Table>
+                <Table highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>{t('admin.ticket.col.challenge')}</Table.Th>
@@ -66,7 +81,11 @@ const Tickets: FC = () => {
                   </Table.Thead>
                   <Table.Tbody>
                     {pagedTickets.map((ticket) => (
-                      <Table.Tr key={ticket.id}>
+                      <Table.Tr
+                        key={ticket.id}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => openDetail(ticket)}
+                      >
                         <Table.Td>
                           <Text size="sm">{ticket.challengeName ?? '—'}</Text>
                         </Table.Td>
@@ -74,14 +93,7 @@ const Tickets: FC = () => {
                           <Text size="sm" lineClamp={2}>{ticket.description}</Text>
                         </Table.Td>
                         <Table.Td>
-                          <Badge
-                            color={
-                              ticket.status === 'Approved' ? 'green'
-                              : ticket.status === 'Rejected' ? 'red'
-                              : 'yellow'
-                            }
-                            variant="light"
-                          >
+                          <Badge color={statusColor(ticket.status)} variant="light">
                             {ticket.status}
                           </Badge>
                         </Table.Td>
@@ -111,6 +123,92 @@ const Tickets: FC = () => {
               />
             </>
           )}
+
+          <Modal
+            opened={detailModal}
+            onClose={detailModalHandlers.close}
+            title={t('game.content.ticket.detail_title')}
+            size="lg"
+          >
+            {selectedTicket && (
+              <Stack gap="md">
+                <Grid>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.col.challenge')}</Text>
+                    <Text>{selectedTicket.challengeName ?? '—'}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.col.status')}</Text>
+                    <Badge color={statusColor(selectedTicket.status)} variant="light" mt={4}>
+                      {selectedTicket.status}
+                    </Badge>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.col.answer')}</Text>
+                    <Code block>{selectedTicket.answer ?? '—'}</Code>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.col.penalty_score')}</Text>
+                    <Text fw="bold" c="red">-{selectedTicket.penaltyScore}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.col.time')}</Text>
+                    <Text>{dayjs(selectedTicket.createdAt).format('L LTS')}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('game.content.ticket.submission_id')}</Text>
+                    <Text>#{selectedTicket.submissionId}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={12}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.col.description')}</Text>
+                    <Text mt={4} style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</Text>
+                  </Grid.Col>
+                </Grid>
+
+                {selectedTicket.status !== 'Pending' && (
+                  <Stack gap="xs">
+                    <Text size="sm" fw="bold">{t('game.content.ticket.review_result')}</Text>
+                    <Grid>
+                      <Grid.Col span={6}>
+                        <Text size="sm" c="dimmed">{t('admin.ticket.reviewer')}</Text>
+                        <Text>{selectedTicket.reviewerName ?? '—'}</Text>
+                      </Grid.Col>
+                      <Grid.Col span={6}>
+                        <Text size="sm" c="dimmed">{t('admin.ticket.review_time')}</Text>
+                        <Text>
+                          {selectedTicket.reviewedAt
+                            ? dayjs(selectedTicket.reviewedAt).format('L LTS')
+                            : '—'}
+                        </Text>
+                      </Grid.Col>
+                      {selectedTicket.status === 'Approved' && (
+                        <>
+                          <Grid.Col span={6}>
+                            <Text size="sm" c="dimmed">{t('admin.ticket.refund_score')}</Text>
+                            <Text c="green">+{selectedTicket.refundScore}</Text>
+                          </Grid.Col>
+                          <Grid.Col span={6}>
+                            <Text size="sm" c="dimmed">{t('admin.ticket.bonus_score')}</Text>
+                            <Text c="green">+{selectedTicket.bonusScore}</Text>
+                          </Grid.Col>
+                        </>
+                      )}
+                      <Grid.Col span={12}>
+                        <Text size="sm" c="dimmed">{t('admin.ticket.comment')}</Text>
+                        <Text mt={4}>{selectedTicket.reviewComment || '—'}</Text>
+                      </Grid.Col>
+                    </Grid>
+                  </Stack>
+                )}
+
+                {selectedTicket.status === 'Pending' && (
+                  <Center h="4rem">
+                    <Text c="dimmed">{t('game.content.ticket.pending_notice')}</Text>
+                  </Center>
+                )}
+              </Stack>
+            )}
+          </Modal>
         </Stack>
       </WithRole>
     </WithNavBar>

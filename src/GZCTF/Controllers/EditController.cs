@@ -591,7 +591,10 @@ public class EditController(
     {
         var challenges = await challengeRepository.GetChallenges(id, token);
 
-        var scoreboard = await gameRepository.TryGetScoreboard(id, token);
+        var game = await gameRepository.GetGameById(id, token);
+        var scoreboard = game is not null
+            ? await gameRepository.GetScoreboard(game, token)
+            : null;
 
         var result = challenges.Select(c =>
         {
@@ -920,6 +923,8 @@ public class EditController(
 
         await challengeRepository.AddFlags(challenge, models, token);
 
+        await cacheHelper.FlushScoreboardCache(id, token);
+
         return Ok();
     }
 
@@ -934,10 +939,10 @@ public class EditController(
     /// <param name="fId">Flag ID</param>
     /// <param name="token"></param>
     /// <response code="200">Successfully deleted game challenge flag</response>
-    [HttpDelete("Games/{id:int}/Challenges/{cId:int}/Flags/{fId:int}")]
+    [HttpDelete("Games/{id:int}/Challenges/{cId:int}/Flags/{fId:guid}")]
     [ProducesResponseType(typeof(TaskStatus), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveFlag([FromRoute] int id, [FromRoute] int cId, [FromRoute] int fId,
+    public async Task<IActionResult> RemoveFlag([FromRoute] int id, [FromRoute] int cId, [FromRoute] Guid fId,
         CancellationToken token)
     {
         var challenge = await challengeRepository.GetChallenge(id, cId, token);
@@ -946,7 +951,11 @@ public class EditController(
             return NotFound(new RequestResponse(localizer[nameof(Resources.Program.Challenge_NotFound)],
                 StatusCodes.Status404NotFound));
 
-        return Ok(await challengeRepository.RemoveFlag(challenge, fId, token));
+        var result = await challengeRepository.RemoveFlag(challenge, fId, token);
+
+        await cacheHelper.FlushScoreboardCache(id, token);
+
+        return Ok(result);
     }
 
 

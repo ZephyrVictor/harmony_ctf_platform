@@ -29,12 +29,12 @@ public class Instance
 
     #region Db Relationship
 
-    public int? FlagId { get; set; }
+    public Guid? FlagId { get; set; }
 
     /// <summary>
     /// Flag context object
     /// </summary>
-    public FlagContext? FlagContext { get; set; }
+    public ChallengeFlag? FlagContext { get; set; }
 
     public Guid? ContainerId { get; set; }
 

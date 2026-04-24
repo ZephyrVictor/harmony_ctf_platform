@@ -12,7 +12,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : undefined as T;
 }
 
 // ---- Flag Management ----

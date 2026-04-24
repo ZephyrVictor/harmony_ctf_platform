@@ -145,16 +145,25 @@ namespace GZCTF.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("AttachmentId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("ExerciseId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FlagValue")
                         .IsRequired()
                         .HasMaxLength(127)
                         .HasColumnType("character varying(127)");
+
+                    b.Property<bool>("IsOccupied")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Score")
                         .HasColumnType("integer");
@@ -167,10 +176,14 @@ namespace GZCTF.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AttachmentId");
+
                     b.HasIndex("ChallengeId");
 
                     b.HasIndex("ChallengeId", "FlagValue")
                         .IsUnique();
+
+                    b.HasIndex("ExerciseId");
 
                     b.ToTable("ChallengeFlags");
                 });
@@ -497,8 +510,8 @@ namespace GZCTF.Migrations
                     b.Property<Guid?>("ContainerId")
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("FlagId")
-                        .HasColumnType("integer");
+                    b.Property<Guid?>("FlagId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsLoaded")
                         .HasColumnType("boolean");
@@ -544,41 +557,6 @@ namespace GZCTF.Migrations
                     b.ToTable("FirstSolves");
                 });
 
-            modelBuilder.Entity("GZCTF.Models.Data.FlagContext", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("AttachmentId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ChallengeId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ExerciseId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Flag")
-                        .IsRequired()
-                        .HasMaxLength(127)
-                        .HasColumnType("character varying(127)");
-
-                    b.Property<bool>("IsOccupied")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttachmentId");
-
-                    b.HasIndex("ChallengeId");
-
-                    b.HasIndex("ExerciseId");
-
-                    b.ToTable("FlagContexts");
-                });
 
             modelBuilder.Entity("GZCTF.Models.Data.Game", b =>
                 {
@@ -818,8 +796,8 @@ namespace GZCTF.Migrations
                     b.Property<Guid?>("ContainerId")
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("FlagId")
-                        .HasColumnType("integer");
+                    b.Property<Guid?>("FlagId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsLoaded")
                         .HasColumnType("boolean");
@@ -1539,13 +1517,26 @@ namespace GZCTF.Migrations
 
             modelBuilder.Entity("GZCTF.Models.Data.ChallengeFlag", b =>
                 {
-                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
+                    b.HasOne("GZCTF.Models.Data.Attachment", "Attachment")
                         .WithMany()
+                        .HasForeignKey("AttachmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
+                        .WithMany("Flags")
                         .HasForeignKey("ChallengeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("GZCTF.Models.Data.ExerciseChallenge", "Exercise")
+                        .WithMany("Flags")
+                        .HasForeignKey("ExerciseId");
+
+                    b.Navigation("Attachment");
+
                     b.Navigation("Challenge");
+
+                    b.Navigation("Exercise");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.ChallengePenalty", b =>
@@ -1673,7 +1664,7 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("GZCTF.Models.Data.FlagContext", "FlagContext")
+                    b.HasOne("GZCTF.Models.Data.ChallengeFlag", "FlagContext")
                         .WithMany()
                         .HasForeignKey("FlagId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1718,28 +1709,6 @@ namespace GZCTF.Migrations
                     b.Navigation("Participation");
 
                     b.Navigation("Submission");
-                });
-
-            modelBuilder.Entity("GZCTF.Models.Data.FlagContext", b =>
-                {
-                    b.HasOne("GZCTF.Models.Data.Attachment", "Attachment")
-                        .WithMany()
-                        .HasForeignKey("AttachmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
-                        .WithMany("Flags")
-                        .HasForeignKey("ChallengeId");
-
-                    b.HasOne("GZCTF.Models.Data.ExerciseChallenge", "Exercise")
-                        .WithMany("Flags")
-                        .HasForeignKey("ExerciseId");
-
-                    b.Navigation("Attachment");
-
-                    b.Navigation("Challenge");
-
-                    b.Navigation("Exercise");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.GameChallenge", b =>
@@ -1805,7 +1774,7 @@ namespace GZCTF.Migrations
                         .HasForeignKey("GZCTF.Models.Data.GameInstance", "ContainerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("GZCTF.Models.Data.FlagContext", "FlagContext")
+                    b.HasOne("GZCTF.Models.Data.ChallengeFlag", "FlagContext")
                         .WithMany()
                         .HasForeignKey("FlagId")
                         .OnDelete(DeleteBehavior.SetNull);

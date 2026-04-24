@@ -1237,11 +1237,13 @@ export interface ContainerInfoModel {
 export interface FlagInfoModel {
   /**
    * Flag Id
-   * @format int32
+   * @format uuid
    */
-  id?: number;
+  id?: string;
   /** Flag text */
   flag?: string;
+  /** Score contribution of this flag */
+  score?: number;
   /** Attachment corresponding to the Flag */
   attachment?: Attachment | null;
 }
@@ -4250,7 +4252,7 @@ export class Api<
     editRemoveFlag: (
       id: number,
       cId: number,
-      fId: number,
+      fId: string,
       params: RequestParams = {},
     ) =>
       this.request<TaskStatus, RequestResponse>({

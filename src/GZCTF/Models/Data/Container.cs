@@ -140,7 +140,7 @@ public class Container
                     GameInstance.Participation.Team.Name,
                     GameInstance.Participation.TeamId,
                     ContainerId,
-                    GameInstance.FlagContext?.Flag
+                    GameInstance.FlagContext?.FlagValue
                 ), options);
 
         if (ExerciseInstance is not null)
@@ -151,7 +151,7 @@ public class Container
                     ExerciseInstance.User.UserName,
                     ExerciseInstance.UserId,
                     ContainerId,
-                    ExerciseInstance.FlagContext?.Flag
+                    ExerciseInstance.FlagContext?.FlagValue
                 ), options);
 
         return null;

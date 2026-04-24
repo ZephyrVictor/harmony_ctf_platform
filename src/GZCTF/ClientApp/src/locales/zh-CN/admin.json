@@ -640,21 +640,29 @@
   "ticket": {
     "approve": "通过",
     "approve_title": "审核工单",
-    "bonus_score": "补偿分",
+    "bonus_score": "额外加分",
     "col": {
       "actions": "操作",
       "answer": "提交内容",
       "challenge": "题目",
-      "description": "描述",
+      "description": "申诉描述",
+      "penalty_score": "扣分",
       "status": "状态",
       "time": "时间",
       "user": "选手"
     },
     "comment": "审核意见",
+    "comment_desc": "驳回时必须填写，通过时可选",
+    "comment_placeholder": "请输入审核意见...",
+    "comment_required": "驳回时必须填写审核意见",
+    "detail_title": "工单详情",
     "empty": "暂无工单",
     "refund_score": "返还分",
     "reject": "驳回",
     "reject_reason": "驳回理由",
+    "review_result": "审核结果",
+    "review_time": "审核时间",
+    "reviewer": "审核人",
     "title": "工单管理"
   },
   "tab": {

@@ -8,11 +8,22 @@ Flag Scoring Module 是 GZCTF v1.8.3 的扩展模块，在不修改原有表结�
 
 | # | 约束 | 说明 |
 |---|------|------|
-| 1 | 不修改 GZCTF 原有任何表的字段定义 | 所有扩展数据存在新表中 |
+| 1 | 不修改 GZCTF 原有任何表的字段定义 | 所有扩展数据存在新表中（**注：FlagContext 移除阶段例外，见 §1.3**） |
 | 2 | 不删除 GZCTF 原有任何 API 路由 | 新增功能走 `/api/ext/` 前缀的新路由 |
 | 3 | 新表与旧表的关联仅通过外键引用 | `ChallengeId`、`UserId`、`SubmissionId` |
 | 4 | 提交流程通过 DI 替换 | `ScoringService` 注入 `GameController.Submit()`，同步处理，绕过异步 FlagChecker |
 | 5 | 所有可变阈值通过配置管理 | `CompetitionSettings` 数据库表 + 管理界面，修改即时生效无需重启 |
+
+### 1.3 FlagContext 移除（v1.8.4）
+
+Flag Scoring Module 最初设计为附加模块，保留原有 `FlagContexts` 表不变。v1.8.4 完成了旧系统的彻底移除：
+
+- **删除 `FlagContexts` 表**：旧 flag 数据迁移至 `ChallengeFlags`，原有功能由新表承接
+- **`GameInstances.FlagId` / `ExerciseInstances.FlagId`**：列类型由 `int?` 改为 `Guid?`，外键指向 `ChallengeFlags.Id`
+- **`Instance.FlagContext` 导航属性**：名称保留以最小化代码差异，类型由 `FlagContext?` 改为 `ChallengeFlag?`
+- **`ScoringService` 统一处理 FirstSolves**：血滴奖励（FirstBlood/SecondBlood/ThirdBlood）由 `ScoringService.HandleCorrectSubmission()` 同步创建，不再依赖异步 `FlagChecker`
+
+迁移文件：`Migrations/20260423100000_RemoveFlagContexts.cs`
 
 ### 1.2 模块划分
 
@@ -33,21 +44,26 @@ GZCTF Core (不改)
 
 ### 2.1 ChallengeFlags — 多 Flag 配置
 
-每道题可配置多个独立 flag，每个 flag 拥有独立分值。选手提交任意一个 flag 即可获得对应分数。
+每道题可配置多个独立 flag，每个 flag 拥有独立分值。选手提交任意一个 flag 即可获得对应分数。同时承接原 `FlagContexts` 表的功能（flag 分配、附件关联）。
 
 | 列 | 类型 | 约束 | 说明 |
 |---|---|---|---|
 | `Id` | GUID | PK | |
 | `ChallengeId` | int | FK → GameChallenges.Id, NOT NULL | 所属题目 |
-| `FlagValue` | text | NOT NULL, MaxLength(126) | flag 值 |
+| `FlagValue` | text | NOT NULL, MaxLength(127) | flag 值 |
 | `Score` | int | NOT NULL, [Range(1, int.MaxValue)] | 该 flag 的独立分值 |
 | `SortOrder` | int | DEFAULT 0 | 排序 |
+| `IsOccupied` | bool | NOT NULL, DEFAULT false | 是否已分配给参赛者（动态附件分发） |
+| `AttachmentId` | int? | FK → Attachments.Id, NULLABLE | 每个 flag 独立附件 |
+| `ExerciseId` | int? | FK → ExerciseChallenges.Id, NULLABLE | 所属练习题 |
 | `CreatedAt` | datetime | NOT NULL | |
 | `UpdatedAt` | datetime | NOT NULL | |
 
 **索引与约束**：
 - `INDEX(ChallengeId)` — 按题目查询 flag 列表
 - `UNIQUE(ChallengeId, FlagValue)` — 同一题目下 flag 值唯一
+- `INDEX(AttachmentId)` — 按附件查询
+- `INDEX(ExerciseId)` — 按练习题查询
 
 ### 2.2 ChallengePenalty — 扣分配置
 
@@ -81,7 +97,7 @@ GZCTF Core (不改)
 - `UNIQUE INDEX(SubmissionId)` — 一次提交对应一条扩展记录
 - `INDEX(IsPenalty) WHERE IsPenalty = true` — 部分索引，加速工单查询
 - `CK_SubmissionRecord_Penalty_NullFlag` — `IsPenalty = true` 时 `MatchedFlagId` 必须为 NULL
-- `CK_SubmissionRecord_NonPenalty_RequiresFlag` — `IsPenalty = false` 时 `MatchedFlagId` 必须 NOT NULL 且 `ScoreChange > 0`
+- `CK_SubmissionRecord_NonPenalty_RequiresFlag` — `IsPenalty = false` 时 `ScoreChange >= 0`（工单返还/补偿记录 `MatchedFlagId` 可为 NULL，重复提交 flag 记录 `ScoreChange = 0`）
 
 ### 2.4 Tickets — 工单
 
@@ -144,7 +160,7 @@ GZCTF Core (不改)
 
 | 键 | 默认值 | 说明 |
 |----|--------|------|
-| `Scoring.MinScore` | `0` | 选手总分下限 |
+| `Scoring.MinScore` | `-100` | 选手总分下限（负值允许未正确提交时产生扣分） |
 | `Scoring.DefaultPenaltyScore` | `0` | 新建题目的默认扣分值 |
 | `Scoring.MaxPenaltyPerSubmission` | `100` | 单次提交扣分上限 |
 | `Ticket.EnableAutoRefund` | `true` | 审核通过时自动计算返还分 |
@@ -184,18 +200,30 @@ GameController.Submit()
     │           └── 返回 WrongAnswer + 负分
     │
     ├── 写入 SubmissionRecords（ScoreChange、IsPenalty、MatchedFlagId）
+    ├── 命中且非重复提交 → 创建 FirstSolves 记录（血滴奖励逻辑）
     ├── 提交事务
     └── 返回 { submission.Id, scoreResult.Message }
 ```
 
 ### 3.2 FlagChecker 旁路
 
-GZCTF 原有 `FlagChecker` 是异步 `IHostedService`，通过 Channel 处理提交。
+GZCTF 原有 `FlagChecker` 是异步 `IHostedService`，通过 Channel 处理提交。FlagContext 移除后，`FlagChecker` 内部也改用 `ChallengeFlags` 表进行 flag 匹配。
 
 **旁路机制**：
 - 新流程在 `GameController.Submit()` 中同步完成 flag 匹配，直接设置 `Submission.Status = Accepted/WrongAnswer`
 - 不向 FlagChecker Channel 写入数据
 - FlagChecker 防御性检查：每个提交处理前通过 `ISubmissionRecordRepository.ExistsBySubmissionId()` 检查是否已有 `SubmissionRecord`，有则跳过
+
+### 3.5 FirstSolves 与血滴奖励
+
+FlagContext 移除后，`ScoringService.HandleCorrectSubmission()` 统一负责 FirstSolves 创建：
+
+- **时间窗口**：比赛开始后 1 小时内可产生血滴
+- **截止日期**：超过题目截止日期的提交不产生血滴
+- **禁用血滴**：`DisableBloodBonus = true` 的题目不产生血滴
+- **分区权限**：根据分区配置检查队伍是否有血滴权限
+- **提交记录关联**：`FirstSolves.SubmissionId` 关联到具体提交，`UpdateFirstSolveSubmissionId()` 在提交 ID 确认后更新
+- **血滴通知**：血滴产生后通过 `GameNotice` 向全比赛广播
 
 ### 3.3 边界情况处理
 
@@ -215,6 +243,12 @@ GZCTF 原有 `FlagChecker` 是异步 `IHostedService`，通过 Channel 处理提
 ```
 选手总分 = GZCTF 原始计分（动态分值）+ SUM(SubmissionRecords.ScoreChange)
 ```
+
+积分榜缓存 7 天滑动过期。以下操作会主动刷新积分榜缓存：
+
+- `GameController.Submit()` — 提交答案后刷新
+- `TicketController.Approve()` — 工单审批通过后刷新
+- `EditController` — 题目/flag 编辑相关操作后刷新
 
 ---
 
@@ -515,9 +549,13 @@ EF Core 迁移在应用启动时自动执行（`PrelaunchHelper.MigrateAsync()`�
 
 - `Models/AppDbContext.cs` — 新增 6 个 DbSet + Fluent API 配置
 - `Models/Data/Submission.cs` — 新增 `SubmissionRecord?` 反向导航属性
-- `Controllers/GameController.cs` — `Submit()` 集成 ScoringService，返回 `{id, message}`
+- `Models/Data/Ticket.cs` — `TicketStatus` 枚举添加 `[JsonStringEnumConverter]` 以支持字符串序列化
+- `Models/Data/BigScreenEvent.cs` — `BigScreenEventType` 枚举添加 `[JsonStringEnumConverter]`
+- `Controllers/GameController.cs` — `Submit()` 集成 ScoringService，返回 `{id, message}`，提交后刷新积分榜缓存
+- `Controllers/TicketController.cs` — 注入 `CacheHelper`，审批通过后刷新积分榜缓存
 - `Services/FlagChecker.cs` — 防御性跳过已处理提交
 - `Repositories/GameRepository.cs` — `GenScoreboard()` 集成 SubmissionRecords 分数
+- `Repositories/TicketRepository.cs` — 修复导航属性 Include（GameChallenge、SubmissionRecord、Reviewer），改用 `FindAsync` 数组参数
 - `Extensions/Startup/ServicesExtension.cs` — 注册 8 个新服务/仓库
 - `Extensions/Startup/AppExtensions.cs` — 映射 BigScreenHub
 - `ClientApp/src/Api.ts` — `gameSubmit` 返回类型改为 `{id, message}`
@@ -526,13 +564,20 @@ EF Core 迁移在应用启动时自动执行（`PrelaunchHelper.MigrateAsync()`�
 - `ClientApp/src/components/admin/WithAdminTab.tsx` — 新增 Scoring 标签
 - `ClientApp/src/components/admin/WithGameEditTab.tsx` — 新增 Tickets 标签
 - `ClientApp/src/pages/admin/games/[id]/challenges/[chalId]/Index.tsx` — 嵌入 FlagEditor + PenaltyConfig
+- `ClientApp/src/pages/admin/games/[id]/Tickets.tsx` — 工单审核页：可点击行展开详情弹窗，含完整描述、审核意见、退还分、加分选择，通过/驳回按钮
+- `ClientApp/src/pages/Tickets.tsx` — 选手工单页：可点击行查看详情，已审核工单展示审核结果
 - `ClientApp/src/utils/Shared.tsx` — 新增 `showSuccessMsg`
-- `ClientApp/src/locales/en-US/admin.json` — 新增翻译键
-- `ClientApp/src/locales/en-US/game.json` — 新增翻译键
+- `ClientApp/src/locales/en-US/admin.json` — 新增翻译键（ticket.*, scoring.*, flag.*, penalty.*）
+- `ClientApp/src/locales/en-US/game.json` — 新增翻译键（ticket.*, submission.*）
 - `ClientApp/src/locales/zh-CN/admin.json` — 新增翻译键
 - `ClientApp/src/locales/zh-CN/game.json` — 新增翻译键
-- `Migrations/20260421103728_AddFlagScoringModule.cs` — EF Core 迁移
+- `Migrations/20260421103728_AddFlagScoringModule.cs` — EF Core 迁移（Flag Scoring Module 初始化）
+- `Migrations/20260423100000_RemoveFlagContexts.cs` — EF Core 迁移（移除 FlagContexts 表，统一 flag 系统）
 - `Migrations/AppDbContextModelSnapshot.cs` — 迁移快照
+
+### 删除文件（1 个）
+
+- `Models/Data/FlagContext.cs` — 旧 flag 上下文实体（已被 ChallengeFlag 替代）
 
 ---
 
@@ -566,10 +611,45 @@ pnpm dev
 
 后端 `http://localhost:8080`，前端开发服务器 `http://localhost:5173`。
 
-### 11.3 验证新表
+### 11.3 已验证的测试场景
+
+以下场景通过端到端测试验证：
+
+| # | 场景 | 验证点 |
+|---|------|--------|
+| 1 | 正确提交 flag | Accepted 状态，ScoreChange 为正 |
+| 2 | 错误提交 flag | WrongAnswer 状态，产生罚分记录（IsPenalty=true） |
+| 3 | 罚分不超上限 | 实际扣分 ≤ MaxPenaltyPerSubmission |
+| 4 | 总分不低于下限 | 组合总分截断至 MinScore（-100） |
+| 5 | 重复提交同一 flag | 返回 "already submitted" 消息 |
+| 6 | 发起工单 | 仅 IsPenalty=true 的提交可发起 |
+| 7 | 工单审批通过 | 返还分 + 加分写入 SubmissionRecord，积分榜更新 |
+| 8 | 工单驳回 | 必须填写驳回理由，不产生分数变化 |
+| 9 | 积分榜缓存刷新 | 提交和工单审批后积分榜实时更新 |
+| 10 | 比赛设置 | 管理界面修改即时生效，无需重启 |
+| 11 | Flag CRUD | 创建、编辑、删除 flag，有提交记录的不可删 |
+| 12 | 扣分配置 | 新题目自动使用 DefaultPenaltyScore |
+
+### 11.4 已验证的 Bug 修复
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| Admin 修改 flag 后积分榜不更新 | 双系统不同步：EditController 用 FlagContexts，ExtController 用 ChallengeFlags | 移除 FlagContexts，统一使用 ChallengeFlags |
+| 血滴奖励（Blood Bonus）缺失 | ScoringService 未创建 FirstSolves 记录 | HandleCorrectSubmission 中实现完整血滴逻辑 |
+| 积分榜不更新（提交后） | `GameController.Submit()` 未刷新积分榜缓存 | 提交后调用 `CacheHelper.FlushScoreboardCache()` |
+| 积分榜不更新（工单审批后） | `TicketController.Approve()` 未刷新缓存 | 注入 `CacheHelper`，审批后刷新 |
+| 前端工单状态显示为数字 | `TicketStatus` 枚举序列化为 0/1/2 整数 | 添加 `[JsonStringEnumConverter]` |
+| 管理员工单列表无题目名 | `GetAllTickets` 未 Include GameChallenge | 添加 `.ThenInclude(s => s.GameChallenge)` |
+| 选手工单列表 penaltyScore=0 | `GetUserTickets` 未 Include SubmissionRecord | 添加 `.ThenInclude(s => s.SubmissionRecord)` |
+| 大屏事件类型显示异常 | `BigScreenEventType` 枚举未配置 JSON 转换器 | 添加 `[JsonStringEnumConverter]` |
+| 设置 API 读取整数值失败 | `GetInt32()` 对 `1.0` 抛出 `FormatException` | 改用 `TryGetInt32` + `GetDouble` 回退 |
+
+### 11.5 验证新表
 
 ```bash
 docker compose exec db psql -U gzctf -d gzctf -c "\dt"
 ```
 
 预期新表：`ChallengeFlags`、`ChallengePenalty`、`SubmissionRecords`、`Tickets`、`BigScreenEvents`、`CompetitionSettings`。
+
+预期已删除表：`FlagContexts`（数据已迁移至 `ChallengeFlags`）。

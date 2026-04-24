@@ -67,9 +67,9 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
         await challengeRepo.LoadFlags(challenge, CancellationToken.None);
 
         Assert.Equal(3, challenge.Flags.Count);
-        Assert.Contains(challenge.Flags, f => f.Flag == "flag{test1}");
-        Assert.Contains(challenge.Flags, f => f.Flag == "flag{test2}");
-        Assert.Contains(challenge.Flags, f => f.Flag == "flag{test3}");
+        Assert.Contains(challenge.Flags, f => f.FlagValue == "flag{test1}");
+        Assert.Contains(challenge.Flags, f => f.FlagValue == "flag{test2}");
+        Assert.Contains(challenge.Flags, f => f.FlagValue == "flag{test3}");
 
         output.WriteLine($"Successfully added {challenge.Flags.Count} flags to challenge {challenge.Id}");
     }
@@ -107,8 +107,8 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
             Difficulty = 1
         };
 
-        var flag1 = new FlagContext { Flag = "flag{keep}", Challenge = challenge };
-        var flag2 = new FlagContext { Flag = "flag{remove}", Challenge = challenge };
+        var flag1 = new ChallengeFlag { FlagValue = "flag{keep}", Challenge = challenge };
+        var flag2 = new ChallengeFlag { FlagValue = "flag{remove}", Challenge = challenge };
 
         challenge.Flags.Add(flag1);
         challenge.Flags.Add(flag2);
@@ -120,7 +120,7 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
         Assert.Equal(2, challenge.Flags.Count);
 
         // Remove one flag
-        var flagToRemove = challenge.Flags.First(f => f.Flag == "flag{remove}");
+        var flagToRemove = challenge.Flags.First(f => f.FlagValue == "flag{remove}");
         var result = await challengeRepo.RemoveFlag(challenge, flagToRemove.Id, CancellationToken.None);
 
         Assert.Equal(TaskStatus.Success, result);
@@ -132,8 +132,8 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
         await challengeRepo.LoadFlags(updatedChallenge, CancellationToken.None);
 
         Assert.Single(updatedChallenge.Flags);
-        Assert.Contains(updatedChallenge.Flags, f => f.Flag == "flag{keep}");
-        Assert.DoesNotContain(updatedChallenge.Flags, f => f.Flag == "flag{remove}");
+        Assert.Contains(updatedChallenge.Flags, f => f.FlagValue == "flag{keep}");
+        Assert.DoesNotContain(updatedChallenge.Flags, f => f.FlagValue == "flag{remove}");
 
         // Challenge should still be enabled since there's one flag left
         Assert.True(updatedChallenge.IsEnabled);
@@ -174,7 +174,7 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
             Difficulty = 1
         };
 
-        var flag = new FlagContext { Flag = "flag{last}", Challenge = challenge };
+        var flag = new ChallengeFlag { FlagValue = "flag{last}", Challenge = challenge };
         challenge.Flags.Add(flag);
 
         await challengeRepo.CreateChallenge(game, challenge, CancellationToken.None);
@@ -230,7 +230,7 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
             Difficulty = 1
         };
 
-        var flag = new FlagContext { Flag = "flag{valid}", Challenge = challenge };
+        var flag = new ChallengeFlag { FlagValue = "flag{valid}", Challenge = challenge };
         challenge.Flags.Add(flag);
 
         await challengeRepo.CreateChallenge(game, challenge, CancellationToken.None);
@@ -276,8 +276,8 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
             Difficulty = 1
         };
 
-        challenge.Flags.Add(new FlagContext { Flag = "flag{load1}", Challenge = challenge });
-        challenge.Flags.Add(new FlagContext { Flag = "flag{load2}", Challenge = challenge });
+        challenge.Flags.Add(new ChallengeFlag { FlagValue = "flag{load1}", Challenge = challenge });
+        challenge.Flags.Add(new ChallengeFlag { FlagValue = "flag{load2}", Challenge = challenge });
 
         await challengeRepo.CreateChallenge(game, challenge, CancellationToken.None);
 
@@ -299,8 +299,8 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
 
         // Verify flags are loaded
         Assert.Equal(2, challengeToLoad.Flags.Count);
-        Assert.Contains(challengeToLoad.Flags, f => f.Flag == "flag{load1}");
-        Assert.Contains(challengeToLoad.Flags, f => f.Flag == "flag{load2}");
+        Assert.Contains(challengeToLoad.Flags, f => f.FlagValue == "flag{load1}");
+        Assert.Contains(challengeToLoad.Flags, f => f.FlagValue == "flag{load2}");
 
         output.WriteLine($"Successfully loaded {challengeToLoad.Flags.Count} flags");
     }

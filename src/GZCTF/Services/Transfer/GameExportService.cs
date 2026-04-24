@@ -120,16 +120,16 @@ public class GameExportService(AppDbContext dbContext, IBlobStorage blobStorage)
 
         if (staticIds.Count > 0)
         {
-            var flags = await dbContext.FlagContexts
+            var flags = await dbContext.ChallengeFlags
                 .AsNoTracking()
                 .IgnoreAutoIncludes()
-                .Where(f => f.ChallengeId != null && staticIds.Contains(f.ChallengeId.Value))
+                .Where(f => staticIds.Contains(f.ChallengeId))
                 .Include(f => f.Attachment)
                 .ThenInclude(a => a!.LocalFile)
                 .ToListAsync(ct);
 
             var flagsByChallenge = flags
-                .GroupBy(f => f.ChallengeId!.Value)
+                .GroupBy(f => f.ChallengeId)
                 .ToDictionary(gp => gp.Key, gp => gp.ToList());
 
             foreach (var ch in challenges)

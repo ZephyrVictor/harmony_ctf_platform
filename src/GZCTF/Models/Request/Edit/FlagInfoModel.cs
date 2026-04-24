@@ -8,7 +8,7 @@ public class FlagInfoModel
     /// <summary>
     /// Flag Id
     /// </summary>
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Flag text
@@ -16,10 +16,15 @@ public class FlagInfoModel
     public string Flag { get; set; } = string.Empty;
 
     /// <summary>
+    /// Score contribution of this flag
+    /// </summary>
+    public int Score { get; set; }
+
+    /// <summary>
     /// Attachment corresponding to the Flag
     /// </summary>
     public Attachment? Attachment { get; set; }
 
-    internal static FlagInfoModel FromFlagContext(FlagContext context) =>
-        new() { Id = context.Id, Flag = context.Flag, Attachment = context.Attachment };
+    internal static FlagInfoModel FromChallengeFlag(ChallengeFlag flag) =>
+        new() { Id = flag.Id, Flag = flag.FlagValue, Score = flag.Score, Attachment = flag.Attachment };
 }

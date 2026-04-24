@@ -1225,8 +1225,8 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             GameId = game.Id
         };
 
-        FlagContext flagContext = new() { Flag = flag, Challenge = challenge };
-        challenge.Flags.Add(flagContext);
+        ChallengeFlag challengeFlag = new() { FlagValue = flag, Challenge = challenge };
+        challenge.Flags.Add(challengeFlag);
 
         await challengeRepository.CreateChallenge(game, challenge, CancellationToken.None);
 
@@ -1264,8 +1264,8 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             GameId = game.Id
         };
 
-        FlagContext flagContext = new() { Flag = flag, Challenge = challenge };
-        challenge.Flags.Add(flagContext);
+        ChallengeFlag challengeFlag = new() { FlagValue = flag, Challenge = challenge };
+        challenge.Flags.Add(challengeFlag);
 
         await challengeRepository.CreateChallenge(game, challenge, CancellationToken.None);
 

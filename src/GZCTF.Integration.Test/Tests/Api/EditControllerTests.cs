@@ -450,7 +450,7 @@ public class EditControllerTests(GZCTFApplicationFactory factory, ITestOutputHel
         getChallengeResponse.EnsureSuccessStatusCode();
         var challengeDetail = await getChallengeResponse.Content.ReadFromJsonAsync<ChallengeEditDetailModel>();
         Assert.NotNull(challengeDetail);
-        var flagToRemove = challengeDetail.Flags.First(f => f.Flag == "flag{remove}");
+        var flagToRemove = challengeDetail.Flags.First(f => f.FlagValue == "flag{remove}");
 
         // Act: Remove flag
         var removeResponse = await adminClient.DeleteAsync(

@@ -17,6 +17,16 @@ public class FlagCreateModel
     public string Flag { get; set; } = string.Empty;
 
     /// <summary>
+    /// Score contribution of this flag
+    /// </summary>
+    public int Score { get; set; } = 100;
+
+    /// <summary>
+    /// Sort order for display
+    /// </summary>
+    public int SortOrder { get; set; }
+
+    /// <summary>
     /// Attachment type
     /// </summary>
     public FileType AttachmentType { get; set; } = FileType.None;

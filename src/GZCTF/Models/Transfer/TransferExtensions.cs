@@ -90,8 +90,8 @@ public static class TransferExtensions
                     // to avoid duplication during import
                     Static = challenge.Flags
                         .Where(f => string.IsNullOrWhiteSpace(challenge.FlagTemplate) ||
-                                    f.Flag != challenge.FlagTemplate)
-                        .Select(f => new StaticFlagSection { Value = f.Flag, Attachment = f.Attachment?.ToTransfer() })
+                                    f.FlagValue != challenge.FlagTemplate)
+                        .Select(f => new StaticFlagSection { Value = f.FlagValue, Attachment = f.Attachment?.ToTransfer() })
                         .ToList()
                 }
             };
@@ -285,10 +285,10 @@ public static class TransferExtensions
     extension(StaticFlagSection transfer)
     {
         /// <summary>
-        /// Create FlagContext from static flag transfer
+        /// Create ChallengeFlag from static flag transfer
         /// </summary>
-        public FlagContext ToFlagContext() =>
-            new() { Flag = transfer.Value, IsOccupied = false };
+        public ChallengeFlag ToChallengeFlag() =>
+            new() { FlagValue = transfer.Value, IsOccupied = false };
     }
 
     /// <summary>

@@ -29,7 +29,7 @@ public class TransferChallengeTests
             DisableBloodBonus = false,
             EnableTrafficCapture = false,
             Hints = ["Hint 1", "Hint 2"],
-            Flags = [new() { Flag = "flag{test_flag}" }]
+            Flags = [new() { FlagValue = "flag{test_flag}" }]
         };
 
         // Act
@@ -166,10 +166,10 @@ public class TransferChallengeTests
         var staticFlag = new StaticFlagSection { Value = "flag{test_value}" };
 
         // Act
-        var flagContext = staticFlag.ToFlagContext();
+        var flagContext = staticFlag.ToChallengeFlag();
 
         // Assert
-        Assert.Equal("flag{test_value}", flagContext.Flag);
+        Assert.Equal("flag{test_value}", flagContext.FlagValue);
         Assert.False(flagContext.IsOccupied);
     }
 }

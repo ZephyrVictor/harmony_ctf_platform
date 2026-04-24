@@ -16,7 +16,14 @@ public class GameChallengeRepository(
         {
             var attachment = model.ToAttachment(await blobRepository.GetBlobByHash(model.FileHash, token));
 
-            challenge.Flags.Add(new() { Flag = model.Flag, Challenge = challenge, Attachment = attachment });
+            challenge.Flags.Add(new()
+            {
+                FlagValue = model.Flag,
+                Score = model.Score,
+                SortOrder = model.SortOrder,
+                Challenge = challenge,
+                Attachment = attachment
+            });
         }
 
         await SaveAsync(token);
@@ -83,9 +90,9 @@ public class GameChallengeRepository(
             await SaveAsync(token);
     }
 
-    public async Task<TaskStatus> RemoveFlag(GameChallenge challenge, int flagId, CancellationToken token = default)
+    public async Task<TaskStatus> RemoveFlag(GameChallenge challenge, Guid flagId, CancellationToken token = default)
     {
-        var flag = await Context.FlagContexts
+        var flag = await Context.ChallengeFlags
             .FirstOrDefaultAsync(f => f.Challenge == challenge && f.Id == flagId, token);
 
         if (flag is null)
@@ -98,7 +105,7 @@ public class GameChallengeRepository(
         await SaveAsync(token);
 
         // If there are no more flags, disable the challenge
-        if (!await Context.FlagContexts.AnyAsync(f => f.Challenge == challenge, token))
+        if (!await Context.ChallengeFlags.AnyAsync(f => f.Challenge == challenge, token))
         {
             challenge.IsEnabled = false;
             await SaveAsync(token);

@@ -1035,15 +1035,31 @@ public class GameController(
             {
                 submission = await submissionRepository.AddSubmission(submission, token);
 
-                if (scoreResult.ScoreChange != 0 || scoreResult.IsPenalty)
+                await scoringService.CreateRecord(submission, scoreResult, token);
+
+                // Create FirstSolves entry with the actual submission ID
+                if (scoreResult.SubmissionType != SubmissionType.Unaccepted)
                 {
-                    await scoringService.CreateRecord(submission, scoreResult, token);
+                    await scoringService.CreateFirstSolve(
+                        submission.ParticipationId, submission.ChallengeId, submission.Id, token);
                 }
 
                 await transaction.CommitAsync(token);
 
                 // Send via SignalR for real-time updates
                 await submissionRepository.SendSubmission(submission);
+
+                // Create blood bonus notice
+                if (context.Game!.EndTimeUtc > DateTimeOffset.UtcNow
+                    && scoreResult.SubmissionType != SubmissionType.Unaccepted
+                    && scoreResult.SubmissionType != SubmissionType.Normal)
+                {
+                    await noticeRepository.AddNotice(
+                        GameNotice.FromSubmission(submission, scoreResult.SubmissionType, localizer), token);
+                }
+
+                // Flush scoreboard cache so the new SubmissionRecord is reflected
+                await cacheHelper.FlushScoreboardCache(context.Game!.Id, token);
 
                 return Ok(new { submission.Id, scoreResult.Message });
             }

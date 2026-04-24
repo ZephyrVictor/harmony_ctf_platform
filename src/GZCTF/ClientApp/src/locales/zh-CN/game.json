@@ -76,8 +76,12 @@
     "ticket": {
       "create_title": "发起工单",
       "description": "申诉描述",
+      "detail_title": "工单详情",
       "my_tickets": "我的工单",
-      "refund_bonus": "返还 / 补偿"
+      "pending_notice": "工单正在审核中，请等待管理员处理。",
+      "refund_bonus": "返还 / 补偿",
+      "review_result": "审核结果",
+      "submission_id": "提交编号"
     },
     "no_cheat": {
       "comment": "看起来大家都很老实呢",

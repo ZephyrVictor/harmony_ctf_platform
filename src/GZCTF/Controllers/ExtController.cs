@@ -1,10 +1,13 @@
 using System.Net.Mime;
+using System.Text.Json;
 using GZCTF.Middlewares;
 using GZCTF.Models;
 using GZCTF.Models.Request;
 using GZCTF.Repositories.Interface;
+using GZCTF.Services.Cache;
 using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Controllers;
 
@@ -21,8 +24,21 @@ public class ExtController(
     IChallengeFlagRepository flagRepository,
     IChallengePenaltyRepository penaltyRepository,
     CompetitionSettingsService settingsService,
-    IBigScreenEventRepository eventRepository) : ControllerBase
+    IBigScreenEventRepository eventRepository,
+    AppDbContext context,
+    CacheHelper cacheHelper) : ControllerBase
 {
+    private async Task FlushScoreboardForChallenge(int challengeId, CancellationToken token)
+    {
+        var gameId = await context.GameChallenges
+            .Where(c => c.Id == challengeId)
+            .Select(c => c.GameId)
+            .FirstOrDefaultAsync(token);
+
+        if (gameId > 0)
+            await cacheHelper.FlushScoreboardCache(gameId, token);
+    }
+
     #region Flag Management
 
     /// <summary>
@@ -68,6 +84,7 @@ public class ExtController(
         };
 
         flag = await flagRepository.CreateFlag(flag, token);
+        await FlushScoreboardForChallenge(challengeId, token);
         return CreatedAtAction(nameof(GetFlags), new { challengeId }, flag);
     }
 
@@ -107,6 +124,7 @@ public class ExtController(
             flag.SortOrder = model.SortOrder.Value;
 
         flag = await flagRepository.UpdateFlag(flag, token);
+        await FlushScoreboardForChallenge(challengeId, token);
         return Ok(flag);
     }
 
@@ -129,7 +147,8 @@ public class ExtController(
             return Conflict(new RequestResponse("Cannot delete flag with existing submissions"));
 
         await flagRepository.DeleteFlag(flagId, token);
-        return Ok();
+        await FlushScoreboardForChallenge(challengeId, token);
+        return NoContent();
     }
 
     #endregion
@@ -164,6 +183,7 @@ public class ExtController(
         penalty.PenaltyScore = model.PenaltyScore;
 
         penalty = await penaltyRepository.UpdatePenalty(penalty, token);
+        await FlushScoreboardForChallenge(challengeId, token);
         return Ok(penalty);
     }
 
@@ -189,15 +209,44 @@ public class ExtController(
     [RequireAdmin]
     [HttpPut("settings")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, object> settings,
+    public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, JsonElement> settings,
         CancellationToken token)
     {
-        foreach (var (key, value) in settings)
+        foreach (var (key, element) in settings)
         {
-            await settingsService.Set(key, value, token);
+            var value = UnwrapJsonElement(element);
+
+            if (value is not null)
+                await settingsService.Set(key, value, token);
         }
 
-        return Ok();
+        return NoContent();
+    }
+
+    private static object? UnwrapJsonElement(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.String => TryParseNumber(element.GetString()),
+        JsonValueKind.Number => element.TryGetInt32(out var intVal) ? intVal : element.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        _ => null
+    };
+
+    private static object TryParseNumber(string? s)
+    {
+        if (s is null)
+            return (object?)null;
+
+        if (int.TryParse(s, out var intVal))
+            return intVal;
+
+        if (double.TryParse(s, out var doubleVal))
+            return doubleVal;
+
+        if (bool.TryParse(s, out var boolVal))
+            return boolVal;
+
+        return s;
     }
 
     #endregion

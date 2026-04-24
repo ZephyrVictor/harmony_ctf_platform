@@ -437,9 +437,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 3
         };
 
-        var staticFlag = new FlagContext
+        var staticFlag = new ChallengeFlag
         {
-            Flag = "flag{st4t1c_crypt0_1s_fun}",
+            FlagValue = "flag{st4t1c_crypt0_1s_fun}",
             Challenge = staticChallenge
         };
         staticChallenge.Flags.Add(staticFlag);
@@ -467,9 +467,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             ExposePort = 80
         };
 
-        var staticContainerFlag = new FlagContext
+        var staticContainerFlag = new ChallengeFlag
         {
-            Flag = "flag{sql_1nj3ct10n_m4st3r}",
+            FlagValue = "flag{sql_1nj3ct10n_m4st3r}",
             Challenge = staticContainerChallenge
         };
         staticContainerChallenge.Flags.Add(staticContainerFlag);
@@ -516,9 +516,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 6
         };
 
-        multiFlag.Flags.Add(new FlagContext { Flag = "flag{stage_1_c0mpl3te}", Challenge = multiFlag });
-        multiFlag.Flags.Add(new FlagContext { Flag = "flag{stage_2_d0ne}", Challenge = multiFlag });
-        multiFlag.Flags.Add(new FlagContext { Flag = "flag{final_st4g3_w1n}", Challenge = multiFlag });
+        multiFlag.Flags.Add(new ChallengeFlag { FlagValue = "flag{stage_1_c0mpl3te}", Challenge = multiFlag });
+        multiFlag.Flags.Add(new ChallengeFlag { FlagValue = "flag{stage_2_d0ne}", Challenge = multiFlag });
+        multiFlag.Flags.Add(new ChallengeFlag { FlagValue = "flag{final_st4g3_w1n}", Challenge = multiFlag });
 
         await challengeRepo.CreateChallenge(game, multiFlag);
 
@@ -807,9 +807,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 3
         };
 
-        var cryptoFlag = new FlagContext
+        var cryptoFlag = new ChallengeFlag
         {
-            Flag = "flag{crypt0_bl0b_t3st}",
+            FlagValue = "flag{crypt0_bl0b_t3st}",
             Challenge = cryptoChallenge
         };
         cryptoChallenge.Flags.Add(cryptoFlag);
@@ -838,9 +838,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 5
         };
 
-        var webFlag = new FlagContext
+        var webFlag = new ChallengeFlag
         {
-            Flag = "flag{w3b_bl0b_t3st}",
+            FlagValue = "flag{w3b_bl0b_t3st}",
             Challenge = webChallenge
         };
         webChallenge.Flags.Add(webFlag);
@@ -869,9 +869,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 2
         };
 
-        var miscFlag = new FlagContext
+        var miscFlag = new ChallengeFlag
         {
-            Flag = "flag{m1sc_shar3d_bl0b}",
+            FlagValue = "flag{m1sc_shar3d_bl0b}",
             Challenge = miscChallenge
         };
         miscChallenge.Flags.Add(miscFlag);
@@ -901,9 +901,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 4
         };
 
-        var forensicsFlag = new FlagContext
+        var forensicsFlag = new ChallengeFlag
         {
-            Flag = "flag{f0r3ns1cs_pdf_bl0b}",
+            FlagValue = "flag{f0r3ns1cs_pdf_bl0b}",
             Challenge = forensicsChallenge
         };
         forensicsChallenge.Flags.Add(forensicsFlag);
@@ -1050,9 +1050,9 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Difficulty = 1
         };
 
-        var flag = new FlagContext
+        var flag = new ChallengeFlag
         {
-            Flag = "flag{attachment_test}",
+            FlagValue = "flag{attachment_test}",
             Challenge = challenge
         };
         challenge.Flags.Add(flag);

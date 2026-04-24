@@ -10,7 +10,7 @@ public class ChallengeFlag
     public Guid Id { get; set; }
 
     /// <summary>
-    /// Flag value (stored as-is, consistent with FlagContext)
+    /// Flag value
     /// </summary>
     [Required]
     [MaxLength(Limits.MaxFlagLength)]
@@ -28,6 +28,11 @@ public class ChallengeFlag
     /// </summary>
     public int SortOrder { get; set; } = 0;
 
+    /// <summary>
+    /// Whether this flag has been assigned to a participant (for dynamic attachment dispatch)
+    /// </summary>
+    public bool IsOccupied { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -42,6 +47,26 @@ public class ChallengeFlag
     /// Challenge
     /// </summary>
     public GameChallenge? Challenge { get; set; }
+
+    /// <summary>
+    /// Exercise ID (for exercise challenges)
+    /// </summary>
+    public int? ExerciseId { get; set; }
+
+    /// <summary>
+    /// Exercise challenge
+    /// </summary>
+    public ExerciseChallenge? Exercise { get; set; }
+
+    /// <summary>
+    /// Per-flag attachment (for dynamic attachment challenges)
+    /// </summary>
+    public int? AttachmentId { get; set; }
+
+    /// <summary>
+    /// Attachment
+    /// </summary>
+    public Attachment? Attachment { get; set; }
 
     /// <summary>
     /// Submission records that matched this flag

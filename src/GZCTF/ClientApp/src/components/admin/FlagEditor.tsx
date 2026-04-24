@@ -16,7 +16,7 @@ import { mdiDelete, mdiPencil, mdiPlus } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
+import { getInputNumber, showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import { ChallengeFlag, getFlags, createFlag, updateFlag, deleteFlag } from '@Utils/ExtApi'
 
 interface FlagEditorProps {
@@ -179,14 +179,22 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId }) => {
           <NumberInput
             label={t('admin.flag.column.score')}
             value={formValues.score}
-            onChange={(v) => setFormValues({ ...formValues, score: Number(v) })}
+            onChange={(v) => {
+              const num = getInputNumber(v)
+              if (isNaN(num)) return
+              setFormValues({ ...formValues, score: num })
+            }}
             min={1}
             required
           />
           <NumberInput
             label={t('admin.flag.column.sort')}
             value={formValues.sortOrder}
-            onChange={(v) => setFormValues({ ...formValues, sortOrder: Number(v) })}
+            onChange={(v) => {
+              const num = getInputNumber(v)
+              if (isNaN(num)) return
+              setFormValues({ ...formValues, sortOrder: num })
+            }}
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={editModalHandlers.close}>

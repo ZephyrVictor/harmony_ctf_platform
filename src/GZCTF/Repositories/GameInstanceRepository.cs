@@ -59,12 +59,12 @@ public class GameInstanceRepository(
                     instance.FlagContext = new()
                     {
                         Challenge = challenge,
-                        Flag = challenge.GenerateDynamicFlag(part),
+                        FlagValue = challenge.GenerateDynamicFlag(part),
                         IsOccupied = true
                     };
                     break;
                 case ChallengeType.DynamicAttachment:
-                    var flags = await Context.FlagContexts
+                    var flags = await Context.ChallengeFlags
                         .Where(e => e.Challenge == challenge && !e.IsOccupied)
                         .ToListAsync(token);
 
@@ -169,7 +169,7 @@ public class GameInstanceRepository(
             UserId = user.Id,
             ChallengeId = gameInstance.ChallengeId,
             GameId = challenge.GameId,
-            Flag = gameInstance.FlagContext?.Flag, // static challenge has no specific flag
+            Flag = gameInstance.FlagContext?.FlagValue, // static challenge has no specific flag
             Image = challenge.ContainerImage,
             CPUCount = challenge.CPUCount ?? 1,
             MemoryLimit = challenge.MemoryLimit ?? 64,
@@ -240,7 +240,7 @@ public class GameInstanceRepository(
             .Include(i => i.FlagContext)
             .Where(i => i.ChallengeId == submission.ChallengeId &&
                         i.ParticipationId != submission.ParticipationId &&
-                        i.FlagContext != null && i.FlagContext.Flag == submission.Answer)
+                        i.FlagContext != null && i.FlagContext.FlagValue == submission.Answer)
             .FirstOrDefaultAsync(token);
 
         if (instance is null)
@@ -288,16 +288,16 @@ public class GameInstanceRepository(
 
             if (instance.FlagContext is null && challenge.Type.IsStatic())
             {
-                updateSub.Status = await Context.FlagContexts.AsNoTracking()
+                updateSub.Status = await Context.ChallengeFlags.AsNoTracking()
                     .AnyAsync(
-                        f => f.ChallengeId == submission.ChallengeId && f.Flag == submission.Answer,
+                        f => f.ChallengeId == submission.ChallengeId && f.FlagValue == submission.Answer,
                         token)
                     ? AnswerResult.Accepted
                     : AnswerResult.WrongAnswer;
             }
             else
             {
-                updateSub.Status = instance.FlagContext?.Flag == submission.Answer
+                updateSub.Status = instance.FlagContext?.FlagValue == submission.Answer
                     ? AnswerResult.Accepted
                     : AnswerResult.WrongAnswer;
             }

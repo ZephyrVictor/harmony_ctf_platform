@@ -3,6 +3,7 @@ import {
   Button,
   Center,
   Code,
+  Grid,
   Group,
   Modal,
   NumberInput,
@@ -20,7 +21,7 @@ import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
-import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
+import { getInputNumber, showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import { approveTicket, getAllTickets, getSettings, rejectTicket, TicketDto } from '@Utils/ExtApi'
 
 const TicketStatusOptions = [
@@ -38,7 +39,7 @@ const AdminTickets: FC = () => {
   const [page, setPage] = useState(1)
   const perPage = 20
 
-  const [reviewModal, reviewModalHandlers] = useDisclosure(false)
+  const [detailModal, detailModalHandlers] = useDisclosure(false)
   const [selectedTicket, setSelectedTicket] = useState<TicketDto | null>(null)
   const [refundScore, setRefundScore] = useState(0)
   const [bonusScore, setBonusScore] = useState(0)
@@ -60,11 +61,10 @@ const AdminTickets: FC = () => {
     load()
   }, [load])
 
-  const openApprove = async (ticket: TicketDto) => {
+  const openDetail = async (ticket: TicketDto) => {
     setSelectedTicket(ticket)
-    setBonusScore(0)
     setComment('')
-    reviewModalHandlers.open()
+    detailModalHandlers.open()
 
     try {
       const settings = await getSettings()
@@ -78,15 +78,20 @@ const AdminTickets: FC = () => {
     } catch {
       setRefundScore(0)
     }
+    setBonusScore(0)
   }
 
   const handleApprove = async () => {
     if (!selectedTicket) return
     setSaving(true)
     try {
-      await approveTicket(selectedTicket.id, { refundScore, bonusScore, comment: comment || undefined })
+      await approveTicket(selectedTicket.id, {
+        refundScore,
+        bonusScore,
+        comment: comment || undefined,
+      })
       showSuccessMsg(t('common.content.save_success'), t)
-      reviewModalHandlers.close()
+      detailModalHandlers.close()
       await load()
     } catch (err: any) {
       showErrorMsg(err, t)
@@ -95,13 +100,17 @@ const AdminTickets: FC = () => {
     }
   }
 
-  const handleReject = async (ticket: TicketDto) => {
-    const reason = prompt(t('admin.ticket.reject_reason'))
-    if (reason === null || !reason.trim()) return
+  const handleReject = async () => {
+    if (!selectedTicket) return
+    if (!comment.trim()) {
+      showErrorMsg(new Error(t('admin.ticket.comment_required')), t)
+      return
+    }
     setSaving(true)
     try {
-      await rejectTicket(ticket.id, { comment: reason.trim() })
+      await rejectTicket(selectedTicket.id, { comment: comment.trim() })
       showSuccessMsg(t('common.content.save_success'), t)
+      detailModalHandlers.close()
       await load()
     } catch (err: any) {
       showErrorMsg(err, t)
@@ -111,6 +120,9 @@ const AdminTickets: FC = () => {
   }
 
   const pagedTickets = tickets.slice((page - 1) * perPage, page * perPage)
+
+  const statusColor = (status: string) =>
+    status === 'Approved' ? 'green' : status === 'Rejected' ? 'red' : 'yellow'
 
   return (
     <WithGameEditTab
@@ -134,7 +146,7 @@ const AdminTickets: FC = () => {
       ) : (
         <>
           <ScrollArea type="never" h="calc(100vh - 16rem)">
-            <Table>
+            <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>{t('admin.ticket.col.user')}</Table.Th>
@@ -143,12 +155,15 @@ const AdminTickets: FC = () => {
                   <Table.Th>{t('admin.ticket.col.description')}</Table.Th>
                   <Table.Th>{t('admin.ticket.col.status')}</Table.Th>
                   <Table.Th>{t('admin.ticket.col.time')}</Table.Th>
-                  <Table.Th>{t('admin.ticket.col.actions')}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {pagedTickets.map((ticket) => (
-                  <Table.Tr key={ticket.id}>
+                  <Table.Tr
+                    key={ticket.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => openDetail(ticket)}
+                  >
                     <Table.Td>
                       <Text size="sm">{ticket.userName ?? '—'}</Text>
                     </Table.Td>
@@ -162,36 +177,12 @@ const AdminTickets: FC = () => {
                       <Text size="sm" lineClamp={2}>{ticket.description}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge
-                        color={
-                          ticket.status === 'Approved' ? 'green'
-                          : ticket.status === 'Rejected' ? 'red'
-                          : 'yellow'
-                        }
-                        variant="light"
-                      >
+                      <Badge color={statusColor(ticket.status)} variant="light">
                         {ticket.status}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{dayjs(ticket.createdAt).format('L LT')}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      {ticket.status === 'Pending' ? (
-                        <Group gap="xs">
-                          <Button size="xs" color="green" onClick={() => openApprove(ticket)}>
-                            {t('admin.ticket.approve')}
-                          </Button>
-                          <Button size="xs" color="red" variant="outline" onClick={() => handleReject(ticket)}>
-                            {t('admin.ticket.reject')}
-                          </Button>
-                        </Group>
-                      ) : (
-                        <Text size="xs" c="dimmed">
-                          {ticket.reviewerName ?? '—'}
-                          {ticket.reviewedAt && ` ${dayjs(ticket.reviewedAt).format('L LT')}`}
-                        </Text>
-                      )}
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -205,46 +196,130 @@ const AdminTickets: FC = () => {
           />
         </>
       )}
+
       <Modal
-        opened={reviewModal}
-        onClose={reviewModalHandlers.close}
-        title={t('admin.ticket.approve_title')}
+        opened={detailModal}
+        onClose={detailModalHandlers.close}
+        title={t('admin.ticket.detail_title')}
+        size="lg"
       >
-        <Stack gap="md">
-          {selectedTicket && (
-            <Stack gap="xs">
-              <Text size="sm" fw="bold">{selectedTicket.userName} — {selectedTicket.challengeName}</Text>
-              <Code>{selectedTicket.answer}</Code>
-              <Text size="sm">{selectedTicket.description}</Text>
-            </Stack>
-          )}
-          <NumberInput
-            label={t('admin.ticket.refund_score')}
-            value={refundScore}
-            onChange={(v) => setRefundScore(Number(v))}
-            min={0}
-          />
-          <NumberInput
-            label={t('admin.ticket.bonus_score')}
-            value={bonusScore}
-            onChange={(v) => setBonusScore(Number(v))}
-            min={0}
-          />
-          <Textarea
-            label={t('admin.ticket.comment')}
-            value={comment}
-            onChange={(e) => setComment(e.currentTarget.value)}
-            minRows={2}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={reviewModalHandlers.close}>
-              {t('common.content.cancel')}
-            </Button>
-            <Button onClick={handleApprove} loading={saving} color="green">
-              {t('admin.ticket.approve')}
-            </Button>
-          </Group>
-        </Stack>
+        {selectedTicket && (
+          <Stack gap="md">
+            <Grid>
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.user')}</Text>
+                <Text>{selectedTicket.userName ?? '—'}</Text>
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.challenge')}</Text>
+                <Text>{selectedTicket.challengeName ?? '—'}</Text>
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.answer')}</Text>
+                <Code block>{selectedTicket.answer ?? '—'}</Code>
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.penalty_score')}</Text>
+                <Text fw="bold" c="red">-{selectedTicket.penaltyScore}</Text>
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.status')}</Text>
+                <Badge color={statusColor(selectedTicket.status)} variant="light" mt={4}>
+                  {selectedTicket.status}
+                </Badge>
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.time')}</Text>
+                <Text>{dayjs(selectedTicket.createdAt).format('L LTS')}</Text>
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <Text size="sm" c="dimmed">{t('admin.ticket.col.description')}</Text>
+                <Text mt={4} style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</Text>
+              </Grid.Col>
+            </Grid>
+
+            {selectedTicket.status === 'Approved' || selectedTicket.status === 'Rejected' ? (
+              <Stack gap="xs">
+                <Text size="sm" fw="bold">{t('admin.ticket.review_result')}</Text>
+                <Grid>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.reviewer')}</Text>
+                    <Text>{selectedTicket.reviewerName ?? '—'}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.review_time')}</Text>
+                    <Text>{selectedTicket.reviewedAt ? dayjs(selectedTicket.reviewedAt).format('L LTS') : '—'}</Text>
+                  </Grid.Col>
+                  {selectedTicket.status === 'Approved' && (
+                    <>
+                      <Grid.Col span={6}>
+                        <Text size="sm" c="dimmed">{t('admin.ticket.refund_score')}</Text>
+                        <Text c="green">+{selectedTicket.refundScore}</Text>
+                      </Grid.Col>
+                      <Grid.Col span={6}>
+                        <Text size="sm" c="dimmed">{t('admin.ticket.bonus_score')}</Text>
+                        <Text c="green">+{selectedTicket.bonusScore}</Text>
+                      </Grid.Col>
+                    </>
+                  )}
+                  <Grid.Col span={12}>
+                    <Text size="sm" c="dimmed">{t('admin.ticket.comment')}</Text>
+                    <Text mt={4}>{selectedTicket.reviewComment || '—'}</Text>
+                  </Grid.Col>
+                </Grid>
+              </Stack>
+            ) : (
+              <Stack gap="md">
+                <Textarea
+                  label={t('admin.ticket.comment')}
+                  description={t('admin.ticket.comment_desc')}
+                  value={comment}
+                  onChange={(e) => setComment(e.currentTarget.value)}
+                  minRows={3}
+                  required
+                  placeholder={t('admin.ticket.comment_placeholder')}
+                />
+                <Grid>
+                  <Grid.Col span={6}>
+                    <NumberInput
+                      label={t('admin.ticket.refund_score')}
+                      value={refundScore}
+                      onChange={(v) => {
+                        const num = getInputNumber(v)
+                        if (isNaN(num)) return
+                        setRefundScore(num)
+                      }}
+                      min={0}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <NumberInput
+                      label={t('admin.ticket.bonus_score')}
+                      value={bonusScore}
+                      onChange={(v) => {
+                        const num = getInputNumber(v)
+                        if (isNaN(num)) return
+                        setBonusScore(num)
+                      }}
+                      min={0}
+                    />
+                  </Grid.Col>
+                </Grid>
+                <Group justify="flex-end">
+                  <Button variant="default" onClick={detailModalHandlers.close}>
+                    {t('common.content.cancel')}
+                  </Button>
+                  <Button color="red" variant="outline" onClick={handleReject} loading={saving}>
+                    {t('admin.ticket.reject')}
+                  </Button>
+                  <Button color="green" onClick={handleApprove} loading={saving}>
+                    {t('admin.ticket.approve')}
+                  </Button>
+                </Group>
+              </Stack>
+            )}
+          </Stack>
+        )}
       </Modal>
     </WithGameEditTab>
   )

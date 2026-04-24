@@ -465,7 +465,7 @@ const GameChallengeEdit: FC = () => {
     })
   }
 
-  const onConfirmDeleteFlag = async (id: number) => {
+  const onConfirmDeleteFlag = async (id: string) => {
     try {
       await api.edit.editRemoveFlag(numId, numCId, id)
       showNotification({

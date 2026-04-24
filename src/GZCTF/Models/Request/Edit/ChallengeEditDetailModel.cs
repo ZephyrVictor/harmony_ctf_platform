@@ -183,6 +183,6 @@ public class ChallengeEditDetailModel
             DeadlineUtc = chal.DeadlineUtc,
             AcceptedCount = 0, // This field should be set externally
             TestContainer = chal.TestContainer is null ? null : ContainerInfoModel.FromContainer(chal.TestContainer),
-            Flags = chal.Flags.Select(FlagInfoModel.FromFlagContext).ToList()
+            Flags = chal.Flags.Select(FlagInfoModel.FromChallengeFlag).ToList()
         };
 }

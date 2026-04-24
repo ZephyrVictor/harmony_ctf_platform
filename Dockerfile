@@ -6,6 +6,8 @@ WORKDIR /src
 RUN apk add --no-cache nodejs npm && npm install -g pnpm
 
 # Restore backend
+COPY src/Directory.Packages.props src/
+COPY src/global.json src/
 COPY src/GZCTF/*.csproj src/GZCTF/
 RUN dotnet restore src/GZCTF/GZCTF.csproj
 
@@ -32,6 +34,6 @@ COPY --from=build --chown=$APP_UID:$APP_UID /app .
 EXPOSE 8080
 
 HEALTHCHECK --interval=5m --timeout=3s --start-period=10s --retries=1 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/healthz || exit 1
 
 ENTRYPOINT ["dotnet", "GZCTF.dll"]

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Models.Data;
@@ -69,6 +70,7 @@ public class BigScreenEvent
     #endregion Db Relationship
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<BigScreenEventType>))]
 public enum BigScreenEventType
 {
     Bonus

@@ -49,7 +49,7 @@ const TableRow: FC<{
           />
         </Group>
       </Table.Td>
-      <Table.Td className={cx(classes.mono, classes.left)}>{totalScore}</Table.Td>
+      <Table.Td className={cx(classes.mono, classes.left)}>{item.score}</Table.Td>
     </Table.Tr>
   )
 })

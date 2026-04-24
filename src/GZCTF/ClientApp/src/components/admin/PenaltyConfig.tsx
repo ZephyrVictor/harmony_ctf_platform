@@ -3,7 +3,7 @@ import { mdiContentSaveOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
+import { getInputNumber, showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import { getPenalty, updatePenalty } from '@Utils/ExtApi'
 
 interface PenaltyConfigProps {
@@ -52,7 +52,11 @@ export const PenaltyConfig: FC<PenaltyConfigProps> = ({ challengeId }) => {
           label={t('admin.penalty.score')}
           description={t('admin.penalty.score_desc')}
           value={penaltyScore}
-          onChange={(v) => setPenaltyScore(Number(v))}
+          onChange={(v) => {
+              const num = getInputNumber(v)
+              if (isNaN(num)) return
+              setPenaltyScore(num)
+            }}
           min={0}
           disabled={loading}
           style={{ width: 200 }}

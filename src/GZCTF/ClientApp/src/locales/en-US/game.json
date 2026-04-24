@@ -105,8 +105,12 @@
     "ticket": {
       "create_title": "Create Ticket",
       "description": "Description",
+      "detail_title": "Ticket Detail",
       "my_tickets": "My Tickets",
-      "refund_bonus": "Refund / Bonus"
+      "pending_notice": "Your ticket is pending review. Please wait for the admin to process it.",
+      "refund_bonus": "Refund / Bonus",
+      "review_result": "Review Result",
+      "submission_id": "Submission ID"
     },
     "writeup": {
       "current": "Current Writeup",

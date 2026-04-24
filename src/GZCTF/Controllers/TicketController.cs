@@ -3,6 +3,7 @@ using System.Security.Claims;
 using GZCTF.Middlewares;
 using GZCTF.Models.Request;
 using GZCTF.Repositories.Interface;
+using GZCTF.Services.Cache;
 using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +19,8 @@ public class TicketController(
     ITicketRepository ticketRepository,
     ISubmissionRecordRepository recordRepository,
     ScoringService scoringService,
-    CompetitionSettingsService settingsService) : ControllerBase
+    CompetitionSettingsService settingsService,
+    CacheHelper cacheHelper) : ControllerBase
 {
     /// <summary>
     /// Create a ticket for a penalty submission
@@ -44,8 +46,8 @@ public class TicketController(
         if (record is null)
             return BadRequest(new RequestResponse("Submission not found"));
 
-        if (!record.IsPenalty)
-            return BadRequest(new RequestResponse("Only penalty submissions can be appealed"));
+        if (record.MatchedFlagId is not null)
+            return BadRequest(new RequestResponse("Only wrong submissions can be appealed"));
 
         var ticket = new Ticket
         {
@@ -162,6 +164,9 @@ public class TicketController(
             ticketId, refundScore, bonusScore, model.Comment, Guid.Parse(reviewerId), token);
 
         await scoringService.ApproveTicket(ticket, refundScore, bonusScore, token);
+
+        if (ticket.Submission is not null)
+            await cacheHelper.FlushScoreboardCache(ticket.Submission.GameId, token);
 
         return Ok(ToDto(ticket));
     }

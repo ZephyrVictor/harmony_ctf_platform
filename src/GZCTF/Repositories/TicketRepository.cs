@@ -26,7 +26,10 @@ public class TicketRepository(AppDbContext context) : RepositoryBase(context), I
 
     public Task<Ticket[]> GetUserTickets(Guid userId, int count = 100, int skip = 0, CancellationToken token = default)
         => Context.Tickets
-            .Include(t => t.Submission)
+            .Include(t => t.Submission!)
+            .ThenInclude(s => s.GameChallenge)
+            .Include(t => t.Submission!)
+            .ThenInclude(s => s.SubmissionRecord)
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
             .Skip(skip)
@@ -38,7 +41,11 @@ public class TicketRepository(AppDbContext context) : RepositoryBase(context), I
     {
         IQueryable<Ticket> query = Context.Tickets
             .Include(t => t.Submission!)
-            .Include(t => t.User!);
+            .ThenInclude(s => s.GameChallenge)
+            .Include(t => t.Submission!)
+            .ThenInclude(s => s.SubmissionRecord)
+            .Include(t => t.User!)
+            .Include(t => t.Reviewer!);
 
         if (status.HasValue)
             query = query.Where(t => t.Status == status.Value);

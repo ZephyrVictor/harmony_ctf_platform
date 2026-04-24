@@ -30,7 +30,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<Submission> Submissions { get; set; } = null!;
     public DbSet<Attachment> Attachments { get; set; } = null!;
     public DbSet<GameNotice> GameNotices { get; set; } = null!;
-    public DbSet<FlagContext> FlagContexts { get; set; } = null!;
     public DbSet<Participation> Participations { get; set; } = null!;
     public DbSet<GameInstance> GameInstances { get; set; } = null!;
     public DbSet<GameChallenge> GameChallenges { get; set; } = null!;
@@ -344,16 +343,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Navigation(e => e.GameChallenge).AutoInclude();
         });
 
-        builder.Entity<FlagContext>(entity =>
-        {
-            entity.HasOne(e => e.Attachment)
-                .WithMany()
-                .HasForeignKey(e => e.AttachmentId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            entity.Navigation(e => e.Attachment).AutoInclude();
-        });
-
         builder.Entity<Attachment>(entity =>
         {
             entity.HasOne(e => e.LocalFile)
@@ -459,8 +448,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.HasIndex(e => new { e.ChallengeId, e.FlagValue }).IsUnique();
 
             entity.HasOne(e => e.Challenge)
+                .WithMany(c => c.Flags)
+                .HasForeignKey(e => e.ChallengeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Exercise)
+                .WithMany(c => c.Flags)
+                .HasForeignKey(e => e.ExerciseId);
+
+            entity.HasOne(e => e.Attachment)
                 .WithMany()
-                .HasForeignKey(e => e.ChallengeId);
+                .HasForeignKey(e => e.AttachmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Navigation(e => e.Attachment).AutoInclude();
 
             entity.HasMany(e => e.SubmissionRecords)
                 .WithOne(e => e.MatchedFlag)
@@ -490,7 +491,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
 
             entity.ToTable(t => t.HasCheckConstraint(
                 "CK_SubmissionRecord_NonPenalty_RequiresFlag",
-                "\"IsPenalty\" = true OR (\"MatchedFlagId\" IS NOT NULL AND \"ScoreChange\" > 0)"));
+                "\"IsPenalty\" = true OR (\"ScoreChange\" >= 0)"));
         });
 
         builder.Entity<Ticket>(entity =>

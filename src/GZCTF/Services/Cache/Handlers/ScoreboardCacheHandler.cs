@@ -40,5 +40,5 @@ public class ScoreboardCacheHandler : ICacheRequestHandler
 
     public static CacheRequest MakeCacheRequest(int id) =>
         new(Cache.CacheKey.ScoreBoardBase,
-            new() { SlidingExpiration = TimeSpan.FromDays(14) }, id.ToString());
+            new() { SlidingExpiration = TimeSpan.FromDays(7) }, id.ToString());
 }

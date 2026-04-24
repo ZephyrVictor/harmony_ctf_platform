@@ -194,7 +194,7 @@ const TableRow: FC<{
         {solved?.length}
       </Table.Td>
       <Table.Td className={cx(classes.mono, classes.left)} style={{ left: Lefts[4] }}>
-        {totalScore}
+        {item.score}
       </Table.Td>
       {challenges &&
         Object.keys(challenges).map((key) =>

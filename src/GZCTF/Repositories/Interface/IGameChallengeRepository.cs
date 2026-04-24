@@ -90,5 +90,5 @@ public interface IGameChallengeRepository : IRepository
     /// <param name="flagId">flag ID</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<TaskStatus> RemoveFlag(GameChallenge challenge, int flagId, CancellationToken token = default);
+    public Task<TaskStatus> RemoveFlag(GameChallenge challenge, Guid flagId, CancellationToken token = default);
 }

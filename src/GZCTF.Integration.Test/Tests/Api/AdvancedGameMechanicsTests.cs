@@ -60,8 +60,8 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 GameId = gameObj.Id
             };
 
-            FlagContext flagContext = new() { Flag = "flag{limit_test}", Challenge = challenge };
-            challenge.Flags.Add(flagContext);
+            ChallengeFlag challengeFlag = new() { FlagValue = "flag{limit_test}", Challenge = challenge };
+            challenge.Flags.Add(challengeFlag);
 
             await challengeRepository.CreateChallenge(gameObj, challenge);
         }
@@ -142,8 +142,8 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 GameId = gameObj.Id
             };
 
-            FlagContext flagContext = new() { Flag = "flag{expired}", Challenge = challenge };
-            challenge.Flags.Add(flagContext);
+            ChallengeFlag challengeFlag = new() { FlagValue = "flag{expired}", Challenge = challenge };
+            challenge.Flags.Add(challengeFlag);
 
             await challengeRepository.CreateChallenge(gameObj, challenge);
             challengeId = challenge.Id;
@@ -385,8 +385,8 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 GameId = gameObj.Id
             };
 
-            FlagContext flagContext = new() { Flag = "flag{toggle}", Challenge = challenge };
-            challenge.Flags.Add(flagContext);
+            ChallengeFlag challengeFlag = new() { FlagValue = "flag{toggle}", Challenge = challenge };
+            challenge.Flags.Add(challengeFlag);
 
             await challengeRepository.CreateChallenge(gameObj, challenge);
             challengeId = challenge.Id;
@@ -475,8 +475,8 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 GameId = gameObj.Id
             };
 
-            FlagContext flagContext = new() { Flag = "flag{score_update}", Challenge = challenge };
-            challenge.Flags.Add(flagContext);
+            ChallengeFlag challengeFlag = new() { FlagValue = "flag{score_update}", Challenge = challenge };
+            challenge.Flags.Add(challengeFlag);
 
             await challengeRepository.CreateChallenge(gameObj, challenge);
             challengeId = challenge.Id;
@@ -575,8 +575,8 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 GameId = gameObj.Id
             };
 
-            FlagContext flagContext = new() { Flag = "flag{reenable}", Challenge = challenge };
-            challenge.Flags.Add(flagContext);
+            ChallengeFlag challengeFlag = new() { FlagValue = "flag{reenable}", Challenge = challenge };
+            challenge.Flags.Add(challengeFlag);
 
             await challengeRepository.CreateChallenge(gameObj, challenge);
             challengeId = challenge.Id;

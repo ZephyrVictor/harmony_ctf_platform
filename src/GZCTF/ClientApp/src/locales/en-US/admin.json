@@ -646,15 +646,23 @@
       "answer": "Answer",
       "challenge": "Challenge",
       "description": "Description",
+      "penalty_score": "Penalty Score",
       "status": "Status",
       "time": "Time",
       "user": "User"
     },
     "comment": "Comment",
+    "comment_desc": "Required for rejection, optional for approval",
+    "comment_placeholder": "Enter review comment...",
+    "comment_required": "Comment is required for rejection",
+    "detail_title": "Ticket Detail",
     "empty": "No tickets found",
     "refund_score": "Refund Score",
     "reject": "Reject",
     "reject_reason": "Reject Reason",
+    "review_result": "Review Result",
+    "review_time": "Review Time",
+    "reviewer": "Reviewer",
     "title": "Ticket Management"
   },
   "tab": {

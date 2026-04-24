@@ -161,7 +161,7 @@ public class Challenge
     public int? AttachmentId { get; set; }
 
     /// <summary>
-    /// Challenge attachment (dynamic attachments are stored in FlagContext)
+    /// Challenge attachment (dynamic attachments are stored per-flag)
     /// </summary>
     public Attachment? Attachment { get; set; }
 
@@ -178,7 +178,7 @@ public class Challenge
     /// <summary>
     /// List of flags for the challenge
     /// </summary>
-    public List<FlagContext> Flags { get; set; } = [];
+    public List<ChallengeFlag> Flags { get; set; } = [];
 
     #endregion
 }

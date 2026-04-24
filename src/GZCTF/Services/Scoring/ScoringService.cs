@@ -2,35 +2,46 @@ using GZCTF.Hubs;
 using GZCTF.Hubs.Clients;
 using GZCTF.Repositories.Interface;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace GZCTF.Services.Scoring;
 
 public class ScoringService
 {
+    private readonly AppDbContext _context;
     private readonly IChallengeFlagRepository _flagRepo;
     private readonly IChallengePenaltyRepository _penaltyRepo;
     private readonly ISubmissionRecordRepository _recordRepo;
     private readonly ISubmissionRepository _submissionRepo;
     private readonly IBigScreenEventRepository _eventRepo;
+    private readonly IGameNoticeRepository _noticeRepo;
     private readonly CompetitionSettingsService _settings;
     private readonly IHubContext<BigScreenHub, IBigScreenClient> _bigScreenHub;
+    private readonly IStringLocalizer<Program> _localizer;
 
     public ScoringService(
+        AppDbContext context,
         IChallengeFlagRepository flagRepo,
         IChallengePenaltyRepository penaltyRepo,
         ISubmissionRecordRepository recordRepo,
         ISubmissionRepository submissionRepo,
         IBigScreenEventRepository eventRepo,
+        IGameNoticeRepository noticeRepo,
         CompetitionSettingsService settings,
-        IHubContext<BigScreenHub, IBigScreenClient> bigScreenHub)
+        IHubContext<BigScreenHub, IBigScreenClient> bigScreenHub,
+        IStringLocalizer<Program> localizer)
     {
+        _context = context;
         _flagRepo = flagRepo;
         _penaltyRepo = penaltyRepo;
         _recordRepo = recordRepo;
         _submissionRepo = submissionRepo;
         _eventRepo = eventRepo;
+        _noticeRepo = noticeRepo;
         _settings = settings;
         _bigScreenHub = bigScreenHub;
+        _localizer = localizer;
     }
 
     /// <summary>
@@ -52,6 +63,23 @@ public class ScoringService
         if (matchedFlag is not null)
             return await HandleCorrectSubmission(challenge, participation, matchedFlag, token);
 
+        // 2. Check for duplicate wrong answer — same answer previously submitted
+        var duplicate = await _context.Submissions
+            .AsNoTracking()
+            .AnyAsync(s => s.ParticipationId == participation.Id
+                && s.ChallengeId == challenge.Id
+                && s.Answer == answer, token);
+
+        if (duplicate)
+        {
+            return new ScoreResult
+            {
+                Status = AnswerResult.WrongAnswer,
+                ScoreChange = 0,
+                Message = "Duplicate submission, no penalty applied"
+            };
+        }
+
         return await HandleWrongSubmission(challenge, participation, token);
     }
 
@@ -71,16 +99,150 @@ public class ScoringService
             {
                 Status = AnswerResult.WrongAnswer,
                 ScoreChange = 0,
+                MatchedFlagId = matchedFlag.Id,
                 Message = "This flag has already been submitted"
             };
         }
+
+        // Determine blood bonus type
+        var submissionType = await DetermineSubmissionType(challenge, participation, token);
 
         return new ScoreResult
         {
             Status = AnswerResult.Accepted,
             ScoreChange = matchedFlag.Score,
-            MatchedFlagId = matchedFlag.Id
+            MatchedFlagId = matchedFlag.Id,
+            SubmissionType = submissionType
         };
+    }
+
+    /// <summary>
+    /// Determine the submission type (FirstBlood, SecondBlood, ThirdBlood, Normal)
+    /// and create the FirstSolves entry. Must be called within a transaction.
+    /// </summary>
+    private async Task<SubmissionType> DetermineSubmissionType(
+        GameChallenge challenge,
+        Participation participation,
+        CancellationToken token)
+    {
+        // Check if already solved by this participation
+        var alreadySolved = await _context.FirstSolves
+            .AnyAsync(fs => fs.ParticipationId == participation.Id &&
+                            fs.ChallengeId == challenge.Id, token);
+
+        if (alreadySolved)
+            return SubmissionType.Normal;
+
+        // Load participation with division for permission check
+        var part = await _context.Participations
+            .IgnoreAutoIncludes().AsNoTracking()
+            .Include(p => p.Division)
+            .ThenInclude(d => d!.ChallengeConfigs)
+            .SingleAsync(p => p.Id == participation.Id, token);
+
+        var time = await _context.Games.IgnoreAutoIncludes().AsNoTracking()
+            .Where(g => g.Id == part.GameId)
+            .Select(g => new { g.StartTimeUtc, g.EndTimeUtc })
+            .SingleAsync(token);
+
+        var now = DateTimeOffset.UtcNow;
+
+        var withinGameWindow = now >= time.StartTimeUtc && now < time.EndTimeUtc;
+        var withinDeadline = !challenge.DeadlineUtc.HasValue || now <= challenge.DeadlineUtc.Value;
+
+        var hasBloodPermission = withinGameWindow && withinDeadline && !challenge.DisableBloodBonus &&
+                                 HasBloodPermission(part.Division, challenge.Id);
+
+        if (!hasBloodPermission)
+            return SubmissionType.Normal;
+
+        var bloodEligibleCount = await CountBloodEligibleSolves(challenge.Id, time.StartTimeUtc,
+            time.EndTimeUtc, token);
+
+        return bloodEligibleCount switch
+        {
+            0 => SubmissionType.FirstBlood,
+            1 => SubmissionType.SecondBlood,
+            2 => SubmissionType.ThirdBlood,
+            _ => SubmissionType.Normal
+        };
+    }
+
+    private async Task<int> CountBloodEligibleSolves(int challengeId, DateTimeOffset start, DateTimeOffset end,
+        CancellationToken token)
+    {
+        var eligibleParticipationIds =
+            from participation in _context.Participations.AsNoTracking()
+            join config in _context.Set<DivisionChallengeConfig>().AsNoTracking()
+                    .Where(c => c.ChallengeId == challengeId)
+                on participation.DivisionId equals config.DivisionId into configJoin
+            from cfg in configJoin.DefaultIfEmpty()
+            join division in _context.Divisions.AsNoTracking()
+                on participation.DivisionId equals division.Id into divisionJoin
+            from div in divisionJoin.DefaultIfEmpty()
+            where participation.Status == ParticipationStatus.Accepted
+                  && (cfg != null
+                      ? cfg.Permissions.HasFlag(GamePermission.GetBlood)
+                      : div == null || div.DefaultPermissions.HasFlag(GamePermission.GetBlood))
+            select participation.Id;
+
+        return await (
+            from fs in _context.FirstSolves.AsNoTracking()
+            join submission in _context.Submissions.AsNoTracking() on fs.SubmissionId equals submission.Id
+            where fs.ChallengeId == challengeId
+                  && eligibleParticipationIds.Contains(fs.ParticipationId)
+                  && submission.SubmitTimeUtc >= start
+                  && submission.SubmitTimeUtc < end
+            orderby submission.SubmitTimeUtc
+            select fs.ParticipationId
+        ).Take(4).CountAsync(token);
+    }
+
+    private static bool HasBloodPermission(Division? division, int challengeId)
+    {
+        if (division is null)
+            return true;
+
+        var specific = division.ChallengeConfigs.FirstOrDefault(c => c.ChallengeId == challengeId);
+        var permissions = specific?.Permissions ?? division.DefaultPermissions;
+        return permissions.HasFlag(GamePermission.GetBlood);
+    }
+
+    /// <summary>
+    /// Create a FirstSolves entry after the submission has been saved.
+    /// Only creates the entry when ALL flags for the challenge have been submitted correctly.
+    /// </summary>
+    public async Task CreateFirstSolve(int participationId, int challengeId, int submissionId,
+        CancellationToken token = default)
+    {
+        var exists = await _context.FirstSolves
+            .AnyAsync(fs => fs.ParticipationId == participationId && fs.ChallengeId == challengeId, token);
+
+        if (exists)
+            return;
+
+        // Only mark as solved when all flags for this challenge have been submitted
+        var totalFlags = await _context.ChallengeFlags
+            .CountAsync(f => f.ChallengeId == challengeId, token);
+
+        var submittedFlags = await _context.SubmissionRecords
+            .Where(r => r.MatchedFlagId != null
+                && r.Submission!.ParticipationId == participationId
+                && r.Submission!.ChallengeId == challengeId)
+            .Select(r => r.MatchedFlagId)
+            .Distinct()
+            .CountAsync(token);
+
+        if (submittedFlags >= totalFlags)
+        {
+            _context.FirstSolves.Add(new FirstSolve
+            {
+                ParticipationId = participationId,
+                ChallengeId = challengeId,
+                SubmissionId = submissionId
+            });
+            await _context.SaveChangesAsync(token);
+        }
     }
 
     private async Task<ScoreResult> HandleWrongSubmission(
@@ -89,8 +251,14 @@ public class ScoringService
         CancellationToken token)
     {
         var penalty = await _penaltyRepo.GetPenalty(challenge.Id, token);
+        var defaultPenaltyScore = await _settings.Get<int>("Scoring.DefaultPenaltyScore", token);
 
-        if (penalty is null || penalty.PenaltyScore <= 0)
+        // Fall back to global default if no per-challenge penalty is configured or score is 0
+        var penaltyScore = penalty?.PenaltyScore ?? defaultPenaltyScore;
+        if (penaltyScore <= 0)
+            penaltyScore = defaultPenaltyScore;
+
+        if (penaltyScore <= 0)
         {
             return new ScoreResult
             {
@@ -102,7 +270,7 @@ public class ScoringService
         var minScore = await _settings.Get<int>("Scoring.MinScore", token);
         var maxPenalty = await _settings.Get<int>("Scoring.MaxPenaltyPerSubmission", token);
 
-        var effectivePenalty = Math.Min(penalty.PenaltyScore, maxPenalty);
+        var effectivePenalty = Math.Min(penaltyScore, maxPenalty);
 
         // Calculate current combined total score (GZCTF base + SubmissionRecords)
         var gzctfBaseScore = await _recordRepo.GetGZCTFBaseScore(participation.Id, participation.GameId, token);
@@ -217,4 +385,5 @@ public class ScoreResult
     public Guid? MatchedFlagId { get; init; }
     public bool IsPenalty { get; init; }
     public string? Message { get; init; }
+    public SubmissionType SubmissionType { get; init; }
 }

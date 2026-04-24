@@ -333,8 +333,8 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
             GameId = game.Id
         };
 
-        FlagContext flagContext = new() { Flag = flag, Challenge = challenge };
-        challenge.Flags.Add(flagContext);
+        ChallengeFlag challengeFlag = new() { FlagValue = flag, Challenge = challenge };
+        challenge.Flags.Add(challengeFlag);
 
         await challengeRepository.CreateChallenge(game, challenge);
 

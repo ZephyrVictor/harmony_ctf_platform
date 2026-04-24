@@ -91,7 +91,7 @@ public class ExerciseInstanceRepository(
                     Exercise = exercise,
                     // tiny probability will produce the same FLAG,
                     // but this will not affect the correctness of the answer
-                    Flag = exercise.GenerateDynamicFlag(),
+                    FlagValue = exercise.GenerateDynamicFlag(),
                     IsOccupied = true
                 };
 
@@ -158,7 +158,7 @@ public class ExerciseInstanceRepository(
             TeamId = "exercise",
             UserId = user.Id,
             ChallengeId = instance.ExerciseId,
-            Flag = instance.FlagContext?.Flag, // static challenge has no specific flag
+            Flag = instance.FlagContext?.FlagValue, // static challenge has no specific flag
             Image = instance.Exercise.ContainerImage,
             CPUCount = instance.Exercise.CPUCount ?? 1,
             MemoryLimit = instance.Exercise.MemoryLimit ?? 64,
@@ -199,7 +199,7 @@ public class ExerciseInstanceRepository(
             if (instance.FlagContext is null)
                 return AnswerResult.NotFound;
 
-            if (instance.FlagContext.Flag != answer)
+            if (instance.FlagContext.FlagValue != answer)
                 return AnswerResult.WrongAnswer;
 
             await MarkSolved(instance, token);
@@ -207,8 +207,8 @@ public class ExerciseInstanceRepository(
             return AnswerResult.Accepted;
         }
 
-        if (await Context.FlagContexts.AsNoTracking()
-                .AnyAsync(f => f.ExerciseId == instance.ExerciseId && f.Flag == answer, token))
+        if (await Context.ChallengeFlags.AsNoTracking()
+                .AnyAsync(f => f.ExerciseId == instance.ExerciseId && f.FlagValue == answer, token))
         {
             await MarkSolved(instance, token);
             await UnlockExercises(user, token);

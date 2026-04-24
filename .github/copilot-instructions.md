@@ -6,6 +6,7 @@ GZ::CTF is a full‑stack, production‑ready CTF platform for competitions and 
 
 - Exercise-related models/features are out of scope for now. Ignore those files when implementing features.
 - Be conservative with database schema changes. If logic can be done in the frontend (calculation/UI), avoid adding backend fields or endpoints.
+- **Flag system**: `ChallengeFlags` is the single flag table. Old `FlagContexts` table is deleted. Navigation property name `FlagContext` on `Instance` entities is preserved but points to `ChallengeFlag` (type changed). Flag CRUD goes through `EditController` (uses `ChallengeFlags` directly) and `ExtController` (uses `IChallengeFlagRepository`). Submission scoring and FirstSolves creation both use `ScoringService`.
 - Prefer existing extension points (RateLimiter, Captcha, Storage, Telemetry, SignalR) and use inline JSON fields (`Tags`/`Hints`/`Divisions`) to keep schema flexible and avoid premature hardening.
 - Follow role-based access patterns: use `[RequireUser]`, `[RequireMonitor]`, `[RequireAdmin]`, `[RequireAdminOrToken]` attributes consistently.
 - TCP-over-WebSocket proxy (`ProxyController`) enables browser access to challenge containers when `ContainerPortMappingType.PlatformProxy` is configured.
@@ -42,13 +43,14 @@ GZ::CTF is a full‑stack, production‑ready CTF platform for competitions and 
   - `Participation` references a `Division`; supports division-scoped team participation and scoring.
 - Participation and instances
   - `Participation` (PK: generated) joins `Team` and `Game`; holds `Instances` (challenge instances for the team), `Submissions`, `Members` (`UserParticipation`), optional `Writeup`, and optional `DivisionId`.
-  - Many‑to‑many `Participation <-> GameChallenge` via `GameInstance` (composite key). `GameInstance` may reference a running `Container` (1‑1) and a `FlagContext` (dynamic flag) and is auto‑included with `Challenge`.
+  - Many‑to‑many `Participation <-> GameChallenge` via `GameInstance` (composite key). `GameInstance` may reference a running `Container` (1‑1) and a `ChallengeFlag` via the `FlagContext` navigation property (dynamic flag, `Guid? FlagId` FK) and is auto‑included with `Challenge`.
 - Challenges & training
-  - `GameChallenge` (derives `Challenge`) relates to `Game`, has `Flags`, `Submissions`, optional `Attachment` and `TestContainer`; `Hints` stored as JSON; indexed by `GameId`. Per-challenge `Deadline` field for submission cutoff.
-  - `FirstSolves`: Tracks first blood for each challenge per-division or globally (team, user, submission time).
+  - `GameChallenge` (derives `Challenge`) relates to `Game`, has `List<ChallengeFlag> Flags`, `Submissions`, optional `Attachment` and `TestContainer`; `Hints` stored as JSON; indexed by `GameId`. Per-challenge `Deadline` field for submission cutoff.
+  - `FirstSolves`: Tracks first blood for each challenge per-division or globally (team, user, submission time). Now includes `SubmissionId` FK to `Submissions` table.
 - Submissions & flags
   - `Submission.Status` persisted as string (compat/readability); navigations to `Team`, `User`, `GameChallenge` auto‑included for audit/monitor views.
-  - `FlagContext` may reference an `Attachment` (SetNull on delete) to support static/dynamic flag sources.
+  - `ChallengeFlag` is the unified flag table (replaces old `FlagContexts`). Holds `FlagValue`, `Score`, `IsOccupied`, `AttachmentId`/`Attachment` (per-flag attachment, SetNull on delete), `ExerciseId`/`Exercise`. Used by both `EditController` and `ExtController` for flag CRUD, and by `ScoringService` for submission scoring.
+  - Navigation property `FlagContext` on `Instance` is preserved for minimal diff but points to `ChallengeFlag` (not the deleted `FlagContext` entity).
 - Storage and attachments
   - `Attachment` -> `LocalFile` (SetNull on delete) separates metadata from blob storage; integrates with pluggable storage via hash paths.
 - Events, notices, content

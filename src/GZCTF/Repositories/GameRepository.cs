@@ -533,9 +533,13 @@ public class GameRepository(
         }
 
         // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses)
+        // Only records without a MatchedFlagId contribute here — correct submissions
+        // are already scored via FirstSolves (step 5.2) to avoid double-counting.
         var recordScores = await Context.SubmissionRecords
             .AsNoTracking()
-            .Where(r => r.Submission != null && items.Keys.Contains(r.Submission.ParticipationId))
+            .Where(r => r.MatchedFlagId == null
+                && r.Submission != null
+                && items.Keys.Contains(r.Submission.ParticipationId))
             .GroupBy(r => r.Submission!.ParticipationId)
             .Select(g => new { ParticipationId = g.Key, TotalChange = g.Sum(r => (int?)r.ScoreChange) ?? 0 })
             .ToListAsync(token);
@@ -545,6 +549,38 @@ public class GameRepository(
             if (items.TryGetValue(rs.ParticipationId, out var item))
                 item.Score += rs.TotalChange;
         }
+
+        // 5.6. update LastSubmissionTime from SubmissionRecords
+        // SolvedChallenges is populated only from FirstSolves (step 5.2),
+        // which is created only when ALL flags for a challenge have been submitted.
+        var submissionRecordsDetail = await Context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.Submission != null && items.Keys.Contains(r.Submission.ParticipationId))
+            .Select(r => new
+            {
+                r.Submission!.ParticipationId,
+                r.Submission!.ChallengeId,
+                r.Submission!.UserName,
+                r.ScoreChange,
+                r.IsPenalty,
+                r.MatchedFlagId,
+                r.Submission!.SubmitTimeUtc
+            })
+            .ToListAsync(token);
+
+        foreach (var rec in submissionRecordsDetail)
+        {
+            if (!items.TryGetValue(rec.ParticipationId, out var item))
+                continue;
+
+            if (rec.MatchedFlagId is not null && rec.SubmitTimeUtc > item.LastSubmissionTime)
+                item.LastSubmissionTime = rec.SubmitTimeUtc;
+        }
+
+        // group SubmissionRecords for timeline generation
+        var recordTimelineByTeam = submissionRecordsDetail
+            .GroupBy(r => r.ParticipationId)
+            .ToDictionary(g => g.Key, g => g.AsEnumerable());
 
         // 6. sort scoreboard items by score and last submission time
         items = items.Values
@@ -587,24 +623,32 @@ public class GameRepository(
             }
         }
 
-        // 7. generate top timelines by solved challenges
+        // 7. generate top timelines from SubmissionRecords (covers all score changes)
         var timelines = topTeams.ToDictionary(
             i => i.Key,
             i => i.Value.Select(tid =>
                 {
                     var item = items[tid];
+
+                    var events = recordTimelineByTeam.TryGetValue(item.ParticipantId, out var records)
+                        ? records.Select(r => (Time: r.SubmitTimeUtc, Score: r.ScoreChange))
+                            .OrderBy(e => e.Time)
+                            .ToArray()
+                        : Array.Empty<(DateTimeOffset Time, int Score)>();
+
+                    var timelineItems = new List<TimeLine>();
+                    var cumulativeScore = 0;
+                    foreach (var e in events)
+                    {
+                        cumulativeScore += e.Score;
+                        timelineItems.Add(new TimeLine { Score = cumulativeScore, Time = e.Time });
+                    }
+
                     return new TopTimeLine
                     {
                         Id = item.Id,
                         Name = item.Name,
-                        Items = item.SolvedChallenges
-                            .OrderBy(c => c.SubmitTimeUtc)
-                            .Aggregate(new List<TimeLine>(), (acc, c) =>
-                            {
-                                var last = acc.LastOrDefault();
-                                acc.Add(new TimeLine { Score = (last?.Score ?? 0) + c.Score, Time = c.SubmitTimeUtc });
-                                return acc;
-                            })
+                        Items = timelineItems
                     };
                 }
             )
