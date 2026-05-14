@@ -36,6 +36,8 @@
   },
   "content": {
     "already_solved": "This challenge has been solved",
+    "line_range_placeholder": "Enter line number or range, e.g. 56 or 77-82",
+    "line_range_label": "Vulnerable Line",
     "attempts": {
       "count": "You've tried {{count}} times already!",
       "exhausted": "Oops, all attempts used up!",

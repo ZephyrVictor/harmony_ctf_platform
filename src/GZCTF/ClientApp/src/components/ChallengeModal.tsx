@@ -22,7 +22,7 @@ import { InstanceEntry } from '@Components/InstanceEntry'
 import { ContentPlaceholder, InlineMarkdown, Markdown } from '@Components/MarkdownRenderer'
 import { useLanguage } from '@Utils/I18n'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
-import { ChallengeDetailModel, ChallengeType } from '@Api'
+import { ChallengeDetailModel, ChallengeType, FlagMatchMode } from '@Api'
 import classes from '@Styles/ChallengeModal.module.css'
 import misc from '@Styles/Misc.module.css'
 
@@ -278,7 +278,16 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
       >
         <Group justify="space-between" gap="sm" align="flex-end">
           <TextInput
-            placeholder={placeholder}
+            placeholder={
+              challenge?.flagMatchMode === FlagMatchMode.LineRange
+                ? t('challenge.content.line_range_placeholder')
+                : placeholder
+            }
+            label={
+              challenge?.flagMatchMode === FlagMatchMode.LineRange
+                ? t('challenge.content.line_range_label')
+                : undefined
+            }
             value={inputValue}
             disabled={inputDisabled}
             onChange={setFlag}

@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
 
 # Install Node.js for frontend build
-RUN apk add --no-cache nodejs npm && npm install -g pnpm
+RUN apk add --no-cache nodejs npm && npm install -g pnpm@9
 
 # Restore backend
 COPY src/Directory.Packages.props src/

@@ -180,10 +180,10 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("ChallengeId");
 
+                    b.HasIndex("ExerciseId");
+
                     b.HasIndex("ChallengeId", "FlagValue")
                         .IsUnique();
-
-                    b.HasIndex("ExerciseId");
 
                     b.ToTable("ChallengeFlags");
                 });
@@ -430,6 +430,9 @@ namespace GZCTF.Migrations
                     b.Property<string>("FileName")
                         .HasColumnType("text");
 
+                    b.Property<byte>("FlagMatchMode")
+                        .HasColumnType("smallint");
+
                     b.Property<string>("FlagTemplate")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
@@ -556,7 +559,6 @@ namespace GZCTF.Migrations
 
                     b.ToTable("FirstSolves");
                 });
-
 
             modelBuilder.Entity("GZCTF.Models.Data.Game", b =>
                 {
@@ -685,6 +687,9 @@ namespace GZCTF.Migrations
 
                     b.Property<string>("FileName")
                         .HasColumnType("text");
+
+                    b.Property<byte>("FlagMatchMode")
+                        .HasColumnType("smallint");
 
                     b.Property<string>("FlagTemplate")
                         .HasMaxLength(120)
@@ -1085,7 +1090,12 @@ namespace GZCTF.Migrations
                     b.HasIndex("SubmissionId")
                         .IsUnique();
 
-                    b.ToTable("SubmissionRecords");
+                    b.ToTable("SubmissionRecords", t =>
+                        {
+                            t.HasCheckConstraint("CK_SubmissionRecord_NonPenalty_RequiresFlag", "\"IsPenalty\" = true OR (\"ScoreChange\" >= 0)");
+
+                            t.HasCheckConstraint("CK_SubmissionRecord_Penalty_NullFlag", "\"IsPenalty\" = false OR \"MatchedFlagId\" IS NULL");
+                        });
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.Team", b =>
@@ -1178,7 +1188,16 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Tickets");
+                    b.ToTable("Tickets", t =>
+                        {
+                            t.HasCheckConstraint("CK_Ticket_Approved_Scores", "\"Status\" <> 'Approved' OR (\"RefundScore\" >= 0 AND \"BonusScore\" >= 0)");
+
+                            t.HasCheckConstraint("CK_Ticket_Pending_Nulls", "\"Status\" <> 'Pending' OR (\"ReviewerId\" IS NULL AND \"ReviewComment\" IS NULL AND \"RefundScore\" = 0 AND \"BonusScore\" = 0 AND \"ReviewedAt\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_Ticket_Rejected_Comment", "\"Status\" <> 'Rejected' OR \"ReviewComment\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_Ticket_Resolved_Reviewer", "\"Status\" IN ('Pending') OR (\"ReviewerId\" IS NOT NULL AND \"ReviewedAt\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.UserInfo", b =>
@@ -1897,8 +1916,8 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("GZCTF.Models.Data.Submission", "Submission")
-                        .WithMany()
-                        .HasForeignKey("SubmissionId")
+                        .WithOne("SubmissionRecord")
+                        .HasForeignKey("GZCTF.Models.Data.SubmissionRecord", "SubmissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2104,6 +2123,11 @@ namespace GZCTF.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("Submissions");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.Submission", b =>
+                {
+                    b.Navigation("SubmissionRecord");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.Team", b =>

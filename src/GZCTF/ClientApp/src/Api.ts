@@ -55,6 +55,11 @@ export enum NetworkMode {
   Custom = "Custom",
 }
 
+export enum FlagMatchMode {
+  Exact = "Exact",
+  LineRange = "LineRange",
+}
+
 /** Container status */
 export enum ContainerStatus {
   Pending = "Pending",
@@ -1183,6 +1188,8 @@ export interface ChallengeEditDetailModel {
    * @format int32
    */
   submissionLimit: number;
+  /** Flag matching mode */
+  flagMatchMode?: FlagMatchMode;
   /**
    * Initial score
    * @format int32
@@ -1322,6 +1329,8 @@ export interface ChallengeUpdateModel {
    * @max 10000
    */
   submissionLimit?: number | null;
+  /** Flag matching mode */
+  flagMatchMode?: FlagMatchMode | null;
   /** Container image name and tag */
   containerImage?: string | null;
   /**
@@ -1994,6 +2003,8 @@ export interface ChallengeDetailModel {
    * @format int32
    */
   limit?: number;
+  /** Flag matching mode */
+  flagMatchMode?: FlagMatchMode;
   /**
    * Current attempt count
    * @format int32

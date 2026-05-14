@@ -57,8 +57,12 @@ public class ScoringService
         // 1. Try to match against ChallengeFlags
         var flags = await _flagRepo.GetFlags(challenge.Id, token);
 
-        var matchedFlag = flags.FirstOrDefault(f =>
-            string.Equals(f.FlagValue, answer, StringComparison.Ordinal));
+        var matchedFlag = challenge.FlagMatchMode switch
+        {
+            FlagMatchMode.LineRange => MatchLineRange(flags, answer),
+            _ => flags.FirstOrDefault(f =>
+                string.Equals(f.FlagValue, answer, StringComparison.Ordinal))
+        };
 
         if (matchedFlag is not null)
             return await HandleCorrectSubmission(challenge, participation, matchedFlag, token);
@@ -288,6 +292,49 @@ public class ScoringService
             ScoreChange = -actualPenalty,
             IsPenalty = actualPenalty > 0
         };
+    }
+
+    static ChallengeFlag? MatchLineRange(ChallengeFlag[] flags, string answer)
+    {
+        if (!TryParseLineRange(answer, out var subStart, out var subEnd))
+            return null;
+
+        foreach (var flag in flags)
+        {
+            if (!TryParseLineRange(flag.FlagValue, out var flagStart, out var flagEnd))
+                continue;
+
+            if (subStart >= flagStart && subEnd <= flagEnd)
+                return flag;
+        }
+
+        return null;
+    }
+
+    internal static bool TryParseLineRange(string input, out int start, out int end)
+    {
+        start = end = 0;
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        var trimmed = input.Trim();
+
+        if (trimmed.StartsWith("c:", StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed[2..];
+
+        var parts = trimmed.Split('-', 2);
+        if (parts.Length == 1)
+        {
+            if (!int.TryParse(parts[0], out start))
+                return false;
+            end = start;
+            return start > 0;
+        }
+
+        if (!int.TryParse(parts[0], out start) || !int.TryParse(parts[1], out end))
+            return false;
+
+        return start > 0 && end >= start;
     }
 
     /// <summary>

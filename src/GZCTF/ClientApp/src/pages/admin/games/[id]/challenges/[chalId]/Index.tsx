@@ -42,7 +42,7 @@ import {
 } from '@Utils/Shared'
 import { useEditChallenge, useEditChallenges } from '@Hooks/useEdit'
 import { useGame } from '@Hooks/useGame'
-import api, { ChallengeCategory, ChallengeType, ChallengeUpdateModel, NetworkMode } from '@Api'
+import api, { ChallengeCategory, ChallengeType, ChallengeUpdateModel, FlagMatchMode, NetworkMode } from '@Api'
 import misc from '@Styles/Misc.module.css'
 
 const GameChallengeEdit: FC = () => {
@@ -351,6 +351,19 @@ const GameChallengeEdit: FC = () => {
                   const number = getInputNumber(e)
                   if (isNaN(number)) return
                   setChallengeInfo({ ...challengeInfo, submissionLimit: number })
+                }}
+              />
+              <Select
+                label={t('admin.content.games.challenges.flag_match_mode.label')}
+                description={t('admin.content.games.challenges.flag_match_mode.description')}
+                value={challengeInfo?.flagMatchMode ?? FlagMatchMode.Exact}
+                disabled={disabled}
+                data={[
+                  { value: FlagMatchMode.Exact, label: t('admin.content.games.challenges.flag_match_mode.exact') },
+                  { value: FlagMatchMode.LineRange, label: t('admin.content.games.challenges.flag_match_mode.line_range') },
+                ]}
+                onChange={(e) => {
+                  setChallengeInfo({ ...challengeInfo, flagMatchMode: e as FlagMatchMode })
                 }}
               />
               <DateTimePicker

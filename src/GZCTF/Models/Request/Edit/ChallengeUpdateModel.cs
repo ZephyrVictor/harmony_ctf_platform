@@ -60,6 +60,11 @@ public class ChallengeUpdateModel
     public int? SubmissionLimit { get; set; }
 
     /// <summary>
+    /// Flag matching mode (Exact or LineRange)
+    /// </summary>
+    public FlagMatchMode? FlagMatchMode { get; set; }
+
+    /// <summary>
     /// Container image name and tag
     /// </summary>
     public string? ContainerImage { get; set; }

@@ -137,6 +137,12 @@ public class ChallengeEditDetailModel
     public int SubmissionLimit { get; set; }
 
     /// <summary>
+    /// Flag matching mode
+    /// </summary>
+    [Required]
+    public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
+
+    /// <summary>
     /// Initial score
     /// </summary>
     [Required]
@@ -180,6 +186,7 @@ public class ChallengeEditDetailModel
             FileName = chal.FileName,
             Attachment = chal.Attachment,
             SubmissionLimit = chal.SubmissionLimit,
+            FlagMatchMode = chal.FlagMatchMode,
             DeadlineUtc = chal.DeadlineUtc,
             AcceptedCount = 0, // This field should be set externally
             TestContainer = chal.TestContainer is null ? null : ContainerInfoModel.FromContainer(chal.TestContainer),

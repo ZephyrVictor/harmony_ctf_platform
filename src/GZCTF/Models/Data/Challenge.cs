@@ -61,6 +61,12 @@ public class Challenge
     public int SubmissionLimit { get; set; }
 
     /// <summary>
+    /// Flag matching mode for this challenge
+    /// </summary>
+    [Required]
+    public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
+
+    /// <summary>
     /// Image name and tag
     /// </summary>
     public string? ContainerImage { get; set; } = string.Empty;

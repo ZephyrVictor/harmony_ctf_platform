@@ -356,6 +356,23 @@ public enum ChallengeCategory : byte
 }
 
 /// <summary>
+/// Flag matching mode for a challenge
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<FlagMatchMode>))]
+public enum FlagMatchMode : byte
+{
+    /// <summary>
+    /// Exact string match (default, standard CTF behavior)
+    /// </summary>
+    Exact = 0,
+
+    /// <summary>
+    /// Line range match: submitted range must be a subset of the flag's range
+    /// </summary>
+    LineRange = 1
+}
+
+/// <summary>
 /// Challenge difficulty
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<Difficulty>))]

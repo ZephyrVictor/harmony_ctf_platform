@@ -179,6 +179,12 @@
           "label": "最大提交次数",
           "placeholder": "不限制"
         },
+        "flag_match_mode": {
+          "label": "Flag 匹配模式",
+          "description": "选择答案匹配方式",
+          "exact": "精确匹配",
+          "line_range": "行号范围匹配"
+        },
         "title": "题目标题",
         "traffic_capture": {
           "description": "捕获队伍解题流量，需要开启平台代理",

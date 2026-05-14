@@ -53,6 +53,11 @@ public class ChallengeDetailModel
     public int Limit { get; set; }
 
     /// <summary>
+    /// Flag matching mode
+    /// </summary>
+    public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
+
+    /// <summary>
     /// Current attempt count
     /// </summary>
     public int Attempts { get; set; }
@@ -73,6 +78,7 @@ public class ChallengeDetailModel
             Category = gameInstance.Challenge.Category,
             Title = gameInstance.Challenge.Title,
             Type = gameInstance.Challenge.Type,
+            FlagMatchMode = gameInstance.Challenge.FlagMatchMode,
             Limit = gameInstance.Challenge.SubmissionLimit,
             Deadline = gameInstance.Challenge.DeadlineUtc,
             Attempts = attemptCount,

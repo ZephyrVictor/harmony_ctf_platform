@@ -179,6 +179,12 @@
           "label": "Max Attempts Allowed",
           "placeholder": "Unlimited"
         },
+        "flag_match_mode": {
+          "label": "Flag Match Mode",
+          "description": "Choose how answers are matched",
+          "exact": "Exact Match",
+          "line_range": "Line Range Match"
+        },
         "title": "Title",
         "traffic_capture": {
           "description": "Capturing the traffic when the team solves challenges. Platform proxy needs to be enabled",

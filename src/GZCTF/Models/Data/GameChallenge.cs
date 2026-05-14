@@ -75,6 +75,7 @@ public class GameChallenge : Challenge
         FileName = model.FileName ?? FileName;
         DisableBloodBonus = model.DisableBloodBonus ?? DisableBloodBonus;
         SubmissionLimit = model.SubmissionLimit ?? SubmissionLimit;
+        FlagMatchMode = model.FlagMatchMode ?? FlagMatchMode;
 
         // isEnabled should be updated alone
         IsEnabled = model.IsEnabled ?? IsEnabled;
