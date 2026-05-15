@@ -342,7 +342,7 @@ public class ScoringService
         List<ChallengeFlag> openMatches = [];
         List<ChallengeFlag> completedMatches = [];
 
-        foreach (var flag in flags.Where(f => f.IsEnabled && f.IsVisible))
+        foreach (var flag in flags.Where(f => f.IsEnabled))
         {
             var flagAnswer = ParseHybridLineAnswer(
                 string.IsNullOrWhiteSpace(flag.RawAnswer) ? flag.FlagValue : flag.RawAnswer,

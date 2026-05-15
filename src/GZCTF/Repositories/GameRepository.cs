@@ -283,6 +283,7 @@ public class GameRepository(
         Dictionary<int, ChallengeInfo> challenges;
         Dictionary<int, DivisionItem> divisions;
         Dictionary<int, ChallengeScoreMeta> challengeMetas;
+        Dictionary<int, ChallengeRecord> challengeRecords;
         List<SolveSnapshot> solveSnapshots;
 
         // 0. Begin transaction
@@ -337,7 +338,7 @@ public class GameRepository(
                 }).ToDictionaryAsync(i => i.ParticipantId, token);
 
             // 3. Fetch all challenges from GameChallenges, capture scoring metadata
-            var challengeRecords = await Context.GameChallenges
+            challengeRecords = await Context.GameChallenges
                 .AsNoTracking()
                 .IgnoreAutoIncludes()
                 .Where(c => c.GameId == game.Id && c.IsEnabled)
@@ -538,51 +539,69 @@ public class GameRepository(
             scoreboardItem.LastSubmissionTime = item.SubmitTimeUtc;
         }
 
-        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and HybridLine flag hits)
-        // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
-        var recordScores = await Context.SubmissionRecords
-            .AsNoTracking()
-            .Where(r => (r.MatchedFlagId == null
-                    || (r.ScoreChange > 0
-                        && r.Submission != null
-                        && r.Submission.GameChallenge != null
-                        && r.Submission.GameChallenge.FlagMatchMode == FlagMatchMode.HybridLine))
-                && r.Submission != null
-                && items.Keys.Contains(r.Submission.ParticipationId))
-            .GroupBy(r => r.Submission!.ParticipationId)
-            .Select(g => new { ParticipationId = g.Key, TotalChange = g.Sum(r => (int?)r.ScoreChange) ?? 0 })
-            .ToListAsync(token);
-
-        foreach (var rs in recordScores)
-        {
-            if (items.TryGetValue(rs.ParticipationId, out var item))
-                item.Score += rs.TotalChange;
-        }
-
-        // 5.6. update LastSubmissionTime from SubmissionRecords
-        // SolvedChallenges is populated only from FirstSolves (step 5.2),
-        // which is created only when ALL flags for a challenge have been submitted.
         var submissionRecordsDetail = await Context.SubmissionRecords
             .AsNoTracking()
             .Where(r => r.Submission != null && items.Keys.Contains(r.Submission.ParticipationId))
-            .Select(r => new
-            {
+            .Select(r => new ScoreRecordSnapshot(
                 r.Submission!.ParticipationId,
                 r.Submission!.ChallengeId,
-                r.Submission!.UserName,
                 r.ScoreChange,
-                r.IsPenalty,
                 r.MatchedFlagId,
-                r.Submission!.SubmitTimeUtc
-            })
+                r.Submission!.SubmitTimeUtc))
             .ToListAsync(token);
 
+        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and HybridLine flag hits)
+        // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
         foreach (var rec in submissionRecordsDetail)
         {
             if (!items.TryGetValue(rec.ParticipationId, out var item))
                 continue;
 
-            if (rec.MatchedFlagId is not null && rec.ScoreChange > 0 && rec.SubmitTimeUtc > item.LastSubmissionTime)
+            var isHybridLinePositiveScore = rec.MatchedFlagId is not null
+                                            && rec.ScoreChange > 0
+                                            && challengeRecords.TryGetValue(rec.ChallengeId, out var recordChallenge)
+                                            && recordChallenge.MatchMode == FlagMatchMode.HybridLine;
+
+            if (rec.MatchedFlagId is null)
+            {
+                item.Score += rec.ScoreChange;
+                continue;
+            }
+
+            if (!isHybridLinePositiveScore)
+                continue;
+
+            var division = item.DivisionId is { } div ? divisions.GetValueOrDefault(div) : null;
+            var withinGameWindow = rec.SubmitTimeUtc >= game.StartTimeUtc &&
+                                   rec.SubmitTimeUtc < game.EndTimeUtc;
+            var challengeDeadline = challenges[rec.ChallengeId].DeadlineUtc;
+            var withinDeadline = !challengeDeadline.HasValue ||
+                                 rec.SubmitTimeUtc <= challengeDeadline.Value;
+
+            if (!withinGameWindow
+                || !withinDeadline
+                || !CheckDivisionPermission(division, GamePermission.GetScore, rec.ChallengeId))
+                continue;
+
+            item.Score += rec.ScoreChange;
+
+            if (rec.SubmitTimeUtc > item.LastSubmissionTime)
+                item.LastSubmissionTime = rec.SubmitTimeUtc;
+        }
+
+        // 5.6. update LastSubmissionTime from SubmissionRecords
+        // SolvedChallenges is populated only from FirstSolves (step 5.2),
+        // which is created only when ALL flags for a challenge have been submitted.
+        foreach (var rec in submissionRecordsDetail)
+        {
+            if (!items.TryGetValue(rec.ParticipationId, out var item))
+                continue;
+
+            if (rec.MatchedFlagId is not null
+                && rec.ScoreChange > 0
+                && challengeRecords.TryGetValue(rec.ChallengeId, out var recordChallenge)
+                && recordChallenge.MatchMode != FlagMatchMode.HybridLine
+                && rec.SubmitTimeUtc > item.LastSubmissionTime)
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
         }
 
@@ -703,6 +722,13 @@ public class GameRepository(
         string? UserName,
         bool ScoreEligible,
         bool BloodEligible);
+
+    private readonly record struct ScoreRecordSnapshot(
+        int ParticipationId,
+        int ChallengeId,
+        int ScoreChange,
+        Guid? MatchedFlagId,
+        DateTimeOffset SubmitTimeUtc);
 
     private static bool CheckDivisionPermission(DivisionItem? division, GamePermission permission,
         int? challengeId = null)

@@ -86,7 +86,7 @@ public class ChallengeDetailModel
             FlagMatchMode = gameInstance.Challenge.FlagMatchMode,
             Flags = gameInstance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine
                 ? gameInstance.Challenge.Flags
-                    .Where(f => f.IsVisible)
+                    .Where(f => f is { IsVisible: true, IsEnabled: true })
                     .OrderBy(f => f.SortOrder)
                     .Select(f => HybridLineFlagInfoModel.FromChallengeFlag(
                         f, solvedFlagIds?.Contains(f.Id) ?? false))
