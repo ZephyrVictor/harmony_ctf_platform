@@ -45,6 +45,11 @@ public class Ticket
     #region Db Relationship
 
     /// <summary>
+    /// Image attachments provided by the contestant
+    /// </summary>
+    public List<TicketAttachment> Attachments { get; set; } = [];
+
+    /// <summary>
     /// Submission ID this ticket is linked to (must be a penalty submission)
     /// </summary>
     public int SubmissionId { get; set; }

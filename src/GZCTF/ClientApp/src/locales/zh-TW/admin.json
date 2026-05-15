@@ -187,6 +187,9 @@
         "type": {
           "description": "創建後不可更改",
           "label": "題目類型"
+        },
+        "flag_match_mode": {
+          "hybrid_line": "混合行号"
         }
       },
       "divisions": {
@@ -608,5 +611,30 @@
     "settings": "系統設置",
     "teams": "隊伍管理",
     "users": "用戶管理"
+  },
+  "flag": {
+    "column": {
+      "answer_type": "答案类型",
+      "metadata": "元数据",
+      "status": "状态"
+    },
+    "answer_type": {
+      "exact": "精确匹配",
+      "single_line": "单行",
+      "line_range": "行号范围",
+      "multi_line": "多行"
+    },
+    "visible": "可见",
+    "hidden": "隐藏",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "mode_save_required": "題目匹配模式尚未儲存。請先儲存題目模式，再編輯 Flag。",
+    "metadata": {
+      "flaw_no": "漏洞编号",
+      "repository": "仓库",
+      "module": "模块",
+      "file_path": "文件路径",
+      "cwe": "CWE"
+    }
   }
 }

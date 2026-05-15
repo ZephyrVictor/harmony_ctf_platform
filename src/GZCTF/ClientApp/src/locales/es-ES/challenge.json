@@ -119,7 +119,25 @@
       "Todo está en silencio, solo el aviso de error de la bandera está aquí.",
       "La bandera correcta aún no se ha obtenido.",
       "Los vientos son amargos y fríos, y la bandera aún no está en tu mano."
-    ]
+    ],
+    "line_range_placeholder": "Enter line number or range, e.g. 56 or 77-82",
+    "line_range_label": "Vulnerable Line",
+    "hybrid_line_placeholder": "Enter line number, range, or exact answer",
+    "hybrid_line_label": "Vulnerable Line / Answer",
+    "visible_flags": "Visible Flags",
+    "visible_flags_empty": "No visible flags configured",
+    "visible_flag_fallback": "Flag {{index}}",
+    "all_flags_completed": "All flags have been solved",
+    "answer_type": {
+      "exact": "Exact",
+      "single_line": "Single Line",
+      "line_range": "Line Range",
+      "multi_line": "Multi Line"
+    },
+    "flag_status": {
+      "completed": "Solved",
+      "pending": "Pending"
+    }
   },
   "file_type": {
     "local": "Autoalojado",

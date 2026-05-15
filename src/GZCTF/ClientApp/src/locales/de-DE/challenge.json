@@ -119,7 +119,25 @@
       "Alles ist ruhig, nur der Fehlermeldung der Flagge ist hier.",
       "Die korrekte Flagge ist immer noch nicht erhalten.",
       "Die Winde sind bitter und kalt, und die Fahne ist immer noch nicht in deiner Hand."
-    ]
+    ],
+    "line_range_placeholder": "Enter line number or range, e.g. 56 or 77-82",
+    "line_range_label": "Vulnerable Line",
+    "hybrid_line_placeholder": "Enter line number, range, or exact answer",
+    "hybrid_line_label": "Vulnerable Line / Answer",
+    "visible_flags": "Visible Flags",
+    "visible_flags_empty": "No visible flags configured",
+    "visible_flag_fallback": "Flag {{index}}",
+    "all_flags_completed": "All flags have been solved",
+    "answer_type": {
+      "exact": "Exact",
+      "single_line": "Single Line",
+      "line_range": "Line Range",
+      "multi_line": "Multi Line"
+    },
+    "flag_status": {
+      "completed": "Solved",
+      "pending": "Pending"
+    }
   },
   "file_type": {
     "local": "Selbst gehostet",

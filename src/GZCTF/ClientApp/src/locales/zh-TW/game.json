@@ -65,6 +65,36 @@
       ]
     },
     "no_challenge": "Ouch! 這個比賽還沒有可用題目呢……",
+    "no_submissions": "暫無提交記錄",
+    "submission": {
+      "challenge": "題目",
+      "score_change": "分數變化",
+      "ticket": "工單",
+      "time": "時間"
+    },
+    "ticket": {
+      "attachment_count": "{{count}} 張圖片",
+      "attachment_invalid_type": "僅支援上傳圖片附件。",
+      "attachment_limit_reached": "附件數量已達上限。",
+      "attachment_too_large": "單張圖片不能超過 10 MiB。",
+      "attachment_too_many": "每個工單最多上傳 5 張圖片。",
+      "attachments": "附件圖片",
+      "create_title": "發起工單",
+      "description": "申訴描述",
+      "detail_title": "工單詳情",
+      "edit": "編輯",
+      "my_tickets": "我的工單",
+      "no_attachments": "暫無圖片附件",
+      "no_description": "暫無申訴描述",
+      "open_attachment": "開啟附件",
+      "pending_notice": "工單正在審核中，請等待管理員處理。",
+      "preview": "預覽",
+      "refund_bonus": "返還 / 補償",
+      "review_result": "審核結果",
+      "submission_id": "提交編號",
+      "upload_help": "最多 5 張圖片，單張不超過 10 MiB。",
+      "upload_images": "上傳圖片"
+    },
     "no_cheat": {
       "comment": "看起來大家都很老實呢",
       "title": "暫時沒有隊伍作弊信息"

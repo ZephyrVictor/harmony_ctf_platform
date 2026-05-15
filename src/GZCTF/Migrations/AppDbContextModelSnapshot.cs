@@ -1268,6 +1268,39 @@ namespace GZCTF.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GZCTF.Models.Data.TicketAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LocalFileId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UploaderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocalFileId");
+
+                    b.HasIndex("TicketId");
+
+                    b.HasIndex("UploaderId");
+
+                    b.ToTable("TicketAttachments");
+                });
+
             modelBuilder.Entity("GZCTF.Models.Data.UserInfo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2031,6 +2064,31 @@ namespace GZCTF.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("GZCTF.Models.Data.TicketAttachment", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.LocalFile", "LocalFile")
+                        .WithMany()
+                        .HasForeignKey("LocalFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("GZCTF.Models.Data.Ticket", "Ticket")
+                        .WithMany("Attachments")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", "Uploader")
+                        .WithMany()
+                        .HasForeignKey("UploaderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("LocalFile");
+
+                    b.Navigation("Ticket");
+
+                    b.Navigation("Uploader");
+                });
+
             modelBuilder.Entity("GZCTF.Models.Data.UserParticipation", b =>
                 {
                     b.HasOne("GZCTF.Models.Data.Game", "Game")
@@ -2201,6 +2259,11 @@ namespace GZCTF.Migrations
             modelBuilder.Entity("GZCTF.Models.Data.Team", b =>
                 {
                     b.Navigation("Participations");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.Ticket", b =>
+                {
+                    b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.UserInfo", b =>

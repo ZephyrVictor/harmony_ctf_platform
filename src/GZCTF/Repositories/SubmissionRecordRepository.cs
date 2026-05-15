@@ -14,7 +14,9 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
 
     public Task<SubmissionRecord?> GetBySubmissionId(int submissionId, CancellationToken token = default)
         => Context.SubmissionRecords
-            .Include(r => r.Submission)
+            .Include(r => r.Submission!)
+            .ThenInclude(s => s.Participation)
+            .ThenInclude(p => p.Members)
             .Include(r => r.MatchedFlag)
             .FirstOrDefaultAsync(r => r.SubmissionId == submissionId, token);
 

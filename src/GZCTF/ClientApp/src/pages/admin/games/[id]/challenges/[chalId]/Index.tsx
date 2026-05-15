@@ -24,11 +24,11 @@ import dayjs from 'dayjs'
 import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
-import { FlagEditor } from '@Components/admin/FlagEditor'
 import { HintList } from '@Components/HintList'
 import { InstanceEntry } from '@Components/InstanceEntry'
-import { PenaltyConfig } from '@Components/admin/PenaltyConfig'
 import { ChallengePreviewModal } from '@Components/admin/ChallengePreviewModal'
+import { FlagEditor } from '@Components/admin/FlagEditor'
+import { PenaltyConfig } from '@Components/admin/PenaltyConfig'
 import { SwitchLabel } from '@Components/admin/SwitchLabel'
 import { WithChallengeEdit } from '@Components/admin/WithChallengeEdit'
 import { ScoreFunc } from '@Components/charts/ScoreFunc'
@@ -74,6 +74,10 @@ const GameChallengeEdit: FC = () => {
   const networkModeLabelMap = useNetworkModeMap()
 
   const { t } = useTranslation()
+
+  const persistedFlagMatchMode = challenge?.flagMatchMode ?? FlagMatchMode.Exact
+  const currentFlagMatchMode = challengeInfo.flagMatchMode ?? FlagMatchMode.Exact
+  const flagMatchModeUnsaved = currentFlagMatchMode !== persistedFlagMatchMode
 
   useEffect(() => {
     if (challenge) {
@@ -360,7 +364,14 @@ const GameChallengeEdit: FC = () => {
                 disabled={disabled}
                 data={[
                   { value: FlagMatchMode.Exact, label: t('admin.content.games.challenges.flag_match_mode.exact') },
-                  { value: FlagMatchMode.LineRange, label: t('admin.content.games.challenges.flag_match_mode.line_range') },
+                  {
+                    value: FlagMatchMode.LineRange,
+                    label: t('admin.content.games.challenges.flag_match_mode.line_range'),
+                  },
+                  {
+                    value: FlagMatchMode.HybridLine,
+                    label: t('admin.content.games.challenges.flag_match_mode.hybrid_line'),
+                  },
                 ]}
                 onChange={(e) => {
                   setChallengeInfo({ ...challengeInfo, flagMatchMode: e as FlagMatchMode })
@@ -619,7 +630,12 @@ const GameChallengeEdit: FC = () => {
         {numCId > 0 && (
           <>
             <Divider />
-            <FlagEditor challengeId={numCId} />
+            <FlagEditor
+              challengeId={numCId}
+              flagMatchMode={persistedFlagMatchMode}
+              disabled={disabled || flagMatchModeUnsaved}
+              disabledReason={flagMatchModeUnsaved ? t('admin.flag.mode_save_required') : undefined}
+            />
             <Divider />
             <PenaltyConfig challengeId={numCId} />
           </>

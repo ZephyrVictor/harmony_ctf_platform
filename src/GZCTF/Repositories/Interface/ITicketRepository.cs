@@ -10,6 +10,8 @@ public interface ITicketRepository : IRepository
         int? gameId = null, CancellationToken token = default);
     Task<bool> ExistsBySubmission(int submissionId, CancellationToken token = default);
     Task<int> CountBySubmission(int submissionId, CancellationToken token = default);
+    Task<TicketAttachment[]?> AddAttachments(Guid ticketId, IEnumerable<TicketAttachment> attachments,
+        int maxAttachmentCount, CancellationToken token = default);
     Task<Ticket> ApproveTicket(Guid ticketId, int refundScore, int bonusScore, string? comment, Guid reviewerId,
         CancellationToken token = default);
     Task<Ticket> RejectTicket(Guid ticketId, string reason, Guid reviewerId, CancellationToken token = default);

@@ -24,8 +24,14 @@ public class CompetitionSettingRepository(AppDbContext context) : RepositoryBase
 
     public async Task<T> Get<T>(string key, T defaultValue, CancellationToken token = default)
     {
-        var result = await Get<T>(key, token);
-        return result ?? defaultValue;
+        var setting = await Context.CompetitionSettings
+            .FirstOrDefaultAsync(s => s.Key == key, token);
+
+        if (setting is null)
+            return defaultValue;
+
+        var result = JsonSerializer.Deserialize<T>(setting.Value, JsonOptions);
+        return result is null ? defaultValue : result;
     }
 
     public async Task Set(string key, object value, CancellationToken token = default)

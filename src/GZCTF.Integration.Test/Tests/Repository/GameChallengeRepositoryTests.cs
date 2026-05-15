@@ -236,7 +236,7 @@ public class GameChallengeRepositoryTests(GZCTFApplicationFactory factory, ITest
         await challengeRepo.CreateChallenge(game, challenge, CancellationToken.None);
 
         // Try to remove non-existent flag
-        var result = await challengeRepo.RemoveFlag(challenge, 99999, CancellationToken.None);
+        var result = await challengeRepo.RemoveFlag(challenge, Guid.NewGuid(), CancellationToken.None);
 
         Assert.Equal(TaskStatus.NotFound, result);
 

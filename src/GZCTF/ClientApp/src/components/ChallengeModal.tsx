@@ -1,9 +1,11 @@
 import {
+  Badge,
   Button,
   Divider,
   Group,
   Modal,
   ModalProps,
+  SimpleGrid,
   Stack,
   TextInput,
   Text,
@@ -22,7 +24,13 @@ import { InstanceEntry } from '@Components/InstanceEntry'
 import { ContentPlaceholder, InlineMarkdown, Markdown } from '@Components/MarkdownRenderer'
 import { useLanguage } from '@Utils/I18n'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
-import { ChallengeDetailModel, ChallengeType, FlagMatchMode } from '@Api'
+import {
+  ChallengeDetailModel,
+  ChallengeFlagAnswerType,
+  ChallengeType,
+  FlagMatchMode,
+  HybridLineFlagInfoModel,
+} from '@Api'
 import classes from '@Styles/ChallengeModal.module.css'
 import misc from '@Styles/Misc.module.css'
 
@@ -114,6 +122,36 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   const { t } = useTranslation()
   const theme = useMantineTheme()
   const { locale } = useLanguage()
+  const isHybridLine = challenge?.flagMatchMode === FlagMatchMode.HybridLine
+
+  const hybridFlags = useMemo(
+    () => [...(challenge?.flags ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    [challenge?.flags]
+  )
+
+  const isFlagSolved = (flag: HybridLineFlagInfoModel) => flag.isSolved === true
+  const solvedFlagCount = hybridFlags.filter(isFlagSolved).length
+  const hasHybridFlags = hybridFlags.length > 0
+  const allHybridFlagsSolved = isHybridLine && hasHybridFlags && solvedFlagCount === hybridFlags.length
+
+  const answerTypeLabel = (type?: ChallengeFlagAnswerType) => {
+    switch (type) {
+      case ChallengeFlagAnswerType.Exact:
+        return t('challenge.content.answer_type.exact')
+      case ChallengeFlagAnswerType.LineRange:
+        return t('challenge.content.answer_type.line_range')
+      case ChallengeFlagAnswerType.MultiLine:
+        return t('challenge.content.answer_type.multi_line')
+      case ChallengeFlagAnswerType.SingleLine:
+      default:
+        return t('challenge.content.answer_type.single_line')
+    }
+  }
+
+  const flagDisplayName = (hybridFlag: HybridLineFlagInfoModel, index: number) =>
+    hybridFlag.flawNo ||
+    hybridFlag.filePath?.split(/[\\/]/).pop() ||
+    t('challenge.content.visible_flag_fallback', { index })
 
   const placeholders = t('challenge.content.flag_placeholders', {
     returnObjects: true,
@@ -168,6 +206,61 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
                   <InlineMarkdown key={hint} size="sm" maw="calc(100% - 2rem)" source={hint} />
                 </Group>
               ))}
+            </Stack>
+          )}
+          {isHybridLine && (
+            <Stack gap="xs" className={classes.flagList}>
+              <Group justify="space-between" gap="xs">
+                <Text fw={700} size="sm">
+                  {t('challenge.content.visible_flags')}
+                </Text>
+                <Badge variant="light" color={allHybridFlagsSolved ? 'teal' : 'gray'}>
+                  {solvedFlagCount}/{hybridFlags.length}
+                </Badge>
+              </Group>
+              {hasHybridFlags ? (
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                  {hybridFlags.map((hybridFlag, index) => {
+                    const solved = isFlagSolved(hybridFlag)
+                    const metadata = [
+                      hybridFlag.repository,
+                      hybridFlag.module,
+                      hybridFlag.filePath,
+                      hybridFlag.cwe,
+                    ].filter(Boolean)
+
+                    return (
+                      <Stack key={hybridFlag.id ?? index} gap={4} className={classes.flagItem}>
+                        <Group gap="xs" justify="space-between" align="flex-start" wrap="nowrap">
+                          <Text fw={600} size="sm" lineClamp={1} className={misc.wordBreakAll}>
+                            {flagDisplayName(hybridFlag, index + 1)}
+                          </Text>
+                          <Badge variant="light" color={solved ? 'teal' : 'gray'}>
+                            {solved
+                              ? t('challenge.content.flag_status.completed')
+                              : t('challenge.content.flag_status.pending')}
+                          </Badge>
+                        </Group>
+                        <Group gap={6}>
+                          <Badge variant="outline">{answerTypeLabel(hybridFlag.answerType)}</Badge>
+                          <Badge variant="outline" color="green">
+                            +{hybridFlag.score ?? 0}
+                          </Badge>
+                        </Group>
+                        {metadata.length > 0 && (
+                          <Text size="xs" c="dimmed" lineClamp={2} className={misc.wordBreakAll}>
+                            {metadata.join(' / ')}
+                          </Text>
+                        )}
+                      </Stack>
+                    )
+                  })}
+                </SimpleGrid>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  {t('challenge.content.visible_flags_empty')}
+                </Text>
+              )}
             </Stack>
           )}
         </>
@@ -248,7 +341,9 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   }, [challenge?.attempts, challenge?.limit, solved, deadlineTime, locale, isDeadlinePassed, t])
 
   const inputValue = solved
-    ? t('challenge.content.already_solved')
+    ? isHybridLine
+      ? t('challenge.content.all_flags_completed')
+      : t('challenge.content.already_solved')
     : isLimitReached
       ? t('challenge.content.attempts.placeholder')
       : flag
@@ -279,14 +374,18 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
         <Group justify="space-between" gap="sm" align="flex-end">
           <TextInput
             placeholder={
-              challenge?.flagMatchMode === FlagMatchMode.LineRange
-                ? t('challenge.content.line_range_placeholder')
-                : placeholder
+              isHybridLine
+                ? t('challenge.content.hybrid_line_placeholder')
+                : challenge?.flagMatchMode === FlagMatchMode.LineRange
+                  ? t('challenge.content.line_range_placeholder')
+                  : placeholder
             }
             label={
-              challenge?.flagMatchMode === FlagMatchMode.LineRange
-                ? t('challenge.content.line_range_label')
-                : undefined
+              isHybridLine
+                ? t('challenge.content.hybrid_line_label')
+                : challenge?.flagMatchMode === FlagMatchMode.LineRange
+                  ? t('challenge.content.line_range_label')
+                  : undefined
             }
             value={inputValue}
             disabled={inputDisabled}

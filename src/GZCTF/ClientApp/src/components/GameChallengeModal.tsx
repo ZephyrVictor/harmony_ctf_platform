@@ -10,7 +10,7 @@ import { encryptApiData } from '@Utils/Crypto'
 import { showErrorMsg } from '@Utils/Shared'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
 import { useConfig } from '@Hooks/useConfig'
-import api, { AnswerResult, ChallengeType, SubmissionType } from '@Api'
+import api, { AnswerResult, ChallengeType, FlagMatchMode, SubmissionType } from '@Api'
 
 interface GameChallengeModalProps extends ModalProps {
   gameId: number
@@ -41,6 +41,9 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
 
   const isDynamic =
     challenge?.type === ChallengeType.StaticContainer || challenge?.type === ChallengeType.DynamicContainer
+  const isHybridLine = challenge?.flagMatchMode === FlagMatchMode.HybridLine
+  const hybridFlags = challenge?.flags ?? []
+  const isHybridSolved = isHybridLine && hybridFlags.length > 0 && hybridFlags.every((flag) => flag.isSolved === true)
 
   const [disabled, setDisabled] = useState(false)
   const [submitId, setSubmitId] = useState(0)
@@ -211,7 +214,9 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
 
   const checkDataFlag = async (id: number, data: string) => {
     if (data === AnswerResult.Accepted) {
-      setSolvedChallengeId(challengeId)
+      if (!isHybridLine) {
+        setSolvedChallengeId(challengeId)
+      }
       updateNotification({
         id: 'flag-submitted',
         color: 'teal',
@@ -223,8 +228,12 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         autoClose: 8000,
         loading: false,
       })
-      if (isDynamic && challenge.context?.instanceEntry) await requestDestroy()
-      props.onClose()
+      if (isHybridLine) {
+        await mutate()
+      } else {
+        if (isDynamic && challenge.context?.instanceEntry) await requestDestroy()
+        props.onClose()
+      }
     } else if (data === AnswerResult.WrongAnswer) {
       updateNotification({
         id: 'flag-submitted',
@@ -256,7 +265,11 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       gameTitle={gameTitle}
       challenge={challenge ?? { title, score }}
       cateData={cateData}
-      solved={(status !== SubmissionType.Unaccepted && status !== undefined) || solvedChallengeId === challengeId}
+      solved={
+        isHybridLine
+          ? isHybridSolved
+          : (status !== SubmissionType.Unaccepted && status !== undefined) || solvedChallengeId === challengeId
+      }
       flag={flag}
       setFlag={setFlag}
       onCreate={onCreate}

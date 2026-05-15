@@ -183,7 +183,8 @@
           "label": "Flag 匹配模式",
           "description": "选择答案匹配方式",
           "exact": "精确匹配",
-          "line_range": "行号范围匹配"
+          "line_range": "行号范围匹配",
+          "hybrid_line": "混合行号"
         },
         "title": "题目标题",
         "traffic_capture": {
@@ -605,7 +606,10 @@
       "actions": "操作",
       "score": "分值",
       "sort": "排序",
-      "value": "Flag 值"
+      "value": "Flag 值",
+      "answer_type": "答案类型",
+      "metadata": "元数据",
+      "status": "状态"
     },
     "confirm_delete": "确定删除此 Flag 吗？",
     "edit": "编辑 Flag",
@@ -613,7 +617,25 @@
     "invalid_score": "分值必须大于等于 1",
     "no_flags": "暂无 Flag 配置，点击添加 Flag 创建",
     "title": "Flag 管理",
-    "total_score": "总分"
+    "total_score": "总分",
+    "answer_type": {
+      "exact": "精确匹配",
+      "single_line": "单行",
+      "line_range": "行号范围",
+      "multi_line": "多行"
+    },
+    "visible": "可见",
+    "hidden": "隐藏",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "mode_save_required": "题目匹配模式尚未保存。请先保存题目模式，再编辑 Flag。",
+    "metadata": {
+      "flaw_no": "漏洞编号",
+      "repository": "仓库",
+      "module": "模块",
+      "file_path": "文件路径",
+      "cwe": "CWE"
+    }
   },
   "penalty": {
     "description": "每次错误提交扣分值，0 表示不扣分",

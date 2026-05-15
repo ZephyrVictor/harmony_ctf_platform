@@ -38,6 +38,22 @@
     "already_solved": "该题目已被解出",
     "line_range_placeholder": "输入行号或范围，如 56 或 77-82",
     "line_range_label": "漏洞行号",
+    "hybrid_line_placeholder": "输入行号、范围或多行，如 166 / 347-352 / 281,286",
+    "hybrid_line_label": "subsystem 统一提交入口",
+    "all_flags_completed": "该 subsystem 的可见 flag 已全部完成",
+    "visible_flags": "可见 flag",
+    "visible_flags_empty": "暂无可见 flag",
+    "visible_flag_fallback": "Flag {{index}}",
+    "answer_type": {
+      "exact": "精确",
+      "single_line": "单行",
+      "line_range": "范围",
+      "multi_line": "多行"
+    },
+    "flag_status": {
+      "completed": "已完成",
+      "pending": "未完成"
+    },
     "attempts": {
       "count": "已经尝试提交 {{count}} 次",
       "exhausted": "哎呀，所有机会都用完了",
@@ -121,7 +137,23 @@
       "万籁俱寂，唯有 flag 的错误提示在耳边响起。",
       "陌上花开，可缓缓归矣。flag 未得而返。",
       "风萧萧兮易水寒，无奈 flag 仍未到彼岸。"
-    ]
+    ],
+    "hybrid_line_placeholder": "输入行号、范围或精确答案",
+    "hybrid_line_label": "漏洞行号 / 答案",
+    "visible_flags": "可见 Flag",
+    "visible_flags_empty": "暂无可见 Flag 配置",
+    "visible_flag_fallback": "Flag {{index}}",
+    "all_flags_completed": "全部 Flag 已完成",
+    "answer_type": {
+      "exact": "精确匹配",
+      "single_line": "单行",
+      "line_range": "行号范围",
+      "multi_line": "多行"
+    },
+    "flag_status": {
+      "completed": "已完成",
+      "pending": "未完成"
+    }
   },
   "file_type": {
     "local": "本地附件",

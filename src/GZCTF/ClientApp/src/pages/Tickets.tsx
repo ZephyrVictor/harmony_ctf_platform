@@ -16,6 +16,8 @@ import { useDisclosure } from '@mantine/hooks'
 import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TicketAttachmentList, TicketAttachmentSummary } from '@Components/TicketAttachments'
+import { TicketDescriptionPreview } from '@Components/TicketDescription'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
 import { showErrorMsg } from '@Utils/Shared'
@@ -50,6 +52,14 @@ const Tickets: FC = () => {
   const openDetail = (ticket: TicketDto) => {
     setSelectedTicket(ticket)
     detailModalHandlers.open()
+  }
+
+  const handleAttachmentsUploaded = (attachments: TicketDto['attachments']) => {
+    if (!selectedTicket) return
+    setSelectedTicket({ ...selectedTicket, attachments })
+    setTickets((items) => items.map((ticket) => (
+      ticket.id === selectedTicket.id ? { ...ticket, attachments } : ticket
+    )))
   }
 
   const pagedTickets = tickets.slice((page - 1) * perPage, page * perPage)
@@ -90,7 +100,10 @@ const Tickets: FC = () => {
                           <Text size="sm">{ticket.challengeName ?? '—'}</Text>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm" lineClamp={2}>{ticket.description}</Text>
+                          <Stack gap={4}>
+                            <Text size="sm" lineClamp={2}>{ticket.description}</Text>
+                            <TicketAttachmentSummary attachments={ticket.attachments} />
+                          </Stack>
                         </Table.Td>
                         <Table.Td>
                           <Badge color={statusColor(ticket.status)} variant="light">
@@ -161,7 +174,15 @@ const Tickets: FC = () => {
                   </Grid.Col>
                   <Grid.Col span={12}>
                     <Text size="sm" c="dimmed">{t('admin.ticket.col.description')}</Text>
-                    <Text mt={4} style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</Text>
+                    <TicketDescriptionPreview source={selectedTicket.description} />
+                  </Grid.Col>
+                  <Grid.Col span={12}>
+                    <TicketAttachmentList
+                      attachments={selectedTicket.attachments}
+                      ticketId={selectedTicket.id}
+                      canUpload={selectedTicket.status === 'Pending'}
+                      onUploaded={handleAttachmentsUploaded}
+                    />
                   </Grid.Col>
                 </Grid>
 

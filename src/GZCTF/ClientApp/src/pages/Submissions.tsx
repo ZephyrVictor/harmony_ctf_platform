@@ -12,7 +12,6 @@ import {
   Stack,
   Table,
   Text,
-  Textarea,
   Title,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
@@ -21,10 +20,12 @@ import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TicketAttachmentList, TicketAttachmentPicker, TicketAttachmentSummary } from '@Components/TicketAttachments'
+import { TicketDescriptionEditor, TicketDescriptionPreview } from '@Components/TicketDescription'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
 import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
-import { createTicket, getMySubmissions, getMyTickets, SubmissionRecordDto, TicketDto } from '@Utils/ExtApi'
+import { createTicket, getMySubmissions, getMyTickets, SubmissionRecordDto, TicketDto, uploadTicketAttachments } from '@Utils/ExtApi'
 import { Role } from '@Api'
 
 const statusColor = (status: string) =>
@@ -40,6 +41,7 @@ const Submissions: FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<SubmissionRecordDto | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketDto | null>(null)
   const [ticketDesc, setTicketDesc] = useState('')
+  const [ticketFiles, setTicketFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [page, setPage] = useState(1)
   const perPage = 20
@@ -69,6 +71,7 @@ const Submissions: FC = () => {
   const openTicket = (record: SubmissionRecordDto) => {
     setSelectedRecord(record)
     setTicketDesc('')
+    setTicketFiles([])
     ticketModalHandlers.open()
   }
 
@@ -81,8 +84,17 @@ const Submissions: FC = () => {
     if (!selectedRecord || !ticketDesc.trim()) return
     setSaving(true)
     try {
-      await createTicket({ submissionId: selectedRecord.submissionId, description: ticketDesc })
-      showSuccessMsg(t('common.content.save_success'), t)
+      const ticket = await createTicket({ submissionId: selectedRecord.submissionId, description: ticketDesc })
+      let uploadFailed = false
+      if (ticketFiles.length > 0) {
+        try {
+          await uploadTicketAttachments(ticket.id, ticketFiles)
+        } catch (err: any) {
+          uploadFailed = true
+          showErrorMsg(err, t)
+        }
+      }
+      if (!uploadFailed) showSuccessMsg(t('common.content.save_success'), t)
       ticketModalHandlers.close()
       await load()
     } catch (err: any) {
@@ -90,6 +102,14 @@ const Submissions: FC = () => {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleAttachmentsUploaded = (attachments: TicketDto['attachments']) => {
+    if (!selectedTicket) return
+    setSelectedTicket({ ...selectedTicket, attachments })
+    setTickets((items) => items.map((ticket) => (
+      ticket.id === selectedTicket.id ? { ...ticket, attachments } : ticket
+    )))
   }
 
   const pagedRecords = records.slice((page - 1) * perPage, page * perPage)
@@ -133,14 +153,17 @@ const Submissions: FC = () => {
                           </Table.Td>
                           <Table.Td>
                             {ticket ? (
-                              <Badge
-                                color={statusColor(ticket.status)}
-                                variant="light"
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => openDetail(ticket)}
-                              >
-                                {ticket.status}
-                              </Badge>
+                              <Stack gap={4} align="flex-start">
+                                <Badge
+                                  color={statusColor(ticket.status)}
+                                  variant="light"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => openDetail(ticket)}
+                                >
+                                  {ticket.status}
+                                </Badge>
+                                <TicketAttachmentSummary attachments={ticket.attachments} />
+                              </Stack>
                             ) : r.isPenalty ? (
                               <Button
                                 size="xs"
@@ -150,9 +173,7 @@ const Submissions: FC = () => {
                               >
                                 {t('game.button.create_ticket')}
                               </Button>
-                            ) : (
-                              <Text size="sm" c="dimmed">—</Text>
-                            )}
+                            ) : null}
                           </Table.Td>
                         </Table.Tr>
                       )
@@ -183,13 +204,14 @@ const Submissions: FC = () => {
               </Group>
             </Card>
           )}
-          <Textarea
+          <TicketDescriptionEditor
             label={t('game.content.ticket.description')}
             value={ticketDesc}
-            onChange={(e) => setTicketDesc(e.currentTarget.value)}
+            onChange={setTicketDesc}
             minRows={3}
             required
           />
+          <TicketAttachmentPicker files={ticketFiles} onChange={setTicketFiles} disabled={saving} />
           <Group justify="flex-end">
             <Button variant="default" onClick={ticketModalHandlers.close}>
               {t('common.content.cancel')}
@@ -238,7 +260,15 @@ const Submissions: FC = () => {
               </Grid.Col>
               <Grid.Col span={12}>
                 <Text size="sm" c="dimmed">{t('admin.ticket.col.description')}</Text>
-                <Text mt={4} style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</Text>
+                <TicketDescriptionPreview source={selectedTicket.description} />
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <TicketAttachmentList
+                  attachments={selectedTicket.attachments}
+                  ticketId={selectedTicket.id}
+                  canUpload={selectedTicket.status === 'Pending'}
+                  onUploaded={handleAttachmentsUploaded}
+                />
               </Grid.Col>
             </Grid>
 

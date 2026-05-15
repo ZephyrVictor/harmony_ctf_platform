@@ -23,9 +23,9 @@ public class CompetitionSettingsService(ICompetitionSettingRepository repository
 
     public async Task<T> Get<T>(string key, CancellationToken token = default)
     {
-        var result = await repository.Get<T>(key, token);
-        if (result is not null)
-            return result;
+        var dbSettings = await repository.GetAll(token);
+        if (dbSettings.TryGetValue(key, out var dbJson))
+            return JsonSerializer.Deserialize<T>(dbJson, JsonOptions)!;
 
         if (Defaults.TryGetValue(key, out var defaultJson))
             return JsonSerializer.Deserialize<T>(defaultJson, JsonOptions)!;

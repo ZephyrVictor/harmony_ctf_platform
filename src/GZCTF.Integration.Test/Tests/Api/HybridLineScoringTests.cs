@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
+using System.Text.Json;
 using GZCTF.Controllers;
 using GZCTF.Integration.Test.Base;
 using GZCTF.Models;
@@ -9,7 +11,9 @@ using GZCTF.Models.Request.Game;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Scoring;
 using GZCTF.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Xunit;
 
 namespace GZCTF.Integration.Test.Tests.Api;
@@ -17,6 +21,11 @@ namespace GZCTF.Integration.Test.Tests.Api;
 [Collection(nameof(IntegrationTestCollection))]
 public class HybridLineScoringTests(GZCTFApplicationFactory factory)
 {
+    static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new DateTimeOffsetJsonConverter() }
+    };
+
     [Fact]
     public async Task HybridLine_SubmissionsScorePerFlagWithoutChallengeBonus()
     {
@@ -36,7 +45,7 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         await Submit(client, game.Id, challengeId, "166");
         Assert.Equal(4, await GetTeamScore(client, game.Id, team.Id));
         var detail = await GetChallengeDetail(client, game.Id, challengeId);
-        var solvedFlag = Assert.Single(detail.Flags.Where(f => f.IsSolved));
+        var solvedFlag = Assert.Single(detail.Flags, f => f.IsSolved);
         Assert.Equal("Flaw1", solvedFlag.FlawNo);
 
         await Submit(client, game.Id, challengeId, "c:348-350");
@@ -159,6 +168,24 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         Assert.Equal(HttpStatusCode.BadRequest, updateResponse.StatusCode);
     }
 
+    [Fact]
+    public void HybridLine_PositiveFlagIdempotencyOnlyHandlesTargetUniqueConstraint()
+    {
+        ScoreResult positiveFlagHit = new()
+        {
+            MatchedFlagId = Guid.NewGuid(),
+            ScoreChange = 4
+        };
+
+        Assert.True(IsPositiveFlagDuplicateConstraintViolation(
+            positiveFlagHit, CreateUniqueViolation("IX_SubmissionRecords_ParticipationId_MatchedFlagId")));
+        Assert.False(IsPositiveFlagDuplicateConstraintViolation(
+            positiveFlagHit, CreateUniqueViolation("PK_FirstSolves")));
+        Assert.False(IsPositiveFlagDuplicateConstraintViolation(
+            new ScoreResult { MatchedFlagId = positiveFlagHit.MatchedFlagId, ScoreChange = 0 },
+            CreateUniqueViolation("IX_SubmissionRecords_ParticipationId_MatchedFlagId")));
+    }
+
     private async Task<int> CreateHybridLineChallengeAsync(int gameId)
     {
         using var scope = factory.Services.CreateScope();
@@ -219,7 +246,7 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
     {
         var response = await client.GetAsync($"/api/Game/{gameId}/Challenges/{challengeId}");
         response.EnsureSuccessStatusCode();
-        var detail = await response.Content.ReadFromJsonAsync<ChallengeDetailModel>();
+        var detail = await response.Content.ReadFromJsonAsync<ChallengeDetailModel>(JsonOptions);
         Assert.NotNull(detail);
         return detail!;
     }
@@ -228,9 +255,26 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
     {
         var response = await client.GetAsync($"/api/Game/{gameId}/Scoreboard");
         response.EnsureSuccessStatusCode();
-        var scoreboard = await response.Content.ReadFromJsonAsync<ScoreboardModel>();
+        var scoreboard = await response.Content.ReadFromJsonAsync<ScoreboardSnapshot>(JsonOptions);
         Assert.NotNull(scoreboard);
-        Assert.True(scoreboard!.Items.TryGetValue(teamId, out var item), $"Team {teamId} should be on scoreboard");
+        var item = Assert.Single(scoreboard!.Items, i => i.Id == teamId);
         return item.Score;
     }
+
+    private sealed record ScoreboardSnapshot(List<ScoreboardItem> Items);
+
+    private static bool IsPositiveFlagDuplicateConstraintViolation(ScoreResult result, DbUpdateException exception)
+    {
+        var method = typeof(GameController).GetMethod(
+            "IsPositiveFlagDuplicateConstraintViolation",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        return (bool)method!.Invoke(null, [result, exception])!;
+    }
+
+    private static DbUpdateException CreateUniqueViolation(string constraintName) =>
+        new("database update failed",
+            new PostgresException("duplicate key value violates unique constraint", "ERROR", "ERROR",
+                PostgresErrorCodes.UniqueViolation, constraintName: constraintName));
 }

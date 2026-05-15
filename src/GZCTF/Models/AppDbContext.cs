@@ -44,6 +44,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<ChallengePenalty> ChallengePenalties { get; set; } = null!;
     public DbSet<SubmissionRecord> SubmissionRecords { get; set; } = null!;
     public DbSet<Ticket> Tickets { get; set; } = null!;
+    public DbSet<TicketAttachment> TicketAttachments { get; set; } = null!;
     public DbSet<BigScreenEvent> BigScreenEvents { get; set; } = null!;
     public DbSet<CompetitionSetting> CompetitionSettings { get; set; } = null!;
 
@@ -348,6 +349,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.HasOne(e => e.LocalFile)
                 .WithMany()
                 .HasForeignKey(e => e.LocalFileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Navigation(e => e.LocalFile).AutoInclude();
+        });
+
+        builder.Entity<TicketAttachment>(entity =>
+        {
+            entity.HasOne(e => e.Ticket)
+                .WithMany(e => e.Attachments)
+                .HasForeignKey(e => e.TicketId);
+
+            entity.HasOne(e => e.LocalFile)
+                .WithMany()
+                .HasForeignKey(e => e.LocalFileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Uploader)
+                .WithMany()
+                .HasForeignKey(e => e.UploaderId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.Navigation(e => e.LocalFile).AutoInclude();

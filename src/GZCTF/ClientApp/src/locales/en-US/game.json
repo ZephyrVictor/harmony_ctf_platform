@@ -103,14 +103,27 @@
       "time": "Time"
     },
     "ticket": {
+      "attachment_count": "{{count}} image(s)",
+      "attachment_invalid_type": "Only image files can be attached.",
+      "attachment_limit_reached": "Attachment limit reached.",
+      "attachment_too_large": "Each image must be 10 MiB or smaller.",
+      "attachment_too_many": "A ticket can have up to 5 images.",
+      "attachments": "Attachments",
       "create_title": "Create Ticket",
       "description": "Description",
       "detail_title": "Ticket Detail",
+      "edit": "Edit",
       "my_tickets": "My Tickets",
+      "no_attachments": "No image attachments yet.",
+      "no_description": "No appeal description yet.",
+      "open_attachment": "Open attachment",
       "pending_notice": "Your ticket is pending review. Please wait for the admin to process it.",
+      "preview": "Preview",
       "refund_bonus": "Refund / Bonus",
       "review_result": "Review Result",
-      "submission_id": "Submission ID"
+      "submission_id": "Submission ID",
+      "upload_help": "Up to 5 images, 10 MiB each.",
+      "upload_images": "Upload images"
     },
     "writeup": {
       "current": "Current Writeup",

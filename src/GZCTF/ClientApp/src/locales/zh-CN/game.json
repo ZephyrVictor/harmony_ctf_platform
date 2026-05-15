@@ -74,14 +74,27 @@
       "time": "时间"
     },
     "ticket": {
+      "attachment_count": "{{count}} 张图片",
+      "attachment_invalid_type": "仅支持上传图片附件。",
+      "attachment_limit_reached": "附件数量已达上限。",
+      "attachment_too_large": "单张图片不能超过 10 MiB。",
+      "attachment_too_many": "每个工单最多上传 5 张图片。",
+      "attachments": "附件图片",
       "create_title": "发起工单",
       "description": "申诉描述",
       "detail_title": "工单详情",
+      "edit": "编辑",
       "my_tickets": "我的工单",
+      "no_attachments": "暂无图片附件",
+      "no_description": "暂无申诉描述",
+      "open_attachment": "打开附件",
       "pending_notice": "工单正在审核中，请等待管理员处理。",
+      "preview": "预览",
       "refund_bonus": "返还 / 补偿",
       "review_result": "审核结果",
-      "submission_id": "提交编号"
+      "submission_id": "提交编号",
+      "upload_help": "最多 5 张图片，单张不超过 10 MiB。",
+      "upload_images": "上传图片"
     },
     "no_cheat": {
       "comment": "看起来大家都很老实呢",

@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace GZCTF.Controllers;
 
@@ -56,6 +57,8 @@ public class GameController(
     AppDbContext dbContext,
     ScoringService scoringService) : ControllerBase
 {
+    const string PositiveFlagUniqueIndexName = "IX_SubmissionRecords_ParticipationId_MatchedFlagId";
+
     /// <summary>
     /// Get the recent games
     /// </summary>
@@ -1087,7 +1090,7 @@ public class GameController(
                 await transaction.RollbackAsync(token);
                 await Task.Delay((retry + 1) * 100, token);
             }
-            catch (DbUpdateException ex) when (IsPositiveFlagHit(scoreResult))
+            catch (DbUpdateException ex) when (IsPositiveFlagDuplicateConstraintViolation(scoreResult, ex))
             {
                 await transaction.RollbackAsync(token);
                 dbContext.ChangeTracker.Clear();
@@ -1098,14 +1101,20 @@ public class GameController(
                     .AsNoTracking()
                     .Where(r => r.MatchedFlagId == scoreResult!.MatchedFlagId
                                 && r.ScoreChange > 0
-                                && (r.ParticipationId == context.Participation!.Id
-                                    || (r.Submission != null
-                                        && r.Submission.ParticipationId == context.Participation!.Id)))
+                                && r.ParticipationId == context.Participation!.Id)
                     .OrderBy(r => r.CreatedAt)
-                    .Select(r => r.SubmissionId)
+                    .Select(r => (int?)r.SubmissionId)
                     .FirstOrDefaultAsync(token);
 
-                return Ok(new { Id = existingSubmissionId, Message = "This flag has already been submitted" });
+                if (existingSubmissionId.HasValue)
+                    return Ok(new { Id = existingSubmissionId.Value, Message = "This flag has already been submitted" });
+
+                logger.LogError(ex,
+                    "Positive flag unique constraint violation found no existing submission for challenge {ChallengeId}",
+                    challengeId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new RequestResponse(localizer[nameof(Resources.Program.Error_InternalServerError)],
+                        StatusCodes.Status500InternalServerError));
             }
             catch (Exception ex)
             {
@@ -1124,6 +1133,14 @@ public class GameController(
 
     private static bool IsPositiveFlagHit(ScoreResult? result) =>
         result?.MatchedFlagId.HasValue == true && result.ScoreChange > 0;
+
+    private static bool IsPositiveFlagDuplicateConstraintViolation(ScoreResult? result, DbUpdateException exception) =>
+        IsPositiveFlagHit(result)
+        && exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: PositiveFlagUniqueIndexName
+        };
 
     /// <summary>
     /// Queries flag status

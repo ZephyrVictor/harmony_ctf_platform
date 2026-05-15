@@ -119,7 +119,25 @@
       "萬籟俱寂，唯有 flag 的錯誤提示在耳邊響起。",
       "陌上花開，可緩緩歸矣。flag 未得而返。",
       "風蕭蕭兮易水寒，無奈 flag 仍未到彼岸。"
-    ]
+    ],
+    "line_range_placeholder": "输入行号或范围，如 56 或 77-82",
+    "line_range_label": "漏洞行号",
+    "hybrid_line_placeholder": "输入行号、范围或精确答案",
+    "hybrid_line_label": "漏洞行号 / 答案",
+    "visible_flags": "可见 Flag",
+    "visible_flags_empty": "暂无可见 Flag 配置",
+    "visible_flag_fallback": "Flag {{index}}",
+    "all_flags_completed": "全部 Flag 已完成",
+    "answer_type": {
+      "exact": "精确匹配",
+      "single_line": "单行",
+      "line_range": "行号范围",
+      "multi_line": "多行"
+    },
+    "flag_status": {
+      "completed": "已完成",
+      "pending": "未完成"
+    }
   },
   "file_type": {
     "local": "本地附件",

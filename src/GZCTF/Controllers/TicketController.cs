@@ -6,6 +6,8 @@ using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 
 namespace GZCTF.Controllers;
 
@@ -18,10 +20,23 @@ namespace GZCTF.Controllers;
 public class TicketController(
     ITicketRepository ticketRepository,
     ISubmissionRecordRepository recordRepository,
+    IBlobRepository blobRepository,
     ScoringService scoringService,
     CompetitionSettingsService settingsService,
     CacheHelper cacheHelper) : ControllerBase
 {
+    const int MaxAttachmentCount = 5;
+    const long MaxAttachmentSize = 10 * 1024 * 1024;
+
+    static readonly IReadOnlyDictionary<string, AttachmentImageFormat> AllowedAttachmentImageFormats =
+        new Dictionary<string, AttachmentImageFormat>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["image/png"] = new("image/png", "png"),
+            ["image/jpeg"] = new("image/jpeg", "jpg"),
+            ["image/gif"] = new("image/gif", "gif"),
+            ["image/webp"] = new("image/webp", "webp")
+        };
+
     /// <summary>
     /// Create a ticket for a penalty submission
     /// </summary>
@@ -42,11 +57,14 @@ public class TicketController(
             return BadRequest(new RequestResponse("Submission not found"));
 
         var currentUserId = Guid.Parse(userId);
-        if (record.Submission.UserId != currentUserId)
+        if (!SubmissionBelongsToUser(record.Submission, currentUserId))
             return Forbid();
 
         if (!record.IsPenalty)
             return BadRequest(new RequestResponse("Only penalty submissions can be appealed"));
+
+        if (model.GameId.HasValue && record.Submission.GameId != model.GameId.Value)
+            return BadRequest(new RequestResponse("Submission does not belong to the specified game"));
 
         var maxTickets = await settingsService.Get<int>("Ticket.MaxTicketsPerSubmission", token);
         var existingCount = await ticketRepository.CountBySubmission(model.SubmissionId, token);
@@ -61,7 +79,105 @@ public class TicketController(
         };
 
         ticket = await ticketRepository.CreateTicket(ticket, token);
-        return CreatedAtAction(nameof(GetMyTickets), null, ToDto(ticket));
+        return CreatedAtAction(nameof(GetTicket), new { ticketId = ticket.Id }, ToDto(ticket));
+    }
+
+    /// <summary>
+    /// Upload image attachments to a pending ticket
+    /// </summary>
+    [RequireUser]
+    [HttpPost("{ticketId:guid}/attachments")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(TicketAttachmentDto[]), StatusCodes.Status201Created)]
+    [RequestFormLimits(ValueLengthLimit = int.MaxValue, MultipartBodyLengthLimit = MaxAttachmentCount * MaxAttachmentSize)]
+    public async Task<IActionResult> UploadAttachments(
+        [FromRoute] Guid ticketId,
+        [FromForm] List<IFormFile>? files,
+        CancellationToken token)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized(new RequestResponse("User not found"));
+
+        var ticket = await ticketRepository.GetTicket(ticketId, token);
+        if (ticket is null)
+            return NotFound(new RequestResponse("Ticket not found"));
+
+        var currentUserId = Guid.Parse(userId);
+        if (ticket.UserId != currentUserId)
+            return Forbid();
+
+        if (ticket.Status != TicketStatus.Pending)
+            return BadRequest(new RequestResponse("Only pending tickets can accept attachments"));
+
+        if (ticket.Submission is null || !SubmissionBelongsToUser(ticket.Submission, currentUserId))
+            return Forbid();
+
+        if (files is null || files.Count == 0)
+            return BadRequest(new RequestResponse("At least one attachment is required"));
+
+        List<ValidatedAttachmentImage> validatedFiles = [];
+        foreach (var file in files)
+        {
+            if (file.Length <= 0)
+            {
+                await DisposeValidatedAttachmentImages(validatedFiles);
+                return BadRequest(new RequestResponse("Attachment is empty"));
+            }
+
+            if (file.Length > MaxAttachmentSize)
+            {
+                await DisposeValidatedAttachmentImages(validatedFiles);
+                return BadRequest(new RequestResponse($"Attachment exceeds {MaxAttachmentSize / 1024 / 1024} MiB"));
+            }
+
+            var validated = await ValidateAttachmentImage(file, token);
+            if (validated is null)
+            {
+                await DisposeValidatedAttachmentImages(validatedFiles);
+                return BadRequest(new RequestResponse("Only png, jpeg, gif, or webp raster image attachments are supported"));
+            }
+
+            validatedFiles.Add(validated);
+        }
+
+        List<TicketAttachment> attachments = [];
+        try
+        {
+            foreach (var validated in validatedFiles)
+            {
+                var attachmentId = Guid.NewGuid();
+                var localFile = await blobRepository.CreateOrUpdateBlobFromStream(
+                    $"{attachmentId:N}.{validated.Extension}", validated.Content, token);
+
+                attachments.Add(new TicketAttachment
+                {
+                    Id = attachmentId,
+                    LocalFileId = localFile.Id,
+                    LocalFile = localFile,
+                    UploaderId = currentUserId,
+                    ContentType = validated.ContentType
+                });
+            }
+
+            var result = await ticketRepository.AddAttachments(ticketId, attachments, MaxAttachmentCount, token);
+            if (result is null)
+            {
+                foreach (var attachment in attachments)
+                {
+                    if (attachment.LocalFile is not null)
+                        await blobRepository.DeleteBlob(attachment.LocalFile, token);
+                }
+
+                return BadRequest(new RequestResponse($"Maximum of {MaxAttachmentCount} attachment(s) per ticket exceeded"));
+            }
+
+            return CreatedAtAction(nameof(GetTicket), new { ticketId }, result.Select(ToDto).ToArray());
+        }
+        finally
+        {
+            await DisposeValidatedAttachmentImages(validatedFiles);
+        }
     }
 
     /// <summary>
@@ -228,14 +344,91 @@ public class TicketController(
             Answer = ticket.Submission?.Answer,
             PenaltyScore = ticket.Submission?.SubmissionRecord?.IsPenalty == true
                 ? Math.Abs(ticket.Submission.SubmissionRecord.ScoreChange)
-                : 0
+                : 0,
+            Attachments = ticket.Attachments
+                .OrderBy(a => a.CreatedAt)
+                .Select(ToDto)
+                .ToArray()
         };
+    }
+
+    private static TicketAttachmentDto ToDto(TicketAttachment attachment)
+    {
+        return new TicketAttachmentDto
+        {
+            Id = attachment.Id,
+            FileName = attachment.LocalFile?.Name ?? string.Empty,
+            FileSize = attachment.LocalFile?.FileSize ?? 0,
+            Url = attachment.LocalFile?.Url(),
+            ContentType = attachment.ContentType,
+            CreatedAt = attachment.CreatedAt
+        };
+    }
+
+    private static bool SubmissionBelongsToUser(Submission submission, Guid userId) =>
+        submission.UserId == userId ||
+        submission.Participation.Members.Any(m => m.UserId == userId);
+
+    private static async Task<ValidatedAttachmentImage?> ValidateAttachmentImage(
+        IFormFile file,
+        CancellationToken token)
+    {
+        var content = BufferHelper.GetTempStream(file.Length);
+
+        try
+        {
+            await file.CopyToAsync(content, token);
+            content.Position = 0;
+
+            using var image = await Image.LoadAsync(content, token);
+            var format = image.Metadata.DecodedImageFormat;
+            if (format is null || !TryGetAttachmentImageFormat(format, out var imageFormat))
+            {
+                await content.DisposeAsync();
+                return null;
+            }
+
+            content.Position = 0;
+            return new(content, imageFormat.ContentType, imageFormat.Extension);
+        }
+        catch (Exception) when (!token.IsCancellationRequested)
+        {
+            await content.DisposeAsync();
+            return null;
+        }
+    }
+
+    private static bool TryGetAttachmentImageFormat(IImageFormat format, out AttachmentImageFormat imageFormat)
+    {
+        if (AllowedAttachmentImageFormats.TryGetValue(format.DefaultMimeType, out var knownFormat))
+        {
+            imageFormat = knownFormat;
+            return true;
+        }
+
+        imageFormat = null!;
+        return false;
+    }
+
+    private static async Task DisposeValidatedAttachmentImages(IEnumerable<ValidatedAttachmentImage> attachments)
+    {
+        foreach (var attachment in attachments)
+            await attachment.DisposeAsync();
+    }
+
+    private sealed record AttachmentImageFormat(string ContentType, string Extension);
+
+    private sealed record ValidatedAttachmentImage(Stream Content, string ContentType, string Extension)
+        : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => Content.DisposeAsync();
     }
 }
 
 public class TicketCreateModel
 {
     public int SubmissionId { get; set; }
+    public int? GameId { get; set; }
     public string Description { get; set; } = string.Empty;
 }
 
@@ -263,4 +456,15 @@ public class TicketDto
     public string? ChallengeName { get; set; }
     public string? Answer { get; set; }
     public int PenaltyScore { get; set; }
+    public TicketAttachmentDto[] Attachments { get; set; } = [];
+}
+
+public class TicketAttachmentDto
+{
+    public Guid Id { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public long FileSize { get; set; }
+    public string? Url { get; set; }
+    public string? ContentType { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }

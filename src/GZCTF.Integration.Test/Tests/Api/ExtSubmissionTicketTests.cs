@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using GZCTF.Controllers;
 using GZCTF.Integration.Test.Base;
 using GZCTF.Models;
@@ -15,6 +16,11 @@ namespace GZCTF.Integration.Test.Tests.Api;
 [Collection(nameof(IntegrationTestCollection))]
 public class ExtSubmissionTicketTests(GZCTFApplicationFactory factory, ITestOutputHelper output)
 {
+    static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new DateTimeOffsetJsonConverter() }
+    };
+
     [Fact]
     public async Task ExtSubmissionAndTicketLists_FilterByGameId()
     {
@@ -45,14 +51,14 @@ public class ExtSubmissionTicketTests(GZCTFApplicationFactory factory, ITestOutp
 
         var submissionResponse = await userClient.GetAsync($"/api/ext/submissions/mine?gameId={gameA.Id}");
         submissionResponse.EnsureSuccessStatusCode();
-        var submissions = await submissionResponse.Content.ReadFromJsonAsync<SubmissionRecordDto[]>();
+        var submissions = await submissionResponse.Content.ReadFromJsonAsync<SubmissionRecordDto[]>(JsonOptions);
         var submission = Assert.Single(submissions!);
         Assert.Equal(gameA.Id, submission.GameId);
         Assert.Equal(challengeA.Id, submission.ChallengeId);
 
         var userTicketResponse = await userClient.GetAsync($"/api/ext/tickets/mine?gameId={gameA.Id}");
         userTicketResponse.EnsureSuccessStatusCode();
-        var userTickets = await userTicketResponse.Content.ReadFromJsonAsync<TicketDto[]>();
+        var userTickets = await userTicketResponse.Content.ReadFromJsonAsync<TicketDto[]>(JsonOptions);
         var userTicket = Assert.Single(userTickets!);
         Assert.Equal(gameA.Id, userTicket.GameId);
 
@@ -63,7 +69,7 @@ public class ExtSubmissionTicketTests(GZCTFApplicationFactory factory, ITestOutp
 
         var adminTicketResponse = await adminClient.GetAsync($"/api/ext/tickets?gameId={gameA.Id}");
         adminTicketResponse.EnsureSuccessStatusCode();
-        var adminTickets = await adminTicketResponse.Content.ReadFromJsonAsync<TicketDto[]>();
+        var adminTickets = await adminTicketResponse.Content.ReadFromJsonAsync<TicketDto[]>(JsonOptions);
         var adminTicket = Assert.Single(adminTickets!);
         Assert.Equal(gameA.Id, adminTicket.GameId);
 

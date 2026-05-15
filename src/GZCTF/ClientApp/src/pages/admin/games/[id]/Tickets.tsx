@@ -21,6 +21,8 @@ import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
+import { TicketAttachmentList, TicketAttachmentSummary } from '@Components/TicketAttachments'
+import { TicketDescriptionPreview } from '@Components/TicketDescription'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { getInputNumber, showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import { approveTicket, getAllTickets, getSettings, rejectTicket, TicketDto } from '@Utils/ExtApi'
@@ -177,7 +179,10 @@ const AdminTickets: FC = () => {
                       <Code>{ticket.answer ?? '—'}</Code>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm" lineClamp={2}>{ticket.description}</Text>
+                      <Stack gap={4}>
+                        <Text size="sm" lineClamp={2}>{ticket.description}</Text>
+                        <TicketAttachmentSummary attachments={ticket.attachments} />
+                      </Stack>
                     </Table.Td>
                     <Table.Td>
                       <Badge color={statusColor(ticket.status)} variant="light">
@@ -237,7 +242,10 @@ const AdminTickets: FC = () => {
               </Grid.Col>
               <Grid.Col span={12}>
                 <Text size="sm" c="dimmed">{t('admin.ticket.col.description')}</Text>
-                <Text mt={4} style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</Text>
+                <TicketDescriptionPreview source={selectedTicket.description} />
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <TicketAttachmentList attachments={selectedTicket.attachments} />
               </Grid.Col>
             </Grid>
 
