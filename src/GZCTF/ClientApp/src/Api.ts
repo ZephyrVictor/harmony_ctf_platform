@@ -2015,6 +2015,8 @@ export interface ChallengeDetailModel {
   flagMatchMode?: FlagMatchMode;
   /** Player-visible flag metadata for HybridLine subsystem challenges */
   flags?: HybridLineFlagInfoModel[];
+  /** Whether all enabled HybridLine flags have been solved */
+  allEnabledFlagsSolved?: boolean;
   /**
    * Current attempt count
    * @format int32

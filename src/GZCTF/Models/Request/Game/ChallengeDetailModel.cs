@@ -63,6 +63,11 @@ public class ChallengeDetailModel
     public List<HybridLineFlagInfoModel> Flags { get; set; } = [];
 
     /// <summary>
+    /// Whether all enabled HybridLine flags have been solved
+    /// </summary>
+    public bool AllEnabledFlagsSolved { get; set; }
+
+    /// <summary>
     /// Current attempt count
     /// </summary>
     public int Attempts { get; set; }
@@ -92,6 +97,11 @@ public class ChallengeDetailModel
                         f, solvedFlagIds?.Contains(f.Id) ?? false))
                     .ToList()
                 : [],
+            AllEnabledFlagsSolved = gameInstance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine
+                                    && gameInstance.Challenge.Flags.Any(f => f.IsEnabled)
+                                    && gameInstance.Challenge.Flags
+                                        .Where(f => f.IsEnabled)
+                                        .All(f => solvedFlagIds?.Contains(f.Id) ?? false),
             Limit = gameInstance.Challenge.SubmissionLimit,
             Deadline = gameInstance.Challenge.DeadlineUtc,
             Attempts = attemptCount,

@@ -552,6 +552,7 @@ public class GameRepository(
 
         // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and HybridLine flag hits)
         // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
+        List<ScoreRecordSnapshot> scoredRecordEvents = [];
         foreach (var rec in submissionRecordsDetail)
         {
             if (!items.TryGetValue(rec.ParticipationId, out var item))
@@ -565,6 +566,7 @@ public class GameRepository(
             if (rec.MatchedFlagId is null)
             {
                 item.Score += rec.ScoreChange;
+                scoredRecordEvents.Add(rec);
                 continue;
             }
 
@@ -584,6 +586,7 @@ public class GameRepository(
                 continue;
 
             item.Score += rec.ScoreChange;
+            scoredRecordEvents.Add(rec);
 
             if (rec.SubmitTimeUtc > item.LastSubmissionTime)
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
@@ -605,8 +608,8 @@ public class GameRepository(
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
         }
 
-        // group SubmissionRecords for timeline generation
-        var recordTimelineByTeam = submissionRecordsDetail
+        // group actually-scored SubmissionRecords for timeline generation
+        var recordTimelineByTeam = scoredRecordEvents
             .GroupBy(r => r.ParticipationId)
             .ToDictionary(g => g.Key, g => g.AsEnumerable());
 

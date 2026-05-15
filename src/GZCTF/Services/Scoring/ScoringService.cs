@@ -231,7 +231,7 @@ public class ScoringService
 
         // Only mark as solved when all flags for this challenge have been submitted
         var totalFlags = await _context.ChallengeFlags
-            .CountAsync(f => f.ChallengeId == challengeId, token);
+            .CountAsync(f => f.ChallengeId == challengeId && f.IsEnabled, token);
 
         var submittedFlags = await _context.SubmissionRecords
             .Where(r => r.MatchedFlagId != null

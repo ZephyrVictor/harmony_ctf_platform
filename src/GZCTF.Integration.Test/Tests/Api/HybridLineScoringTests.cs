@@ -98,7 +98,10 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
 
         await Submit(client, game.Id, challengeId, "166");
 
-        Assert.Equal(0, await GetTeamScore(client, game.Id, team.Id));
+        var scoreboard = await GetScoreboard(client, game.Id);
+        var item = Assert.Single(scoreboard.Items, i => i.Id == team.Id);
+        Assert.Equal(0, item.Score);
+        Assert.Empty(GetOverallTimelineScores(scoreboard, team.Id));
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -194,16 +197,51 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
     }
 
     [Fact]
-    public async Task DisabledFlagsAreIgnoredForExactAndLineRangeMatching()
+    public async Task HybridLine_AllEnabledSolvedStateIncludesHiddenEnabledFlags()
+    {
+        const string password = "HybridLineSolved!123";
+        var user = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), password);
+        var team = await TestDataSeeder.CreateTeamAsync(factory.Services, user.Id, TestDataSeeder.RandomName());
+        var game =
+            await TestDataSeeder.CreateGameAsync(factory.Services, $"HybridLine Solved {TestDataSeeder.RandomName()}");
+        var challengeId = await CreateHybridLineChallengeAsync(game.Id);
+
+        await SetFlagState(challengeId, "Flaw1", isVisible: false, isEnabled: true);
+        await SetFlagState(challengeId, "Flaw4", isVisible: true, isEnabled: false);
+        await TestDataSeeder.JoinGameAsync(factory.Services, game.Id, team.Id, user.Id);
+
+        using var client = factory.CreateClient();
+        var loginResponse = await client.PostAsJsonAsync("/api/Account/LogIn",
+            new LoginModel { UserName = user.UserName, Password = password });
+        loginResponse.EnsureSuccessStatusCode();
+
+        await Submit(client, game.Id, challengeId, "c:348-350");
+
+        var visibleOnlyDetail = await GetChallengeDetail(client, game.Id, challengeId);
+        var visibleFlag = Assert.Single(visibleOnlyDetail.Flags);
+        Assert.Equal("Flaw9", visibleFlag.FlawNo);
+        Assert.True(visibleFlag.IsSolved);
+        Assert.False(visibleOnlyDetail.AllEnabledFlagsSolved);
+
+        await Submit(client, game.Id, challengeId, "166");
+
+        var allEnabledSolvedDetail = await GetChallengeDetail(client, game.Id, challengeId);
+        Assert.True(allEnabledSolvedDetail.AllEnabledFlagsSolved);
+    }
+
+    [Fact]
+    public async Task DisabledFlagsAreIgnoredForExactAndLineRangeMatchingAndCompletion()
     {
         const string password = "DisabledFlags!123";
         var user = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), password);
         var team = await TestDataSeeder.CreateTeamAsync(factory.Services, user.Id, TestDataSeeder.RandomName());
         var game = await TestDataSeeder.CreateGameAsync(factory.Services, $"Disabled Flags {TestDataSeeder.RandomName()}");
         var exactChallengeId = await CreateFlagChallengeAsync(
-            game.Id, FlagMatchMode.Exact, "flag{disabled_exact}", isEnabled: false);
+            game.Id, FlagMatchMode.Exact, "flag{enabled_exact}", isEnabled: true);
+        await AddFlagToChallengeAsync(exactChallengeId, "flag{disabled_exact}", isEnabled: false);
         var lineRangeChallengeId = await CreateFlagChallengeAsync(
-            game.Id, FlagMatchMode.LineRange, "77-82", isEnabled: false);
+            game.Id, FlagMatchMode.LineRange, "77-82", isEnabled: true);
+        await AddFlagToChallengeAsync(lineRangeChallengeId, "90-99", isEnabled: false);
 
         await TestDataSeeder.JoinGameAsync(factory.Services, game.Id, team.Id, user.Id);
 
@@ -216,11 +254,22 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         Assert.Equal(AnswerResult.WrongAnswer,
             await GetSubmissionStatus(client, game.Id, exactChallengeId, exactSubmissionId));
 
-        var lineRangeSubmissionId = await SubmitAndGetId(client, game.Id, lineRangeChallengeId, "78-80");
+        var enabledExactSubmissionId = await SubmitAndGetId(client, game.Id, exactChallengeId, "flag{enabled_exact}");
+        Assert.Equal(AnswerResult.Accepted,
+            await GetSubmissionStatus(client, game.Id, exactChallengeId, enabledExactSubmissionId));
+
+        var lineRangeSubmissionId = await SubmitAndGetId(client, game.Id, lineRangeChallengeId, "92-95");
         Assert.Equal(AnswerResult.WrongAnswer,
             await GetSubmissionStatus(client, game.Id, lineRangeChallengeId, lineRangeSubmissionId));
 
-        Assert.Equal(0, await GetTeamScore(client, game.Id, team.Id));
+        var enabledLineRangeSubmissionId = await SubmitAndGetId(client, game.Id, lineRangeChallengeId, "78-80");
+        Assert.Equal(AnswerResult.Accepted,
+            await GetSubmissionStatus(client, game.Id, lineRangeChallengeId, enabledLineRangeSubmissionId));
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(context.FirstSolves.Any(fs => fs.ChallengeId == exactChallengeId));
+        Assert.True(context.FirstSolves.Any(fs => fs.ChallengeId == lineRangeChallengeId));
     }
 
     [Fact]
@@ -450,6 +499,23 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         await context.SaveChangesAsync();
     }
 
+    private async Task AddFlagToChallengeAsync(int challengeId, string answer, bool isEnabled)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var challenge = await context.GameChallenges.FirstAsync(c => c.Id == challengeId);
+        challenge.Flags.Add(new ChallengeFlag
+        {
+            FlagValue = answer,
+            Challenge = challenge,
+            Score = 4,
+            IsVisible = true,
+            IsEnabled = isEnabled
+        });
+
+        await context.SaveChangesAsync();
+    }
+
     private async Task CreateHybridLineRecord(int gameId, int challengeId, int participationId, int teamId,
         Guid userId, string answer, DateTimeOffset submitTime)
     {
@@ -536,12 +602,25 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
 
     private static async Task<int> GetTeamScore(HttpClient client, int gameId, int teamId)
     {
+        var scoreboard = await GetScoreboard(client, gameId);
+        var item = Assert.Single(scoreboard.Items, i => i.Id == teamId);
+        return item.Score;
+    }
+
+    private static async Task<ScoreboardSnapshot> GetScoreboard(HttpClient client, int gameId)
+    {
         var response = await client.GetAsync($"/api/Game/{gameId}/Scoreboard");
         response.EnsureSuccessStatusCode();
         var scoreboard = await response.Content.ReadFromJsonAsync<ScoreboardSnapshot>(JsonOptions);
         Assert.NotNull(scoreboard);
-        var item = Assert.Single(scoreboard!.Items, i => i.Id == teamId);
-        return item.Score;
+        return scoreboard!;
+    }
+
+    private static IReadOnlyList<int> GetOverallTimelineScores(ScoreboardSnapshot scoreboard, int teamId)
+    {
+        var overall = Assert.Single(scoreboard.Timelines, t => t.DivisionId == 0);
+        var teamTimeline = Assert.Single(overall.Teams, t => t.Id == teamId);
+        return teamTimeline.Items.Select(i => i.Score).ToArray();
     }
 
     private async Task<int> GetTeamScore(int gameId, int teamId)
@@ -555,7 +634,13 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         return item.Score;
     }
 
-    private sealed record ScoreboardSnapshot(List<ScoreboardItem> Items);
+    private sealed record ScoreboardSnapshot(List<ScoreboardItem> Items, List<TimelineDivisionSnapshot> Timelines);
+
+    private sealed record TimelineDivisionSnapshot(int DivisionId, List<TeamTimelineSnapshot> Teams);
+
+    private sealed record TeamTimelineSnapshot(int Id, string Name, List<TimelinePointSnapshot> Items);
+
+    private sealed record TimelinePointSnapshot(long Time, int Score);
 
     private static bool IsPositiveFlagDuplicateConstraintViolation(ScoreResult result, DbUpdateException exception)
     {

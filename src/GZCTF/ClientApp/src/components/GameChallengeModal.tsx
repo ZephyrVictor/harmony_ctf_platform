@@ -42,8 +42,6 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
   const isDynamic =
     challenge?.type === ChallengeType.StaticContainer || challenge?.type === ChallengeType.DynamicContainer
   const isHybridLine = challenge?.flagMatchMode === FlagMatchMode.HybridLine
-  const hybridFlags = challenge?.flags ?? []
-  const isHybridSolved = isHybridLine && hybridFlags.length > 0 && hybridFlags.every((flag) => flag.isSolved === true)
 
   const [disabled, setDisabled] = useState(false)
   const [submitId, setSubmitId] = useState(0)
@@ -267,7 +265,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       cateData={cateData}
       solved={
         isHybridLine
-          ? isHybridSolved
+          ? challenge?.allEnabledFlagsSolved === true
           : (status !== SubmissionType.Unaccepted && status !== undefined) || solvedChallengeId === challengeId
       }
       flag={flag}
