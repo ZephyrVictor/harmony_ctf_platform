@@ -463,6 +463,7 @@ public class GameRepository(
             game.BloodBonus.ThirdBloodFactor
         ];
 
+        List<ScoreTimelineEvent> scoredTimelineEvents = [];
         foreach (var solve in solves.OrderBy(s => s.SubmitTimeUtc))
         {
             // skip if the team is not in the scoreboard
@@ -536,6 +537,10 @@ public class GameRepository(
             // to prevent incorrectly ranking teams with ineligible
             // late submissions above teams with eligible early submissions
             scoreboardItem.Score += item.Score;
+            scoredTimelineEvents.Add(new ScoreTimelineEvent(
+                solve.ParticipantId,
+                item.SubmitTimeUtc,
+                item.Score));
             scoreboardItem.LastSubmissionTime = item.SubmitTimeUtc;
         }
 
@@ -552,7 +557,6 @@ public class GameRepository(
 
         // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and HybridLine flag hits)
         // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
-        List<ScoreRecordSnapshot> scoredRecordEvents = [];
         foreach (var rec in submissionRecordsDetail)
         {
             if (!items.TryGetValue(rec.ParticipationId, out var item))
@@ -566,7 +570,10 @@ public class GameRepository(
             if (rec.MatchedFlagId is null)
             {
                 item.Score += rec.ScoreChange;
-                scoredRecordEvents.Add(rec);
+                scoredTimelineEvents.Add(new ScoreTimelineEvent(
+                    rec.ParticipationId,
+                    rec.SubmitTimeUtc,
+                    rec.ScoreChange));
                 continue;
             }
 
@@ -586,7 +593,10 @@ public class GameRepository(
                 continue;
 
             item.Score += rec.ScoreChange;
-            scoredRecordEvents.Add(rec);
+            scoredTimelineEvents.Add(new ScoreTimelineEvent(
+                rec.ParticipationId,
+                rec.SubmitTimeUtc,
+                rec.ScoreChange));
 
             if (rec.SubmitTimeUtc > item.LastSubmissionTime)
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
@@ -608,8 +618,8 @@ public class GameRepository(
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
         }
 
-        // group actually-scored SubmissionRecords for timeline generation
-        var recordTimelineByTeam = scoredRecordEvents
+        // group actually-scored FirstSolve and SubmissionRecord events for timeline generation
+        var timelineByTeam = scoredTimelineEvents
             .GroupBy(r => r.ParticipationId)
             .ToDictionary(g => g.Key, g => g.AsEnumerable());
 
@@ -661,7 +671,7 @@ public class GameRepository(
                 {
                     var item = items[tid];
 
-                    var events = recordTimelineByTeam.TryGetValue(item.ParticipantId, out var records)
+                    var events = timelineByTeam.TryGetValue(item.ParticipantId, out var records)
                         ? records.Select(r => (Time: r.SubmitTimeUtc, Score: r.ScoreChange))
                             .OrderBy(e => e.Time)
                             .ToArray()
@@ -732,6 +742,11 @@ public class GameRepository(
         int ScoreChange,
         Guid? MatchedFlagId,
         DateTimeOffset SubmitTimeUtc);
+
+    private readonly record struct ScoreTimelineEvent(
+        int ParticipationId,
+        DateTimeOffset SubmitTimeUtc,
+        int ScoreChange);
 
     private static bool CheckDivisionPermission(DivisionItem? division, GamePermission permission,
         int? challengeId = null)

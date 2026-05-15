@@ -270,6 +270,13 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.True(context.FirstSolves.Any(fs => fs.ChallengeId == exactChallengeId));
         Assert.True(context.FirstSolves.Any(fs => fs.ChallengeId == lineRangeChallengeId));
+
+        var scoreboard = await GetScoreboard(client, game.Id);
+        var item = Assert.Single(scoreboard.Items, i => i.Id == team.Id);
+        Assert.True(item.Score > 0);
+        var timelineScores = GetOverallTimelineScores(scoreboard, team.Id);
+        Assert.NotEmpty(timelineScores);
+        Assert.Equal(item.Score, timelineScores[^1]);
     }
 
     [Fact]
