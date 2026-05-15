@@ -53,11 +53,15 @@ public class TicketController(
             return BadRequest(new RequestResponse("Description is required"));
 
         var record = await recordRepository.GetBySubmissionId(model.SubmissionId, token);
-        if (record?.Submission is null)
+        if (record is null)
             return BadRequest(new RequestResponse("Submission not found"));
 
-        var currentUserId = Guid.Parse(userId);
-        if (!SubmissionBelongsToUser(record.Submission, currentUserId))
+        if (record.Submission is null)
+            return BadRequest(new RequestResponse("Submission not found"));
+
+        var parsedUserId = Guid.Parse(userId);
+
+        if (!SubmissionBelongsToUser(record.Submission, parsedUserId))
             return Forbid();
 
         if (!record.IsPenalty)
@@ -75,7 +79,7 @@ public class TicketController(
         {
             Description = model.Description,
             SubmissionId = model.SubmissionId,
-            UserId = currentUserId
+            UserId = parsedUserId
         };
 
         ticket = await ticketRepository.CreateTicket(ticket, token);
@@ -103,14 +107,14 @@ public class TicketController(
         if (ticket is null)
             return NotFound(new RequestResponse("Ticket not found"));
 
-        var currentUserId = Guid.Parse(userId);
-        if (ticket.UserId != currentUserId)
+        var parsedUserId = Guid.Parse(userId);
+        if (ticket.UserId != parsedUserId)
             return Forbid();
 
         if (ticket.Status != TicketStatus.Pending)
             return BadRequest(new RequestResponse("Only pending tickets can accept attachments"));
 
-        if (ticket.Submission is null || !SubmissionBelongsToUser(ticket.Submission, currentUserId))
+        if (ticket.Submission is null || !SubmissionBelongsToUser(ticket.Submission, parsedUserId))
             return Forbid();
 
         if (files is null || files.Count == 0)
@@ -155,7 +159,7 @@ public class TicketController(
                     Id = attachmentId,
                     LocalFileId = localFile.Id,
                     LocalFile = localFile,
-                    UploaderId = currentUserId,
+                    UploaderId = parsedUserId,
                     ContentType = validated.ContentType
                 });
             }
@@ -187,9 +191,9 @@ public class TicketController(
     [HttpGet("mine")]
     [ProducesResponseType(typeof(TicketDto[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyTickets(
-        [FromQuery] int? gameId,
         [FromQuery] int count = 100,
         [FromQuery] int skip = 0,
+        [FromQuery] int? gameId = null,
         CancellationToken token = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -236,7 +240,7 @@ public class TicketController(
         [FromQuery] int skip = 0,
         CancellationToken token = default)
     {
-        var tickets = await ticketRepository.GetAllTickets(status, count, skip, gameId, token);
+        var tickets = await ticketRepository.GetAllTickets(status, gameId, count, skip, token);
         return Ok(tickets.Select(ToDto));
     }
 
@@ -337,7 +341,7 @@ public class TicketController(
             CreatedAt = ticket.CreatedAt,
             ReviewedAt = ticket.ReviewedAt,
             SubmissionId = ticket.SubmissionId,
-            GameId = ticket.Submission?.GameId ?? 0,
+            GameId = ticket.Submission?.GameId,
             UserName = ticket.User?.UserName,
             ReviewerName = ticket.Reviewer?.UserName,
             ChallengeName = ticket.Submission?.GameChallenge?.Title,
@@ -450,7 +454,7 @@ public class TicketDto
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ReviewedAt { get; set; }
     public int SubmissionId { get; set; }
-    public int GameId { get; set; }
+    public int? GameId { get; set; }
     public string? UserName { get; set; }
     public string? ReviewerName { get; set; }
     public string? ChallengeName { get; set; }

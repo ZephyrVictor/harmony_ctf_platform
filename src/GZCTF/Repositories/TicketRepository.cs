@@ -34,7 +34,7 @@ public class TicketRepository(AppDbContext context) : RepositoryBase(context), I
     public Task<Ticket[]> GetUserTickets(Guid userId, int? gameId = null, int count = 100, int skip = 0,
         CancellationToken token = default)
     {
-        var query = Context.Tickets
+        IQueryable<Ticket> query = Context.Tickets
             .Include(t => t.Submission!)
             .ThenInclude(s => s.GameChallenge)
             .Include(t => t.Submission!)
@@ -53,8 +53,8 @@ public class TicketRepository(AppDbContext context) : RepositoryBase(context), I
             .ToArrayAsync(token);
     }
 
-    public Task<Ticket[]> GetAllTickets(TicketStatus? status = null, int count = 100, int skip = 0,
-        int? gameId = null, CancellationToken token = default)
+    public Task<Ticket[]> GetAllTickets(TicketStatus? status = null, int? gameId = null, int count = 100, int skip = 0,
+        CancellationToken token = default)
     {
         IQueryable<Ticket> query = Context.Tickets
             .Include(t => t.Submission!)
