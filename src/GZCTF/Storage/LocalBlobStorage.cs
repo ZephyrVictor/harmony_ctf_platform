@@ -111,11 +111,19 @@ public sealed class LocalBlobStorage : IBlobStorage
         ArgumentNullException.ThrowIfNull(content);
 
         var fullPath = ResolvePhysicalPath(path, ensureDirectory: true);
-        var fileMode = append ? FileMode.Append : FileMode.Create;
 
-        await using var fileStream = new FileStream(fullPath, fileMode, FileAccess.Write, FileShare.None,
-            WriteBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await content.CopyToAsync(fileStream, cancellationToken);
+        if (append)
+        {
+            await using var fileStream = new FileStream(fullPath, FileMode.Append, FileAccess.Write, FileShare.None,
+                WriteBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await content.CopyToAsync(fileStream, cancellationToken);
+            return;
+        }
+
+        await WriteAtomicallyAsync(fullPath, async tempFile =>
+        {
+            await content.CopyToAsync(tempFile, cancellationToken);
+        }, cancellationToken);
     }
 
     public async Task WriteFileAsync(string path, string localFilePath, CancellationToken cancellationToken = default)
@@ -126,11 +134,12 @@ public sealed class LocalBlobStorage : IBlobStorage
 
         const FileOptions copyOptions = FileOptions.Asynchronous | FileOptions.SequentialScan;
 
-        await using var source = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-            WriteBufferSize, copyOptions);
-        await using var destination = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None,
-            WriteBufferSize, copyOptions);
-        await source.CopyToAsync(destination, cancellationToken);
+        await WriteAtomicallyAsync(fullPath, async destination =>
+        {
+            await using var source = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                WriteBufferSize, copyOptions);
+            await source.CopyToAsync(destination, cancellationToken);
+        }, cancellationToken);
     }
 
     public async Task WriteTextAsync(string path, string contents, CancellationToken cancellationToken = default)
@@ -184,6 +193,30 @@ public sealed class LocalBlobStorage : IBlobStorage
 
     private static StorageItem CreateFileItem(string relativePath, FileInfo info) =>
         new(relativePath, info.Name, false, info.Length, info.LastWriteTimeUtc);
+
+    private static async Task WriteAtomicallyAsync(string fullPath, Func<Stream, Task> writeContent,
+        CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(fullPath)!;
+        var tempPath = Path.Combine(directory, $".{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            await using (var tempFile = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                             WriteBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                await writeContent(tempFile);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(tempPath, fullPath, true);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+    }
 
     private string ResolvePhysicalPath(string path, bool ensureDirectory = false)
     {
