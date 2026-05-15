@@ -186,6 +186,41 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
 
         await Submit(client, game.Id, challengeId, "166");
         Assert.Equal(4, await GetTeamScore(client, game.Id, team.Id));
+
+        var disabledSubmissionId = await SubmitAndGetId(client, game.Id, challengeId, "c:348-350");
+        Assert.Equal(AnswerResult.WrongAnswer,
+            await GetSubmissionStatus(client, game.Id, challengeId, disabledSubmissionId));
+        Assert.Equal(4, await GetTeamScore(client, game.Id, team.Id));
+    }
+
+    [Fact]
+    public async Task DisabledFlagsAreIgnoredForExactAndLineRangeMatching()
+    {
+        const string password = "DisabledFlags!123";
+        var user = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), password);
+        var team = await TestDataSeeder.CreateTeamAsync(factory.Services, user.Id, TestDataSeeder.RandomName());
+        var game = await TestDataSeeder.CreateGameAsync(factory.Services, $"Disabled Flags {TestDataSeeder.RandomName()}");
+        var exactChallengeId = await CreateFlagChallengeAsync(
+            game.Id, FlagMatchMode.Exact, "flag{disabled_exact}", isEnabled: false);
+        var lineRangeChallengeId = await CreateFlagChallengeAsync(
+            game.Id, FlagMatchMode.LineRange, "77-82", isEnabled: false);
+
+        await TestDataSeeder.JoinGameAsync(factory.Services, game.Id, team.Id, user.Id);
+
+        using var client = factory.CreateClient();
+        var loginResponse = await client.PostAsJsonAsync("/api/Account/LogIn",
+            new LoginModel { UserName = user.UserName, Password = password });
+        loginResponse.EnsureSuccessStatusCode();
+
+        var exactSubmissionId = await SubmitAndGetId(client, game.Id, exactChallengeId, "flag{disabled_exact}");
+        Assert.Equal(AnswerResult.WrongAnswer,
+            await GetSubmissionStatus(client, game.Id, exactChallengeId, exactSubmissionId));
+
+        var lineRangeSubmissionId = await SubmitAndGetId(client, game.Id, lineRangeChallengeId, "78-80");
+        Assert.Equal(AnswerResult.WrongAnswer,
+            await GetSubmissionStatus(client, game.Id, lineRangeChallengeId, lineRangeSubmissionId));
+
+        Assert.Equal(0, await GetTeamScore(client, game.Id, team.Id));
     }
 
     [Fact]
@@ -342,6 +377,49 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
         return challenge.Id;
     }
 
+    private async Task<int> CreateFlagChallengeAsync(
+        int gameId,
+        FlagMatchMode matchMode,
+        string answer,
+        bool isEnabled)
+    {
+        using var scope = factory.Services.CreateScope();
+        var gameRepository = scope.ServiceProvider.GetRequiredService<IGameRepository>();
+        var challengeRepository = scope.ServiceProvider.GetRequiredService<IGameChallengeRepository>();
+
+        var game = await gameRepository.GetGameById(gameId)
+                   ?? throw new InvalidOperationException($"Game {gameId} not found");
+
+        GameChallenge challenge = new()
+        {
+            Title = $"{matchMode} Challenge {TestDataSeeder.RandomName()}",
+            Content = $"{matchMode} content",
+            Category = ChallengeCategory.Misc,
+            Type = ChallengeType.StaticAttachment,
+            Hints = [],
+            IsEnabled = true,
+            SubmissionLimit = 0,
+            OriginalScore = 100,
+            MinScoreRate = 1,
+            Difficulty = 1,
+            FlagMatchMode = matchMode,
+            Game = game,
+            GameId = game.Id
+        };
+
+        challenge.Flags.Add(new ChallengeFlag
+        {
+            FlagValue = answer,
+            Challenge = challenge,
+            Score = 4,
+            IsVisible = true,
+            IsEnabled = isEnabled
+        });
+
+        await challengeRepository.CreateChallenge(game, challenge);
+        return challenge.Id;
+    }
+
     private async Task<Division> CreateDivision(int gameId, DivisionCreateModel model)
     {
         using var scope = factory.Services.CreateScope();
@@ -427,9 +505,24 @@ public class HybridLineScoringTests(GZCTFApplicationFactory factory)
 
     private static async Task Submit(HttpClient client, int gameId, int challengeId, string answer)
     {
+        _ = await SubmitAndGetId(client, gameId, challengeId, answer);
+    }
+
+    private static async Task<int> SubmitAndGetId(HttpClient client, int gameId, int challengeId, string answer)
+    {
         var response = await client.PostAsJsonAsync($"/api/Game/{gameId}/Challenges/{challengeId}",
             new FlagSubmitModel { Flag = answer });
         response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        return payload.GetProperty("id").GetInt32();
+    }
+
+    private static async Task<AnswerResult> GetSubmissionStatus(HttpClient client, int gameId, int challengeId,
+        int submissionId)
+    {
+        var response = await client.GetAsync($"/api/Game/{gameId}/Challenges/{challengeId}/Status/{submissionId}");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AnswerResult>(JsonOptions);
     }
 
     private static async Task<ChallengeDetailModel> GetChallengeDetail(HttpClient client, int gameId, int challengeId)

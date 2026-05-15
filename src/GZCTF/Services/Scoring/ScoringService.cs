@@ -56,12 +56,13 @@ public class ScoringService
     {
         // 1. Try to match against ChallengeFlags
         var flags = await _flagRepo.GetFlags(challenge.Id, token);
+        var activeFlags = flags.Where(f => f.IsEnabled).ToArray();
 
         var matchedFlag = challenge.FlagMatchMode switch
         {
-            FlagMatchMode.LineRange => MatchLineRange(flags, answer),
-            FlagMatchMode.HybridLine => await MatchHybridLine(challenge, participation, flags, answer, token),
-            _ => flags.FirstOrDefault(f =>
+            FlagMatchMode.LineRange => MatchLineRange(activeFlags, answer),
+            FlagMatchMode.HybridLine => await MatchHybridLine(challenge, participation, activeFlags, answer, token),
+            _ => activeFlags.FirstOrDefault(f =>
                 string.Equals(f.FlagValue, answer, StringComparison.Ordinal))
         };
 
@@ -342,7 +343,7 @@ public class ScoringService
         List<ChallengeFlag> openMatches = [];
         List<ChallengeFlag> completedMatches = [];
 
-        foreach (var flag in flags.Where(f => f.IsEnabled))
+        foreach (var flag in flags)
         {
             var flagAnswer = ParseHybridLineAnswer(
                 string.IsNullOrWhiteSpace(flag.RawAnswer) ? flag.FlagValue : flag.RawAnswer,
