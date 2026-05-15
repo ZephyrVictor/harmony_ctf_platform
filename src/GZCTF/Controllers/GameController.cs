@@ -1015,9 +1015,18 @@ public class GameController(
                     new RequestResponse(localizer[nameof(Resources.Program.Challenge_SubmissionLimitExceeded)]));
             }
 
-            // Process submission through scoring service
-            var scoreResult = await scoringService.ProcessSubmission(
-                instance.Challenge, context.Participation!, answer, token);
+            ScoreResult scoreResult;
+            try
+            {
+                // Process submission through scoring service
+                scoreResult = await scoringService.ProcessSubmission(
+                    instance.Challenge, context.Participation!, answer, token);
+            }
+            catch (InvalidFlagSubmissionException ex)
+            {
+                await transaction.RollbackAsync(token);
+                return BadRequest(new RequestResponse(ex.Message));
+            }
 
             Submission submission = new()
             {

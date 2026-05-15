@@ -17,6 +17,23 @@ public class ChallengeFlag
     public string FlagValue { get; set; } = string.Empty;
 
     /// <summary>
+    /// Explicit answer type for HybridLine challenges
+    /// </summary>
+    public ChallengeFlagAnswerType AnswerType { get; set; } = ChallengeFlagAnswerType.Exact;
+
+    /// <summary>
+    /// Original answer text used for HybridLine normalization
+    /// </summary>
+    [MaxLength(Limits.MaxFlagLength)]
+    public string RawAnswer { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Canonical key after HybridLine normalization
+    /// </summary>
+    [MaxLength(Limits.MaxFlagLength + 16)]
+    public string NormalizedAnswerKey { get; set; } = string.Empty;
+
+    /// <summary>
     /// Independent score for this flag
     /// </summary>
     [Required]
@@ -32,6 +49,31 @@ public class ChallengeFlag
     /// Whether this flag has been assigned to a participant (for dynamic attachment dispatch)
     /// </summary>
     public bool IsOccupied { get; set; }
+
+    /// <summary>
+    /// Whether this flag is visible to players in HybridLine subsystem details
+    /// </summary>
+    public bool IsVisible { get; set; } = true;
+
+    /// <summary>
+    /// Whether this flag participates in matching
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    [MaxLength(64)]
+    public string? FlawNo { get; set; }
+
+    [MaxLength(128)]
+    public string? Repository { get; set; }
+
+    [MaxLength(128)]
+    public string? Module { get; set; }
+
+    [MaxLength(512)]
+    public string? FilePath { get; set; }
+
+    [MaxLength(64)]
+    public string? Cwe { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

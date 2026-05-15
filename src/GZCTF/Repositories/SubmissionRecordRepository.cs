@@ -20,8 +20,8 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
     public Task<bool> ExistsBySubmissionId(int submissionId, CancellationToken token = default)
         => Context.SubmissionRecords.AnyAsync(r => r.SubmissionId == submissionId, token);
 
-    public Task<SubmissionRecord[]> GetByUser(Guid userId, int? challengeId = null, int count = 100, int skip = 0,
-        CancellationToken token = default)
+    public Task<SubmissionRecord[]> GetByUser(Guid userId, int? challengeId = null, int? gameId = null,
+        int count = 100, int skip = 0, CancellationToken token = default)
     {
         var query = Context.SubmissionRecords
             .Include(r => r.Submission!)
@@ -31,6 +31,9 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
 
         if (challengeId.HasValue)
             query = query.Where(r => r.Submission!.ChallengeId == challengeId.Value);
+
+        if (gameId.HasValue)
+            query = query.Where(r => r.Submission!.GameId == gameId.Value);
 
         return query
             .OrderByDescending(r => r.CreatedAt)
@@ -43,9 +46,11 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
         CancellationToken token = default)
         => Context.SubmissionRecords
             .AnyAsync(r => r.MatchedFlagId == flagId
+                           && r.ScoreChange > 0
                            && r.Submission != null
-                           && r.Submission.ChallengeId == challengeId
-                           && r.Submission.ParticipationId == participationId, token);
+                           && (r.ChallengeId == challengeId || r.Submission.ChallengeId == challengeId)
+                           && (r.ParticipationId == participationId
+                               || r.Submission.ParticipationId == participationId), token);
 
     public Task<int> GetTotalScoreChange(int participationId, CancellationToken token = default)
         => Context.SubmissionRecords

@@ -58,6 +58,11 @@ public class ChallengeDetailModel
     public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
 
     /// <summary>
+    /// Player-visible flag metadata for HybridLine subsystem challenges
+    /// </summary>
+    public List<HybridLineFlagInfoModel> Flags { get; set; } = [];
+
+    /// <summary>
     /// Current attempt count
     /// </summary>
     public int Attempts { get; set; }
@@ -79,6 +84,13 @@ public class ChallengeDetailModel
             Title = gameInstance.Challenge.Title,
             Type = gameInstance.Challenge.Type,
             FlagMatchMode = gameInstance.Challenge.FlagMatchMode,
+            Flags = gameInstance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine
+                ? gameInstance.Challenge.Flags
+                    .Where(f => f.IsVisible)
+                    .OrderBy(f => f.SortOrder)
+                    .Select(HybridLineFlagInfoModel.FromChallengeFlag)
+                    .ToList()
+                : [],
             Limit = gameInstance.Challenge.SubmissionLimit,
             Deadline = gameInstance.Challenge.DeadlineUtc,
             Attempts = attemptCount,
@@ -89,5 +101,32 @@ public class ChallengeDetailModel
                 Url = gameInstance.AttachmentUrl,
                 FileSize = gameInstance.Attachment?.FileSize
             }
+        };
+}
+
+public class HybridLineFlagInfoModel
+{
+    public Guid Id { get; set; }
+    public int Score { get; set; }
+    public int SortOrder { get; set; }
+    public ChallengeFlagAnswerType AnswerType { get; set; }
+    public string? FlawNo { get; set; }
+    public string? Repository { get; set; }
+    public string? Module { get; set; }
+    public string? FilePath { get; set; }
+    public string? Cwe { get; set; }
+
+    internal static HybridLineFlagInfoModel FromChallengeFlag(ChallengeFlag flag) =>
+        new()
+        {
+            Id = flag.Id,
+            Score = flag.Score,
+            SortOrder = flag.SortOrder,
+            AnswerType = flag.AnswerType,
+            FlawNo = flag.FlawNo,
+            Repository = flag.Repository,
+            Module = flag.Module,
+            FilePath = flag.FilePath,
+            Cwe = flag.Cwe
         };
 }

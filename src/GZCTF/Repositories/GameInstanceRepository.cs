@@ -23,6 +23,8 @@ public class GameInstanceRepository(
 
         var instance = await Context.GameInstances
             .Include(i => i.FlagContext)
+            .Include(i => i.Challenge)
+            .ThenInclude(c => c.Flags)
             .Where(e => e.ChallengeId == challengeId && e.Participation == part)
             .SingleOrDefaultAsync(token);
 

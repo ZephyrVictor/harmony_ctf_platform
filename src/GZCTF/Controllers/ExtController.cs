@@ -79,9 +79,21 @@ public class ExtController(
         {
             ChallengeId = challengeId,
             FlagValue = model.FlagValue,
+            AnswerType = model.AnswerType,
+            RawAnswer = string.IsNullOrWhiteSpace(model.RawAnswer) ? model.FlagValue : model.RawAnswer,
+            IsVisible = model.IsVisible,
+            IsEnabled = model.IsEnabled,
+            FlawNo = model.FlawNo,
+            Repository = model.Repository,
+            Module = model.Module,
+            FilePath = model.FilePath,
+            Cwe = model.Cwe,
             Score = model.Score,
             SortOrder = model.SortOrder
         };
+        flag.NormalizedAnswerKey = ScoringService.NormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType);
+        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, null, token))
+            return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
 
         flag = await flagRepository.CreateFlag(flag, token);
         await FlushScoreboardForChallenge(challengeId, token);
@@ -112,6 +124,40 @@ public class ExtController(
 
             flag.FlagValue = model.FlagValue;
         }
+
+        if (model.AnswerType.HasValue)
+            flag.AnswerType = model.AnswerType.Value;
+
+        if (model.RawAnswer is not null)
+            flag.RawAnswer = model.RawAnswer;
+
+        if (model.IsVisible.HasValue)
+            flag.IsVisible = model.IsVisible.Value;
+
+        if (model.IsEnabled.HasValue)
+            flag.IsEnabled = model.IsEnabled.Value;
+
+        if (model.FlawNo is not null)
+            flag.FlawNo = model.FlawNo;
+
+        if (model.Repository is not null)
+            flag.Repository = model.Repository;
+
+        if (model.Module is not null)
+            flag.Module = model.Module;
+
+        if (model.FilePath is not null)
+            flag.FilePath = model.FilePath;
+
+        if (model.Cwe is not null)
+            flag.Cwe = model.Cwe;
+
+        if (string.IsNullOrWhiteSpace(flag.RawAnswer))
+            flag.RawAnswer = flag.FlagValue;
+
+        flag.NormalizedAnswerKey = ScoringService.NormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType);
+        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, flag.Id, token))
+            return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
 
         if (model.Score.HasValue)
         {
@@ -275,6 +321,23 @@ public class ExtController(
     }
 
     #endregion
+
+    private async Task<bool> HasNormalizedAnswerConflict(int challengeId, string normalizedAnswerKey, Guid? currentFlagId,
+        CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedAnswerKey))
+            return false;
+
+        var isHybridLine = await context.GameChallenges
+            .AnyAsync(c => c.Id == challengeId && c.FlagMatchMode == FlagMatchMode.HybridLine, token);
+        if (!isHybridLine)
+            return false;
+
+        return await context.ChallengeFlags.AnyAsync(f =>
+            f.ChallengeId == challengeId
+            && f.NormalizedAnswerKey == normalizedAnswerKey
+            && (!currentFlagId.HasValue || f.Id != currentFlagId.Value), token);
+    }
 }
 
 #region Request Models
@@ -282,6 +345,15 @@ public class ExtController(
 public class ChallengeFlagCreateModel
 {
     public string FlagValue { get; set; } = string.Empty;
+    public ChallengeFlagAnswerType AnswerType { get; set; } = ChallengeFlagAnswerType.Exact;
+    public string? RawAnswer { get; set; }
+    public bool IsVisible { get; set; } = true;
+    public bool IsEnabled { get; set; } = true;
+    public string? FlawNo { get; set; }
+    public string? Repository { get; set; }
+    public string? Module { get; set; }
+    public string? FilePath { get; set; }
+    public string? Cwe { get; set; }
     public int Score { get; set; } = 100;
     public int SortOrder { get; set; }
 }
@@ -289,6 +361,15 @@ public class ChallengeFlagCreateModel
 public class ChallengeFlagUpdateModel
 {
     public string? FlagValue { get; set; }
+    public ChallengeFlagAnswerType? AnswerType { get; set; }
+    public string? RawAnswer { get; set; }
+    public bool? IsVisible { get; set; }
+    public bool? IsEnabled { get; set; }
+    public string? FlawNo { get; set; }
+    public string? Repository { get; set; }
+    public string? Module { get; set; }
+    public string? FilePath { get; set; }
+    public string? Cwe { get; set; }
     public int? Score { get; set; }
     public int? SortOrder { get; set; }
 }

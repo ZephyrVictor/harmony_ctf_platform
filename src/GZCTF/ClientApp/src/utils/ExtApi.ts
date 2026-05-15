@@ -1,5 +1,12 @@
 const BASE = '/api/ext';
 
+export enum ChallengeFlagAnswerType {
+  Exact = 'Exact',
+  SingleLine = 'SingleLine',
+  LineRange = 'LineRange',
+  MultiLine = 'MultiLine',
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -22,6 +29,16 @@ export interface ChallengeFlag {
   id: string;
   challengeId: number;
   flagValue: string;
+  answerType: ChallengeFlagAnswerType;
+  rawAnswer: string;
+  normalizedAnswerKey: string;
+  isVisible: boolean;
+  isEnabled: boolean;
+  flawNo?: string;
+  repository?: string;
+  module?: string;
+  filePath?: string;
+  cwe?: string;
   score: number;
   sortOrder: number;
   createdAt: string;
@@ -31,13 +48,39 @@ export interface ChallengeFlag {
 export const getFlags = (challengeId: number) =>
   request<ChallengeFlag[]>(`/challenges/${challengeId}/flags`);
 
-export const createFlag = (challengeId: number, data: { flagValue: string; score: number; sortOrder: number }) =>
+export const createFlag = (challengeId: number, data: {
+  flagValue: string;
+  answerType?: ChallengeFlagAnswerType;
+  rawAnswer?: string;
+  isVisible?: boolean;
+  isEnabled?: boolean;
+  flawNo?: string;
+  repository?: string;
+  module?: string;
+  filePath?: string;
+  cwe?: string;
+  score: number;
+  sortOrder: number;
+}) =>
   request<ChallengeFlag>(`/challenges/${challengeId}/flags`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 
-export const updateFlag = (challengeId: number, flagId: string, data: { flagValue?: string; score?: number; sortOrder?: number }) =>
+export const updateFlag = (challengeId: number, flagId: string, data: {
+  flagValue?: string;
+  answerType?: ChallengeFlagAnswerType;
+  rawAnswer?: string;
+  isVisible?: boolean;
+  isEnabled?: boolean;
+  flawNo?: string;
+  repository?: string;
+  module?: string;
+  filePath?: string;
+  cwe?: string;
+  score?: number;
+  sortOrder?: number;
+}) =>
   request<ChallengeFlag>(`/challenges/${challengeId}/flags/${flagId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -86,21 +129,24 @@ export interface SubmissionRecordDto {
   createdAt: string;
   challengeName: string;
   challengeId: number;
+  gameId: number;
   answer?: string;
   matchedFlagScore?: number;
 }
 
-export const getUserSubmissions = (userId: string, challengeId?: number, count = 100, skip = 0) => {
+export const getUserSubmissions = (userId: string, challengeId?: number, count = 100, skip = 0, gameId?: number) => {
   const params = new URLSearchParams();
   if (challengeId) params.set('challengeId', String(challengeId));
+  if (gameId) params.set('gameId', String(gameId));
   params.set('count', String(count));
   params.set('skip', String(skip));
   return request<SubmissionRecordDto[]>(`/submissions/user/${userId}?${params}`);
 };
 
-export const getMySubmissions = (challengeId?: number, count = 100, skip = 0) => {
+export const getMySubmissions = (challengeId?: number, count = 100, skip = 0, gameId?: number) => {
   const params = new URLSearchParams();
   if (challengeId) params.set('challengeId', String(challengeId));
+  if (gameId) params.set('gameId', String(gameId));
   params.set('count', String(count));
   params.set('skip', String(skip));
   return request<SubmissionRecordDto[]>(`/submissions/mine?${params}`);
@@ -118,6 +164,7 @@ export interface TicketDto {
   createdAt: string;
   reviewedAt?: string;
   submissionId: number;
+  gameId: number;
   userName?: string;
   reviewerName?: string;
   challengeName?: string;
@@ -131,8 +178,9 @@ export const createTicket = (data: { submissionId: number; description: string }
     body: JSON.stringify(data),
   });
 
-export const getMyTickets = (count = 100, skip = 0) => {
+export const getMyTickets = (count = 100, skip = 0, gameId?: number) => {
   const params = new URLSearchParams();
+  if (gameId) params.set('gameId', String(gameId));
   params.set('count', String(count));
   params.set('skip', String(skip));
   return request<TicketDto[]>(`/tickets/mine?${params}`);
@@ -141,9 +189,10 @@ export const getMyTickets = (count = 100, skip = 0) => {
 export const getTicket = (ticketId: string) =>
   request<TicketDto>(`/tickets/${ticketId}`);
 
-export const getAllTickets = (status?: string, count = 100, skip = 0) => {
+export const getAllTickets = (status?: string, count = 100, skip = 0, gameId?: number) => {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
+  if (gameId) params.set('gameId', String(gameId));
   params.set('count', String(count));
   params.set('skip', String(skip));
   return request<TicketDto[]>(`/tickets?${params}`);

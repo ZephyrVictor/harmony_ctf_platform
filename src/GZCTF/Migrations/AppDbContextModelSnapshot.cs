@@ -148,6 +148,11 @@ namespace GZCTF.Migrations
                     b.Property<int?>("AttachmentId")
                         .HasColumnType("integer");
 
+                    b.Property<byte>("AnswerType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((byte)0);
+
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");
 
@@ -157,13 +162,57 @@ namespace GZCTF.Migrations
                     b.Property<int?>("ExerciseId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Cwe")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<string>("FlagValue")
                         .IsRequired()
                         .HasMaxLength(127)
                         .HasColumnType("character varying(127)");
 
+                    b.Property<string>("FlawNo")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("IsOccupied")
                         .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVisible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Module")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("NormalizedAnswerKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(143)
+                        .HasColumnType("character varying(143)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("RawAnswer")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(127)
+                        .HasColumnType("character varying(127)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("Repository")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<int>("Score")
                         .HasColumnType("integer");
@@ -184,6 +233,8 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("ChallengeId", "FlagValue")
                         .IsUnique();
+
+                    b.HasIndex("ChallengeId", "NormalizedAnswerKey");
 
                     b.ToTable("ChallengeFlags");
                 });
@@ -1068,11 +1119,20 @@ namespace GZCTF.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("GameId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsPenalty")
                         .HasColumnType("boolean");
 
                     b.Property<Guid?>("MatchedFlagId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("ParticipationId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("ScoreChange")
                         .HasColumnType("integer");
@@ -1082,6 +1142,8 @@ namespace GZCTF.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GameId");
+
                     b.HasIndex("IsPenalty")
                         .HasFilter("\"IsPenalty\" = true");
 
@@ -1089,6 +1151,12 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("SubmissionId")
                         .IsUnique();
+
+                    b.HasIndex("ChallengeId", "ParticipationId");
+
+                    b.HasIndex("ParticipationId", "MatchedFlagId")
+                        .IsUnique()
+                        .HasFilter("\"ParticipationId\" IS NOT NULL AND \"MatchedFlagId\" IS NOT NULL AND \"ScoreChange\" > 0");
 
                     b.ToTable("SubmissionRecords", t =>
                         {

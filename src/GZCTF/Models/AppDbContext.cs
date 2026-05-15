@@ -445,7 +445,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
 
         builder.Entity<ChallengeFlag>(entity =>
         {
+            entity.Property(e => e.AnswerType)
+                .HasConversion<byte>()
+                .HasDefaultValue(ChallengeFlagAnswerType.Exact);
+
+            entity.Property(e => e.RawAnswer)
+                .HasDefaultValue(string.Empty);
+
+            entity.Property(e => e.NormalizedAnswerKey)
+                .HasDefaultValue(string.Empty);
+
+            entity.Property(e => e.IsVisible)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.IsEnabled)
+                .HasDefaultValue(true);
+
             entity.HasIndex(e => new { e.ChallengeId, e.FlagValue }).IsUnique();
+            entity.HasIndex(e => new { e.ChallengeId, e.NormalizedAnswerKey });
 
             entity.HasOne(e => e.Challenge)
                 .WithMany(c => c.Flags)
@@ -484,6 +501,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
 
             entity.HasIndex(e => e.IsPenalty)
                 .HasFilter("\"IsPenalty\" = true");
+
+            entity.HasIndex(e => e.GameId);
+
+            entity.HasIndex(e => new { e.ChallengeId, e.ParticipationId });
+
+            entity.HasIndex(e => new { e.ParticipationId, e.MatchedFlagId })
+                .IsUnique()
+                .HasFilter("\"ParticipationId\" IS NOT NULL AND \"MatchedFlagId\" IS NOT NULL AND \"ScoreChange\" > 0");
 
             entity.ToTable(t => t.HasCheckConstraint(
                 "CK_SubmissionRecord_Penalty_NullFlag",

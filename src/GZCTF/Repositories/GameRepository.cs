@@ -346,6 +346,7 @@ public class GameRepository(
                 .Select(c => new ChallengeRecord
                 (
                     c.Id,
+                    c.FlagMatchMode,
                     new ChallengeScoreMeta(
                         c.OriginalScore,
                         c.MinScoreRate,
@@ -367,6 +368,10 @@ public class GameRepository(
             challengeMetas = challengeRecords.ToDictionary(c => c.Key, c => c.Value.Meta);
 
             var challengeIds = challengeRecords.Keys.ToArray();
+            var hybridChallengeIds = challengeRecords.Values
+                .Where(c => c.MatchMode == FlagMatchMode.HybridLine)
+                .Select(c => c.Id)
+                .ToArray();
 
             // 4. fetch all recorded first solves for this game
             solveSnapshots = await Context.FirstSolves
@@ -377,7 +382,8 @@ public class GameRepository(
                     (fs, participation) => new { fs, participation })
                 .Where(x => x.participation.GameId == game.Id &&
                             x.participation.Status == ParticipationStatus.Accepted &&
-                            challengeIds.Contains(x.fs.ChallengeId))
+                            challengeIds.Contains(x.fs.ChallengeId) &&
+                            !hybridChallengeIds.Contains(x.fs.ChallengeId))
                 .Join(Context.Submissions.AsNoTracking().IgnoreAutoIncludes().Include(s => s.User),
                     x => x.fs.SubmissionId,
                     submission => submission.Id,
@@ -532,12 +538,15 @@ public class GameRepository(
             scoreboardItem.LastSubmissionTime = item.SubmitTimeUtc;
         }
 
-        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses)
-        // Only records without a MatchedFlagId contribute here — correct submissions
-        // are already scored via FirstSolves (step 5.2) to avoid double-counting.
+        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and HybridLine flag hits)
+        // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
         var recordScores = await Context.SubmissionRecords
             .AsNoTracking()
-            .Where(r => r.MatchedFlagId == null
+            .Where(r => (r.MatchedFlagId == null
+                    || (r.ScoreChange > 0
+                        && r.Submission != null
+                        && r.Submission.GameChallenge != null
+                        && r.Submission.GameChallenge.FlagMatchMode == FlagMatchMode.HybridLine))
                 && r.Submission != null
                 && items.Keys.Contains(r.Submission.ParticipationId))
             .GroupBy(r => r.Submission!.ParticipationId)
@@ -573,7 +582,7 @@ public class GameRepository(
             if (!items.TryGetValue(rec.ParticipationId, out var item))
                 continue;
 
-            if (rec.MatchedFlagId is not null && rec.SubmitTimeUtc > item.LastSubmissionTime)
+            if (rec.MatchedFlagId is not null && rec.ScoreChange > 0 && rec.SubmitTimeUtc > item.LastSubmissionTime)
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
         }
 
@@ -672,6 +681,7 @@ public class GameRepository(
 
     private readonly record struct ChallengeRecord(
         int Id,
+        FlagMatchMode MatchMode,
         ChallengeScoreMeta Meta,
         ChallengeInfo Info);
 

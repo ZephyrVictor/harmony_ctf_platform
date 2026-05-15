@@ -20,6 +20,7 @@ import { useDisclosure } from '@mantine/hooks'
 import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { getInputNumber, showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import { approveTicket, getAllTickets, getSettings, rejectTicket, TicketDto } from '@Utils/ExtApi'
@@ -33,6 +34,8 @@ const TicketStatusOptions = [
 
 const AdminTickets: FC = () => {
   const { t } = useTranslation()
+  const { id } = useParams()
+  const gameId = Number(id)
   const [tickets, setTickets] = useState<TicketDto[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -48,14 +51,14 @@ const AdminTickets: FC = () => {
 
   const load = useCallback(async () => {
     try {
-      const data = await getAllTickets(statusFilter || undefined, 200, 0)
+      const data = await getAllTickets(statusFilter || undefined, 200, 0, gameId)
       setTickets(data)
     } catch (err: any) {
       showErrorMsg(err, t)
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, t])
+  }, [gameId, statusFilter, t])
 
   useEffect(() => {
     load()

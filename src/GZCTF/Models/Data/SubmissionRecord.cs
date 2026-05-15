@@ -21,6 +21,21 @@ public class SubmissionRecord
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Denormalized game ID for scoped filtering and HybridLine score uniqueness
+    /// </summary>
+    public int? GameId { get; set; }
+
+    /// <summary>
+    /// Denormalized challenge ID for scoped filtering and HybridLine score uniqueness
+    /// </summary>
+    public int? ChallengeId { get; set; }
+
+    /// <summary>
+    /// Denormalized participation ID for scoped filtering and HybridLine score uniqueness
+    /// </summary>
+    public int? ParticipationId { get; set; }
+
     #region Db Relationship
 
     /// <summary>

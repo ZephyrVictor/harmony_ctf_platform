@@ -58,6 +58,14 @@ export enum NetworkMode {
 export enum FlagMatchMode {
   Exact = "Exact",
   LineRange = "LineRange",
+  HybridLine = "HybridLine",
+}
+
+export enum ChallengeFlagAnswerType {
+  Exact = "Exact",
+  SingleLine = "SingleLine",
+  LineRange = "LineRange",
+  MultiLine = "MultiLine",
 }
 
 /** Container status */

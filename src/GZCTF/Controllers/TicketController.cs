@@ -46,8 +46,8 @@ public class TicketController(
         if (record is null)
             return BadRequest(new RequestResponse("Submission not found"));
 
-        if (record.MatchedFlagId is not null)
-            return BadRequest(new RequestResponse("Only wrong submissions can be appealed"));
+        if (!record.IsPenalty)
+            return BadRequest(new RequestResponse("Only penalty submissions can be appealed"));
 
         var ticket = new Ticket
         {
@@ -67,6 +67,7 @@ public class TicketController(
     [HttpGet("mine")]
     [ProducesResponseType(typeof(TicketDto[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyTickets(
+        [FromQuery] int? gameId,
         [FromQuery] int count = 100,
         [FromQuery] int skip = 0,
         CancellationToken token = default)
@@ -75,7 +76,7 @@ public class TicketController(
         if (userId is null)
             return Unauthorized(new RequestResponse("User not found"));
 
-        var tickets = await ticketRepository.GetUserTickets(Guid.Parse(userId), count, skip, token);
+        var tickets = await ticketRepository.GetUserTickets(Guid.Parse(userId), gameId, count, skip, token);
         return Ok(tickets.Select(ToDto));
     }
 
@@ -110,11 +111,12 @@ public class TicketController(
     [ProducesResponseType(typeof(TicketDto[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllTickets(
         [FromQuery] TicketStatus? status = null,
+        [FromQuery] int? gameId = null,
         [FromQuery] int count = 100,
         [FromQuery] int skip = 0,
         CancellationToken token = default)
     {
-        var tickets = await ticketRepository.GetAllTickets(status, count, skip, token);
+        var tickets = await ticketRepository.GetAllTickets(status, count, skip, gameId, token);
         return Ok(tickets.Select(ToDto));
     }
 
@@ -215,6 +217,7 @@ public class TicketController(
             CreatedAt = ticket.CreatedAt,
             ReviewedAt = ticket.ReviewedAt,
             SubmissionId = ticket.SubmissionId,
+            GameId = ticket.Submission?.GameId ?? 0,
             UserName = ticket.User?.UserName,
             ReviewerName = ticket.Reviewer?.UserName,
             ChallengeName = ticket.Submission?.GameChallenge?.Title,
@@ -250,6 +253,7 @@ public class TicketDto
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ReviewedAt { get; set; }
     public int SubmissionId { get; set; }
+    public int GameId { get; set; }
     public string? UserName { get; set; }
     public string? ReviewerName { get; set; }
     public string? ChallengeName { get; set; }

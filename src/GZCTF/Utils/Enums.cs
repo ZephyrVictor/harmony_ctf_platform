@@ -369,7 +369,39 @@ public enum FlagMatchMode : byte
     /// <summary>
     /// Line range match: submitted range must be a subset of the flag's range
     /// </summary>
-    LineRange = 1
+    LineRange = 1,
+
+    /// <summary>
+    /// Hybrid line match: each flag declares single-line, range, or multi-line answer semantics
+    /// </summary>
+    HybridLine = 2
+}
+
+/// <summary>
+/// Per-flag answer type for hybrid line matching
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ChallengeFlagAnswerType>))]
+public enum ChallengeFlagAnswerType : byte
+{
+    /// <summary>
+    /// Exact string match, or infer line semantics when used by HybridLine
+    /// </summary>
+    Exact = 0,
+
+    /// <summary>
+    /// One positive source line
+    /// </summary>
+    SingleLine = 1,
+
+    /// <summary>
+    /// Closed source line interval
+    /// </summary>
+    LineRange = 2,
+
+    /// <summary>
+    /// A set of positive source lines that must match exactly
+    /// </summary>
+    MultiLine = 3
 }
 
 /// <summary>

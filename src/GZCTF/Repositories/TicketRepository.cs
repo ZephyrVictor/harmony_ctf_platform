@@ -24,20 +24,28 @@ public class TicketRepository(AppDbContext context) : RepositoryBase(context), I
             .Include(t => t.Reviewer)
             .FirstOrDefaultAsync(t => t.Id == ticketId, token);
 
-    public Task<Ticket[]> GetUserTickets(Guid userId, int count = 100, int skip = 0, CancellationToken token = default)
-        => Context.Tickets
+    public Task<Ticket[]> GetUserTickets(Guid userId, int? gameId = null, int count = 100, int skip = 0,
+        CancellationToken token = default)
+    {
+        var query = Context.Tickets
             .Include(t => t.Submission!)
             .ThenInclude(s => s.GameChallenge)
             .Include(t => t.Submission!)
             .ThenInclude(s => s.SubmissionRecord)
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId);
+
+        if (gameId.HasValue)
+            query = query.Where(t => t.Submission != null && t.Submission.GameId == gameId.Value);
+
+        return query
             .OrderByDescending(t => t.CreatedAt)
             .Skip(skip)
             .Take(count)
             .ToArrayAsync(token);
+    }
 
     public Task<Ticket[]> GetAllTickets(TicketStatus? status = null, int count = 100, int skip = 0,
-        CancellationToken token = default)
+        int? gameId = null, CancellationToken token = default)
     {
         IQueryable<Ticket> query = Context.Tickets
             .Include(t => t.Submission!)
@@ -49,6 +57,9 @@ public class TicketRepository(AppDbContext context) : RepositoryBase(context), I
 
         if (status.HasValue)
             query = query.Where(t => t.Status == status.Value);
+
+        if (gameId.HasValue)
+            query = query.Where(t => t.Submission != null && t.Submission.GameId == gameId.Value);
 
         return query
             .OrderByDescending(t => t.CreatedAt)

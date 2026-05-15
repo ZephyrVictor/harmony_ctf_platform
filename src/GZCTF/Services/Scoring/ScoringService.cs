@@ -60,6 +60,7 @@ public class ScoringService
         var matchedFlag = challenge.FlagMatchMode switch
         {
             FlagMatchMode.LineRange => MatchLineRange(flags, answer),
+            FlagMatchMode.HybridLine => await MatchHybridLine(challenge, participation, flags, answer, token),
             _ => flags.FirstOrDefault(f =>
                 string.Equals(f.FlagValue, answer, StringComparison.Ordinal))
         };
@@ -108,8 +109,10 @@ public class ScoringService
             };
         }
 
-        // Determine blood bonus type
-        var submissionType = await DetermineSubmissionType(challenge, participation, token);
+        // HybridLine uses SubmissionRecords as the authoritative per-flag score ledger.
+        var submissionType = challenge.FlagMatchMode == FlagMatchMode.HybridLine
+            ? SubmissionType.Unaccepted
+            : await DetermineSubmissionType(challenge, participation, token);
 
         return new ScoreResult
         {
@@ -231,6 +234,7 @@ public class ScoringService
 
         var submittedFlags = await _context.SubmissionRecords
             .Where(r => r.MatchedFlagId != null
+                && r.ScoreChange > 0
                 && r.Submission!.ParticipationId == participationId
                 && r.Submission!.ChallengeId == challengeId)
             .Select(r => r.MatchedFlagId)
@@ -311,6 +315,188 @@ public class ScoringService
         return null;
     }
 
+    private async Task<ChallengeFlag?> MatchHybridLine(GameChallenge challenge, Participation participation,
+        ChallengeFlag[] flags, string answer, CancellationToken token)
+    {
+        var submitted = ParseHybridLineAnswer(answer, ChallengeFlagAnswerType.Exact);
+        if (submitted is null)
+            throw new InvalidFlagSubmissionException(
+                "Invalid line answer format. Use a single line, a range, or a comma-separated multi-line answer.");
+
+        var completedFlagIds = await _context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.MatchedFlagId != null
+                        && r.ScoreChange > 0
+                        && (r.ParticipationId == participation.Id
+                            || (r.ParticipationId == null
+                                && r.Submission != null
+                                && r.Submission.ParticipationId == participation.Id))
+                        && (r.ChallengeId == challenge.Id
+                            || (r.ChallengeId == null
+                                && r.Submission != null
+                                && r.Submission.ChallengeId == challenge.Id)))
+            .Select(r => r.MatchedFlagId!.Value)
+            .ToArrayAsync(token);
+
+        HashSet<Guid> completed = [.. completedFlagIds];
+        List<ChallengeFlag> openMatches = [];
+        List<ChallengeFlag> completedMatches = [];
+
+        foreach (var flag in flags.Where(f => f.IsEnabled && f.IsVisible))
+        {
+            var flagAnswer = ParseHybridLineAnswer(
+                string.IsNullOrWhiteSpace(flag.RawAnswer) ? flag.FlagValue : flag.RawAnswer,
+                flag.AnswerType);
+
+            if (flagAnswer is null)
+                continue;
+
+            if (!HybridLineMatches(flagAnswer.Value, submitted.Value))
+                continue;
+
+            if (completed.Contains(flag.Id))
+                completedMatches.Add(flag);
+            else
+                openMatches.Add(flag);
+        }
+
+        var openMatch = openMatches.Count switch
+        {
+            0 => null,
+            1 => openMatches[0],
+            _ => throw new InvalidFlagSubmissionException(
+                "Submission matches multiple enabled flags in this subsystem; please fix flag configuration.")
+        };
+
+        if (openMatch is not null)
+            return openMatch;
+
+        return completedMatches.Count switch
+        {
+            0 => null,
+            1 => completedMatches[0],
+            _ => throw new InvalidFlagSubmissionException(
+                "Submission matches multiple completed flags in this subsystem; please fix flag configuration.")
+        };
+    }
+
+    public static bool TryNormalizeHybridLineAnswer(string input, ChallengeFlagAnswerType answerType,
+        out string normalizedKey)
+    {
+        if (ParseHybridLineAnswer(input, answerType) is { } answer)
+        {
+            normalizedKey = answer.NormalizedKey;
+            return true;
+        }
+
+        normalizedKey = string.Empty;
+        return false;
+    }
+
+    public static string NormalizeHybridLineAnswer(string input, ChallengeFlagAnswerType answerType)
+    {
+        var answer = ParseHybridLineAnswer(input, answerType);
+        return answer?.NormalizedKey ?? string.Empty;
+    }
+
+    private static HybridLineAnswer? ParseHybridLineAnswer(string input, ChallengeFlagAnswerType answerType)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return null;
+
+        return answerType switch
+        {
+            ChallengeFlagAnswerType.SingleLine => ParseSingleLine(input),
+            ChallengeFlagAnswerType.LineRange => ParseLineRangeAnswer(input),
+            ChallengeFlagAnswerType.MultiLine => ParseMultiLine(input),
+            _ => InferHybridLineAnswer(input)
+        };
+    }
+
+    private static HybridLineAnswer? InferHybridLineAnswer(string input)
+    {
+        var trimmed = input.Trim();
+
+        if (ContainsMultiLineSeparator(trimmed))
+            return ParseMultiLine(trimmed);
+
+        return trimmed.Contains('-', StringComparison.Ordinal)
+            ? ParseLineRangeAnswer(trimmed)
+            : ParseSingleLine(trimmed);
+    }
+
+    private static HybridLineAnswer? ParseSingleLine(string input)
+    {
+        var token = StripLinePrefix(input.Trim());
+        return int.TryParse(token, out var line) && line > 0
+            ? HybridLineAnswer.Single(line)
+            : null;
+    }
+
+    private static HybridLineAnswer? ParseLineRangeAnswer(string input)
+    {
+        var token = StripLinePrefix(input.Trim());
+        var parts = token.Split('-', 2, StringSplitOptions.TrimEntries);
+        if (parts.Length != 2)
+            return ParseSingleLine(input) is { } single ? HybridLineAnswer.Range(single.Start, single.End) : null;
+
+        return int.TryParse(parts[0], out var start)
+               && int.TryParse(parts[1], out var end)
+               && start > 0
+               && end >= start
+            ? HybridLineAnswer.Range(start, end)
+            : null;
+    }
+
+    private static HybridLineAnswer? ParseMultiLine(string input)
+    {
+        var parts = input.Trim()
+            .Split(['、', ',', ';', '\r', '\n', '\t', ' '],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length == 0)
+            return null;
+
+        List<int> lines = [];
+        foreach (var part in parts)
+        {
+            var token = StripLinePrefix(part);
+            if (token.Contains('-', StringComparison.Ordinal)
+                || !int.TryParse(token, out var line)
+                || line <= 0)
+                return null;
+
+            lines.Add(line);
+        }
+
+        var distinct = lines.Distinct().Order().ToArray();
+        return distinct.Length == lines.Count
+            ? HybridLineAnswer.Multi(distinct)
+            : null;
+    }
+
+    private static bool HybridLineMatches(HybridLineAnswer flag, HybridLineAnswer submitted) =>
+        flag.Kind switch
+        {
+            HybridLineAnswerKind.SingleLine => submitted.Kind == HybridLineAnswerKind.SingleLine
+                                               && submitted.Start == flag.Start,
+            HybridLineAnswerKind.LineRange => submitted.Kind switch
+            {
+                HybridLineAnswerKind.SingleLine => submitted.Start >= flag.Start && submitted.Start <= flag.End,
+                HybridLineAnswerKind.LineRange => submitted.Start >= flag.Start && submitted.End <= flag.End,
+                _ => false
+            },
+            HybridLineAnswerKind.MultiLine => submitted.Kind == HybridLineAnswerKind.MultiLine
+                                              && submitted.Lines.SequenceEqual(flag.Lines),
+            _ => false
+        };
+
+    private static bool ContainsMultiLineSeparator(string input) =>
+        input.Any(c => c is '、' or ',' or ';' or '\r' or '\n' or '\t' or ' ');
+
+    private static string StripLinePrefix(string token) =>
+        token.StartsWith("c:", StringComparison.OrdinalIgnoreCase) ? token[2..] : token;
+
     internal static bool TryParseLineRange(string input, out int start, out int end)
     {
         start = end = 0;
@@ -350,7 +536,10 @@ public class ScoringService
             SubmissionId = submission.Id,
             ScoreChange = result.ScoreChange,
             IsPenalty = result.IsPenalty,
-            MatchedFlagId = result.MatchedFlagId
+            MatchedFlagId = result.MatchedFlagId,
+            GameId = submission.GameId,
+            ChallengeId = submission.ChallengeId,
+            ParticipationId = submission.ParticipationId
         };
 
         return await _recordRepo.CreateRecord(record, token);
@@ -386,7 +575,10 @@ public class ScoringService
         {
             SubmissionId = approvalSubmission.Id,
             ScoreChange = totalScore,
-            IsPenalty = false
+            IsPenalty = false,
+            GameId = approvalSubmission.GameId,
+            ChallengeId = approvalSubmission.ChallengeId,
+            ParticipationId = approvalSubmission.ParticipationId
         };
 
         await _recordRepo.CreateRecord(record, token);
@@ -433,4 +625,36 @@ public class ScoreResult
     public bool IsPenalty { get; init; }
     public string? Message { get; init; }
     public SubmissionType SubmissionType { get; init; }
+}
+
+public class InvalidFlagSubmissionException(string message) : Exception(message);
+
+internal enum HybridLineAnswerKind
+{
+    SingleLine,
+    LineRange,
+    MultiLine
+}
+
+internal readonly record struct HybridLineAnswer(
+    HybridLineAnswerKind Kind,
+    int Start,
+    int End,
+    int[] Lines)
+{
+    public string NormalizedKey => Kind switch
+    {
+        HybridLineAnswerKind.SingleLine => $"S:{Start}",
+        HybridLineAnswerKind.LineRange => $"R:{Start}-{End}",
+        HybridLineAnswerKind.MultiLine => $"M:{string.Join(',', Lines)}",
+        _ => string.Empty
+    };
+
+    public static HybridLineAnswer Single(int line) => new(HybridLineAnswerKind.SingleLine, line, line, []);
+
+    public static HybridLineAnswer Range(int start, int end) => new(HybridLineAnswerKind.LineRange, start, end, []);
+
+    public static HybridLineAnswer Multi(int[] lines) =>
+        new(HybridLineAnswerKind.MultiLine, lines.Length > 0 ? lines[0] : 0,
+            lines.Length > 0 ? lines[^1] : 0, lines);
 }

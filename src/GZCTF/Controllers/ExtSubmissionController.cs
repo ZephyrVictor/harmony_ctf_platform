@@ -27,6 +27,7 @@ public class ExtSubmissionController(
     [ProducesResponseType(typeof(SubmissionRecordDto[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMySubmissions(
         [FromQuery] int? challengeId,
+        [FromQuery] int? gameId,
         [FromQuery] int count = 100,
         [FromQuery] int skip = 0,
         CancellationToken token = default)
@@ -35,7 +36,7 @@ public class ExtSubmissionController(
         if (userId is null)
             return Unauthorized(new RequestResponse("User not found"));
 
-        var records = await recordRepository.GetByUser(Guid.Parse(userId), challengeId, count, skip, token);
+        var records = await recordRepository.GetByUser(Guid.Parse(userId), challengeId, gameId, count, skip, token);
 
         var result = records.Select(ToDto).ToArray();
         return Ok(result);
@@ -50,11 +51,12 @@ public class ExtSubmissionController(
     public async Task<IActionResult> GetUserSubmissions(
         [FromRoute] Guid userId,
         [FromQuery] int? challengeId,
+        [FromQuery] int? gameId,
         [FromQuery] int count = 100,
         [FromQuery] int skip = 0,
         CancellationToken token = default)
     {
-        var records = await recordRepository.GetByUser(userId, challengeId, count, skip, token);
+        var records = await recordRepository.GetByUser(userId, challengeId, gameId, count, skip, token);
         var result = records.Select(ToDto).ToArray();
         return Ok(result);
     }
@@ -70,6 +72,7 @@ public class ExtSubmissionController(
             CreatedAt = record.CreatedAt,
             ChallengeName = record.Submission?.ChallengeName ?? "Unknown",
             ChallengeId = record.Submission?.ChallengeId ?? 0,
+            GameId = record.Submission?.GameId ?? 0,
             Answer = record.IsPenalty ? record.Submission?.Answer : null,
             MatchedFlagScore = record.MatchedFlag?.Score
         };
@@ -85,6 +88,7 @@ public class SubmissionRecordDto
     public DateTimeOffset CreatedAt { get; set; }
     public string ChallengeName { get; set; } = string.Empty;
     public int ChallengeId { get; set; }
+    public int GameId { get; set; }
     public string? Answer { get; set; }
     public int? MatchedFlagScore { get; set; }
 }

@@ -141,7 +141,7 @@ const Submissions: FC = () => {
                               >
                                 {ticket.status}
                               </Badge>
-                            ) : (
+                            ) : r.isPenalty ? (
                               <Button
                                 size="xs"
                                 variant="light"
@@ -150,6 +150,8 @@ const Submissions: FC = () => {
                               >
                                 {t('game.button.create_ticket')}
                               </Button>
+                            ) : (
+                              <Text size="sm" c="dimmed">—</Text>
                             )}
                           </Table.Td>
                         </Table.Tr>

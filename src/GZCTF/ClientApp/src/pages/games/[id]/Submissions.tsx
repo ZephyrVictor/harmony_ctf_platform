@@ -21,6 +21,7 @@ import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router'
 import { WithGameTab } from '@Components/WithGameTab'
 import { WithNavBar } from '@Components/WithNavbar'
 import { WithRole } from '@Components/WithRole'
@@ -33,6 +34,8 @@ const statusColor = (status: string) =>
 
 const Submissions: FC = () => {
   const { t } = useTranslation()
+  const { id } = useParams()
+  const gameId = Number(id)
   const [records, setRecords] = useState<SubmissionRecordDto[]>([])
   const [tickets, setTickets] = useState<TicketDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,8 +51,8 @@ const Submissions: FC = () => {
   const load = useCallback(async () => {
     try {
       const [recs, tix] = await Promise.all([
-        getMySubmissions(undefined, 200, 0),
-        getMyTickets(),
+        getMySubmissions(undefined, 200, 0, gameId),
+        getMyTickets(200, 0, gameId),
       ])
       setRecords(recs)
       setTickets(tix)
@@ -58,7 +61,7 @@ const Submissions: FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [gameId, t])
 
   useEffect(() => {
     load()
@@ -143,7 +146,7 @@ const Submissions: FC = () => {
                                 >
                                   {ticket.status}
                                 </Badge>
-                              ) : (
+                              ) : r.isPenalty ? (
                                 <Button
                                   size="xs"
                                   variant="light"
@@ -152,6 +155,8 @@ const Submissions: FC = () => {
                                 >
                                   {t('game.button.create_ticket')}
                                 </Button>
+                              ) : (
+                                <Text size="sm" c="dimmed">—</Text>
                               )}
                             </Table.Td>
                           </Table.Tr>
