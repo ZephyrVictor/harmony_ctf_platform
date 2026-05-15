@@ -2013,6 +2013,8 @@ export interface ChallengeDetailModel {
   limit?: number;
   /** Flag matching mode */
   flagMatchMode?: FlagMatchMode;
+  /** Player-visible flag metadata for HybridLine subsystem challenges */
+  flags?: HybridLineFlagInfoModel[];
   /**
    * Current attempt count
    * @format int32
@@ -2023,6 +2025,22 @@ export interface ChallengeDetailModel {
    * @format uint64
    */
   deadline?: number | null;
+}
+
+export interface HybridLineFlagInfoModel {
+  /** @format uuid */
+  id?: string;
+  /** @format int32 */
+  score?: number;
+  /** @format int32 */
+  sortOrder?: number;
+  answerType?: ChallengeFlagAnswerType;
+  flawNo?: string | null;
+  repository?: string | null;
+  module?: string | null;
+  filePath?: string | null;
+  cwe?: string | null;
+  isSolved?: boolean;
 }
 
 export interface ClientFlagContext {

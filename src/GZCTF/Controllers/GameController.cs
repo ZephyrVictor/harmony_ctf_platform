@@ -47,11 +47,13 @@ public class GameController(
     IContainerRepository containerRepository,
     IGameEventRepository gameEventRepository,
     ISubmissionRepository submissionRepository,
+    ISubmissionRecordRepository submissionRecordRepository,
     IGameChallengeRepository challengeRepository,
     IGameInstanceRepository gameInstanceRepository,
     IParticipationRepository participationRepository,
     IOptionsSnapshot<ContainerPolicy> containerPolicy,
     IStringLocalizer<Program> localizer,
+    AppDbContext dbContext,
     ScoringService scoringService) : ControllerBase
 {
     /// <summary>
@@ -944,7 +946,14 @@ public class GameController(
 
         var attempts = await submissionRepository.CountSubmissions(context.Participation!.Id, challengeId, token);
 
-        return Ok(ChallengeDetailModel.FromInstance(instance, attempts, scoreboardChallenge));
+        ISet<Guid>? solvedFlagIds = null;
+        if (instance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine)
+        {
+            solvedFlagIds = (await submissionRecordRepository.GetSolvedFlagIds(
+                challengeId, context.Participation!.Id, token)).ToHashSet();
+        }
+
+        return Ok(ChallengeDetailModel.FromInstance(instance, attempts, scoreboardChallenge, solvedFlagIds));
     }
 
     /// <summary>
@@ -1015,7 +1024,7 @@ public class GameController(
                     new RequestResponse(localizer[nameof(Resources.Program.Challenge_SubmissionLimitExceeded)]));
             }
 
-            ScoreResult scoreResult;
+            ScoreResult? scoreResult = null;
             try
             {
                 // Process submission through scoring service
@@ -1028,6 +1037,7 @@ public class GameController(
                 return BadRequest(new RequestResponse(ex.Message));
             }
 
+            var result = scoreResult!;
             Submission submission = new()
             {
                 Game = context.Game!,
@@ -1035,7 +1045,7 @@ public class GameController(
                 GameChallenge = instance.Challenge,
                 Team = context.Participation!.Team,
                 Participation = context.Participation!,
-                Status = scoreResult.Status,
+                Status = result.Status,
                 SubmitTimeUtc = submitTime,
                 Answer = answer
             };
@@ -1044,10 +1054,10 @@ public class GameController(
             {
                 submission = await submissionRepository.AddSubmission(submission, token);
 
-                await scoringService.CreateRecord(submission, scoreResult, token);
+                await scoringService.CreateRecord(submission, result, token);
 
                 // Create FirstSolves entry with the actual submission ID
-                if (scoreResult.SubmissionType != SubmissionType.Unaccepted)
+                if (result.SubmissionType != SubmissionType.Unaccepted)
                 {
                     await scoringService.CreateFirstSolve(
                         submission.ParticipationId, submission.ChallengeId, submission.Id, token);
@@ -1060,22 +1070,42 @@ public class GameController(
 
                 // Create blood bonus notice
                 if (context.Game!.EndTimeUtc > DateTimeOffset.UtcNow
-                    && scoreResult.SubmissionType != SubmissionType.Unaccepted
-                    && scoreResult.SubmissionType != SubmissionType.Normal)
+                    && result.SubmissionType != SubmissionType.Unaccepted
+                    && result.SubmissionType != SubmissionType.Normal)
                 {
                     await noticeRepository.AddNotice(
-                        GameNotice.FromSubmission(submission, scoreResult.SubmissionType, localizer), token);
+                        GameNotice.FromSubmission(submission, result.SubmissionType, localizer), token);
                 }
 
                 // Flush scoreboard cache so the new SubmissionRecord is reflected
                 await cacheHelper.FlushScoreboardCache(context.Game!.Id, token);
 
-                return Ok(new { submission.Id, scoreResult.Message });
+                return Ok(new { submission.Id, result.Message });
             }
             catch (DbUpdateConcurrencyException) when (retry < maxRetries - 1)
             {
                 await transaction.RollbackAsync(token);
                 await Task.Delay((retry + 1) * 100, token);
+            }
+            catch (DbUpdateException ex) when (IsPositiveFlagHit(scoreResult))
+            {
+                await transaction.RollbackAsync(token);
+                dbContext.ChangeTracker.Clear();
+                logger.LogWarning(ex, "Treating duplicate positive flag submission as idempotent for challenge {ChallengeId}",
+                    challengeId);
+
+                var existingSubmissionId = await dbContext.SubmissionRecords
+                    .AsNoTracking()
+                    .Where(r => r.MatchedFlagId == scoreResult!.MatchedFlagId
+                                && r.ScoreChange > 0
+                                && (r.ParticipationId == context.Participation!.Id
+                                    || (r.Submission != null
+                                        && r.Submission.ParticipationId == context.Participation!.Id)))
+                    .OrderBy(r => r.CreatedAt)
+                    .Select(r => r.SubmissionId)
+                    .FirstOrDefaultAsync(token);
+
+                return Ok(new { Id = existingSubmissionId, Message = "This flag has already been submitted" });
             }
             catch (Exception ex)
             {
@@ -1091,6 +1121,9 @@ public class GameController(
             new RequestResponse(localizer[nameof(Resources.Program.Error_InternalServerError)],
                 StatusCodes.Status409Conflict));
     }
+
+    private static bool IsPositiveFlagHit(ScoreResult? result) =>
+        result?.MatchedFlagId.HasValue == true && result.ScoreChange > 0;
 
     /// <summary>
     /// Queries flag status

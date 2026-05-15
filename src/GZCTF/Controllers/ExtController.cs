@@ -91,8 +91,12 @@ public class ExtController(
             Score = model.Score,
             SortOrder = model.SortOrder
         };
-        flag.NormalizedAnswerKey = ScoringService.NormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType);
-        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, null, token))
+
+        var isHybridLine = await IsHybridLineChallenge(challengeId, token);
+        if (!TrySetNormalizedAnswerKey(flag, isHybridLine, out var error))
+            return BadRequest(error!);
+
+        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, null, isHybridLine, token))
             return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
 
         flag = await flagRepository.CreateFlag(flag, token);
@@ -155,8 +159,11 @@ public class ExtController(
         if (string.IsNullOrWhiteSpace(flag.RawAnswer))
             flag.RawAnswer = flag.FlagValue;
 
-        flag.NormalizedAnswerKey = ScoringService.NormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType);
-        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, flag.Id, token))
+        var isHybridLine = await IsHybridLineChallenge(challengeId, token);
+        if (!TrySetNormalizedAnswerKey(flag, isHybridLine, out var error))
+            return BadRequest(error!);
+
+        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, flag.Id, isHybridLine, token))
             return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
 
         if (model.Score.HasValue)
@@ -322,18 +329,36 @@ public class ExtController(
 
     #endregion
 
-    private async Task<bool> HasNormalizedAnswerConflict(int challengeId, string normalizedAnswerKey, Guid? currentFlagId,
-        CancellationToken token)
+    private Task<bool> IsHybridLineChallenge(int challengeId, CancellationToken token) =>
+        context.GameChallenges.AnyAsync(c => c.Id == challengeId && c.FlagMatchMode == FlagMatchMode.HybridLine,
+            token);
+
+    private static bool TrySetNormalizedAnswerKey(ChallengeFlag flag, bool isHybridLine, out RequestResponse? error)
+    {
+        var normalizedKey = ScoringService.NormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType);
+        if (isHybridLine &&
+            !ScoringService.TryNormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType, out normalizedKey))
+        {
+            error = new RequestResponse(
+                "Invalid HybridLine answer format for the selected answer type");
+            return false;
+        }
+
+        flag.NormalizedAnswerKey = normalizedKey;
+        error = null;
+        return true;
+    }
+
+    private Task<bool> HasNormalizedAnswerConflict(int challengeId, string normalizedAnswerKey, Guid? currentFlagId,
+        bool isHybridLine, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(normalizedAnswerKey))
-            return false;
+            return Task.FromResult(false);
 
-        var isHybridLine = await context.GameChallenges
-            .AnyAsync(c => c.Id == challengeId && c.FlagMatchMode == FlagMatchMode.HybridLine, token);
         if (!isHybridLine)
-            return false;
+            return Task.FromResult(false);
 
-        return await context.ChallengeFlags.AnyAsync(f =>
+        return context.ChallengeFlags.AnyAsync(f =>
             f.ChallengeId == challengeId
             && f.NormalizedAnswerKey == normalizedAnswerKey
             && (!currentFlagId.HasValue || f.Id != currentFlagId.Value), token);

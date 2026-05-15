@@ -74,6 +74,7 @@ public class ExtSubmissionController(
             ChallengeId = record.Submission?.ChallengeId ?? 0,
             GameId = record.Submission?.GameId ?? 0,
             Answer = record.IsPenalty ? record.Submission?.Answer : null,
+            MatchedFlagId = record.MatchedFlagId,
             MatchedFlagScore = record.MatchedFlag?.Score
         };
     }
@@ -90,5 +91,6 @@ public class SubmissionRecordDto
     public int ChallengeId { get; set; }
     public int GameId { get; set; }
     public string? Answer { get; set; }
+    public Guid? MatchedFlagId { get; set; }
     public int? MatchedFlagScore { get; set; }
 }

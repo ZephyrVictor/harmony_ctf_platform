@@ -37,23 +37,27 @@ public class TicketController(
         if (string.IsNullOrWhiteSpace(model.Description))
             return BadRequest(new RequestResponse("Description is required"));
 
+        var record = await recordRepository.GetBySubmissionId(model.SubmissionId, token);
+        if (record?.Submission is null)
+            return BadRequest(new RequestResponse("Submission not found"));
+
+        var currentUserId = Guid.Parse(userId);
+        if (record.Submission.UserId != currentUserId)
+            return Forbid();
+
+        if (!record.IsPenalty)
+            return BadRequest(new RequestResponse("Only penalty submissions can be appealed"));
+
         var maxTickets = await settingsService.Get<int>("Ticket.MaxTicketsPerSubmission", token);
         var existingCount = await ticketRepository.CountBySubmission(model.SubmissionId, token);
         if (existingCount >= maxTickets)
             return Conflict(new RequestResponse($"Maximum of {maxTickets} ticket(s) per submission exceeded"));
 
-        var record = await recordRepository.GetBySubmissionId(model.SubmissionId, token);
-        if (record is null)
-            return BadRequest(new RequestResponse("Submission not found"));
-
-        if (!record.IsPenalty)
-            return BadRequest(new RequestResponse("Only penalty submissions can be appealed"));
-
         var ticket = new Ticket
         {
             Description = model.Description,
             SubmissionId = model.SubmissionId,
-            UserId = Guid.Parse(userId)
+            UserId = currentUserId
         };
 
         ticket = await ticketRepository.CreateTicket(ticket, token);

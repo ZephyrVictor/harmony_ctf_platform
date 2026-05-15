@@ -73,7 +73,7 @@ public class ChallengeDetailModel
     public DateTimeOffset? Deadline { get; set; }
 
     internal static ChallengeDetailModel FromInstance(GameInstance gameInstance, int attemptCount,
-        ChallengeInfo? scoreboardChallenge = null) =>
+        ChallengeInfo? scoreboardChallenge = null, ISet<Guid>? solvedFlagIds = null) =>
         new()
         {
             Id = gameInstance.Challenge.Id,
@@ -88,7 +88,8 @@ public class ChallengeDetailModel
                 ? gameInstance.Challenge.Flags
                     .Where(f => f.IsVisible)
                     .OrderBy(f => f.SortOrder)
-                    .Select(HybridLineFlagInfoModel.FromChallengeFlag)
+                    .Select(f => HybridLineFlagInfoModel.FromChallengeFlag(
+                        f, solvedFlagIds?.Contains(f.Id) ?? false))
                     .ToList()
                 : [],
             Limit = gameInstance.Challenge.SubmissionLimit,
@@ -115,8 +116,9 @@ public class HybridLineFlagInfoModel
     public string? Module { get; set; }
     public string? FilePath { get; set; }
     public string? Cwe { get; set; }
+    public bool IsSolved { get; set; }
 
-    internal static HybridLineFlagInfoModel FromChallengeFlag(ChallengeFlag flag) =>
+    internal static HybridLineFlagInfoModel FromChallengeFlag(ChallengeFlag flag, bool isSolved) =>
         new()
         {
             Id = flag.Id,
@@ -127,6 +129,7 @@ public class HybridLineFlagInfoModel
             Repository = flag.Repository,
             Module = flag.Module,
             FilePath = flag.FilePath,
-            Cwe = flag.Cwe
+            Cwe = flag.Cwe,
+            IsSolved = isSolved
         };
 }

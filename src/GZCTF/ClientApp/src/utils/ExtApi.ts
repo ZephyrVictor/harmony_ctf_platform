@@ -131,6 +131,7 @@ export interface SubmissionRecordDto {
   challengeId: number;
   gameId: number;
   answer?: string;
+  matchedFlagId?: string;
   matchedFlagScore?: number;
 }
 

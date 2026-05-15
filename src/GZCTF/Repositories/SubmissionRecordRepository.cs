@@ -14,6 +14,7 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
 
     public Task<SubmissionRecord?> GetBySubmissionId(int submissionId, CancellationToken token = default)
         => Context.SubmissionRecords
+            .Include(r => r.Submission)
             .Include(r => r.MatchedFlag)
             .FirstOrDefaultAsync(r => r.SubmissionId == submissionId, token);
 
@@ -51,6 +52,19 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
                            && (r.ChallengeId == challengeId || r.Submission.ChallengeId == challengeId)
                            && (r.ParticipationId == participationId
                                || r.Submission.ParticipationId == participationId), token);
+
+    public Task<Guid[]> GetSolvedFlagIds(int challengeId, int participationId, CancellationToken token = default)
+        => Context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.MatchedFlagId != null
+                        && r.ScoreChange > 0
+                        && (r.ChallengeId == challengeId
+                            || (r.Submission != null && r.Submission.ChallengeId == challengeId))
+                        && (r.ParticipationId == participationId
+                            || (r.Submission != null && r.Submission.ParticipationId == participationId)))
+            .Select(r => r.MatchedFlagId!.Value)
+            .Distinct()
+            .ToArrayAsync(token);
 
     public Task<int> GetTotalScoreChange(int participationId, CancellationToken token = default)
         => Context.SubmissionRecords

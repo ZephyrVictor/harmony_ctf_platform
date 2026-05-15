@@ -96,6 +96,33 @@ public class ExtSubmissionTicketTests(GZCTFApplicationFactory factory, ITestOutp
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task CreateTicket_RejectsForeignPenaltySubmissionRecord()
+    {
+        const string password = "ExtOwner!123";
+        var owner = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), password);
+        var attacker = await TestDataSeeder.CreateUserAsync(factory.Services, TestDataSeeder.RandomName(), password);
+        var team = await TestDataSeeder.CreateTeamAsync(factory.Services, owner.Id, TestDataSeeder.RandomName());
+
+        var game = await TestDataSeeder.CreateGameAsync(factory.Services, $"Ext Owner Game {TestDataSeeder.RandomName()}");
+        var challenge = await TestDataSeeder.CreateStaticChallengeAsync(
+            factory.Services, game.Id, $"Ext Owner Challenge {TestDataSeeder.RandomName()}", "flag{ok}");
+        var participation = await TestDataSeeder.JoinGameAsync(factory.Services, game.Id, team.Id, owner.Id);
+
+        var submissionId = await CreateSubmissionRecordAsync(
+            game.Id, challenge.Id, team.Id, owner.Id, participation.Id, "wrong-owner", -2, true);
+
+        using var client = factory.CreateClient();
+        var loginResponse = await client.PostAsJsonAsync("/api/Account/LogIn",
+            new LoginModel { UserName = attacker.UserName, Password = password });
+        loginResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsJsonAsync("/api/ext/tickets",
+            new TicketCreateModel { SubmissionId = submissionId, Description = "Trying to appeal another user" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private async Task<int> CreateSubmissionRecordAsync(
         int gameId,
         int challengeId,
