@@ -47,6 +47,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<TicketAttachment> TicketAttachments { get; set; } = null!;
     public DbSet<BigScreenEvent> BigScreenEvents { get; set; } = null!;
     public DbSet<CompetitionSetting> CompetitionSettings { get; set; } = null!;
+    public DbSet<ZeroDayTicket> ZeroDayTickets { get; set; } = null!;
 
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
@@ -597,6 +598,33 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
         builder.Entity<CompetitionSetting>(entity =>
         {
             entity.Property(e => e.Key).HasMaxLength(100);
+        });
+
+        builder.Entity<ZeroDayTicket>(entity =>
+        {
+            entity.HasOne(e => e.Game)
+                .WithMany()
+                .HasForeignKey(e => e.GameId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Challenge)
+                .WithMany()
+                .HasForeignKey(e => e.ChallengeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Reviewer)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20);
         });
     }
 }
