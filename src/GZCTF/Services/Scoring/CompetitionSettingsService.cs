@@ -13,7 +13,7 @@ public class CompetitionSettingsService(ICompetitionSettingRepository repository
     private static readonly Dictionary<string, string> Defaults = new()
     {
         ["Scoring.MinScore"] = "-100",
-        ["Scoring.DefaultPenaltyScore"] = "0",
+        ["Scoring.DefaultPenaltyScore"] = "2",
         ["Scoring.MaxPenaltyPerSubmission"] = "100",
         ["Ticket.EnableAutoRefund"] = "true",
         ["Ticket.DefaultRefundRatio"] = "1.0",
