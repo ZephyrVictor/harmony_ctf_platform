@@ -5,7 +5,6 @@ import {
   Button,
   Group,
   Modal,
-  NumberInput,
   Select,
   SimpleGrid,
   Stack,
@@ -20,21 +19,16 @@ import { mdiAlertCircleOutline, mdiDelete, mdiPencil, mdiPlus } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
+import api, {
   ChallengeFlag,
   ChallengeFlagAnswerType,
-  ChallengeFlagInput,
-  getFlags,
-  createFlag,
-  updateFlag,
-  deleteFlag,
-} from '@Utils/ExtApi'
-import { getInputNumber, showErrorMsg, showSuccessMsg } from '@Utils/Shared'
-import { FlagMatchMode } from '@Api'
+  ChallengeFlagCreateModel,
+  ChallengeFlagUpdateModel,
+} from '@Api'
+import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 
 interface FlagEditorProps {
   challengeId: number
-  flagMatchMode?: FlagMatchMode | null
   disabled?: boolean
   disabledReason?: string
 }
@@ -45,12 +39,8 @@ interface FlagFormValues {
   rawAnswer: string
   isVisible: boolean
   isEnabled: boolean
-  flawNo: string
-  repository: string
-  module: string
-  filePath: string
-  cwe: string
-  score: number
+  level: number
+  trackId: string
   sortOrder: number
 }
 
@@ -60,20 +50,13 @@ const createEmptyFlagForm = (sortOrder = 0): FlagFormValues => ({
   rawAnswer: '',
   isVisible: true,
   isEnabled: true,
-  flawNo: '',
-  repository: '',
-  module: '',
-  filePath: '',
-  cwe: '',
-  score: 100,
+  level: 1,
+  trackId: '',
   sortOrder,
 })
 
-const cleanText = (value: string) => value.trim()
-
-export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, disabled, disabledReason }) => {
+export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, disabled, disabledReason }) => {
   const { t } = useTranslation()
-  const isHybridLine = flagMatchMode === FlagMatchMode.HybridLine
   const isLocked = disabled === true
   const [flags, setFlags] = useState<ChallengeFlag[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,8 +67,8 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
 
   const loadFlags = useCallback(async () => {
     try {
-      const data = await getFlags(challengeId)
-      setFlags(data)
+      const res = await api.ext.extGetFlags(challengeId)
+      setFlags(res.data)
     } catch (err: any) {
       showErrorMsg(err, t)
     } finally {
@@ -96,8 +79,6 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
   useEffect(() => {
     loadFlags()
   }, [loadFlags])
-
-  const totalScore = flags.reduce((sum, f) => sum + f.score, 0)
 
   const openCreate = () => {
     if (isLocked) return
@@ -115,13 +96,9 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
       rawAnswer: flag.rawAnswer ?? flag.flagValue,
       isVisible: flag.isVisible ?? true,
       isEnabled: flag.isEnabled ?? true,
-      flawNo: flag.flawNo ?? '',
-      repository: flag.repository ?? '',
-      module: flag.module ?? '',
-      filePath: flag.filePath ?? '',
-      cwe: flag.cwe ?? '',
-      score: flag.score,
-      sortOrder: flag.sortOrder,
+      level: flag.level ?? 1,
+      trackId: flag.trackId ?? '',
+      sortOrder: flag.sortOrder ?? 0,
     })
     editModalHandlers.open()
   }
@@ -148,31 +125,21 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
   const answerTypeLabel = (type?: ChallengeFlagAnswerType) =>
     answerTypeData.find((item) => item.value === type)?.label ?? t('admin.flag.answer_type.single_line')
 
-  const buildPayload = (): ChallengeFlagInput & { flagValue: string; score: number; sortOrder: number } => {
-    const base = {
+  const buildPayload = (): ChallengeFlagCreateModel => {
+    const answer = formValues.rawAnswer.trim() || formValues.flagValue.trim()
+    const payload: ChallengeFlagCreateModel = {
       flagValue: formValues.flagValue.trim(),
-      score: formValues.score,
-      sortOrder: formValues.sortOrder,
-    }
-
-    if (!isHybridLine) {
-      return base
-    }
-
-    const answer = formValues.rawAnswer.trim() || base.flagValue
-
-    return {
-      ...base,
       answerType: formValues.answerType,
       rawAnswer: answer,
       isVisible: formValues.isVisible,
       isEnabled: formValues.isEnabled,
-      flawNo: cleanText(formValues.flawNo),
-      repository: cleanText(formValues.repository),
-      module: cleanText(formValues.module),
-      filePath: cleanText(formValues.filePath),
-      cwe: cleanText(formValues.cwe),
+      level: formValues.level,
+      sortOrder: formValues.sortOrder,
     }
+    if (formValues.trackId.trim()) {
+      payload.trackId = formValues.trackId.trim()
+    }
+    return payload
   }
 
   const handleSave = async () => {
@@ -181,8 +148,8 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
       showErrorMsg(t('admin.flag.empty_value'), t)
       return
     }
-    if (formValues.score < 1) {
-      showErrorMsg(t('admin.flag.invalid_score'), t)
+    if (formValues.level < 1) {
+      showErrorMsg(t('admin.flag.invalid_level'), t)
       return
     }
 
@@ -190,9 +157,19 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
     try {
       const payload = buildPayload()
       if (editingFlag) {
-        await updateFlag(challengeId, editingFlag.id, payload)
+        const updatePayload: ChallengeFlagUpdateModel = {
+          flagValue: payload.flagValue,
+          answerType: payload.answerType,
+          rawAnswer: payload.rawAnswer,
+          isVisible: payload.isVisible,
+          isEnabled: payload.isEnabled,
+          level: payload.level,
+          trackId: payload.trackId,
+          sortOrder: payload.sortOrder,
+        }
+        await api.ext.extUpdateFlag(challengeId, editingFlag.id ?? '', updatePayload)
       } else {
-        await createFlag(challengeId, payload)
+        await api.ext.extCreateFlag(challengeId, payload)
       }
       showSuccessMsg(t('common.content.save_success'), t)
       editModalHandlers.close()
@@ -208,7 +185,7 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
     if (isLocked) return
     if (!confirm(t('admin.flag.confirm_delete'))) return
     try {
-      await deleteFlag(challengeId, flag.id)
+      await api.ext.extDeleteFlag(challengeId, flag.id ?? '')
       showSuccessMsg(t('common.content.delete_success'), t)
       await loadFlags()
     } catch (err: any) {
@@ -222,7 +199,7 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
         <Title order={5}>
           {t('admin.flag.title')}
           <Badge ml="sm" variant="light">
-            {t('admin.flag.total_score')}: {totalScore}
+            {t('admin.flag.total_count')}: {flags.length}
           </Badge>
         </Title>
         <Button leftSection={<Icon path={mdiPlus} size={1} />} size="xs" onClick={openCreate} disabled={isLocked}>
@@ -245,72 +222,46 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
           <Table.Thead>
             <Table.Tr>
               <Table.Th>{t('admin.flag.column.value')}</Table.Th>
-              {isHybridLine && <Table.Th>{t('admin.flag.column.answer_type')}</Table.Th>}
-              {isHybridLine && <Table.Th>{t('admin.flag.column.metadata')}</Table.Th>}
-              {isHybridLine && <Table.Th>{t('admin.flag.column.status')}</Table.Th>}
-              <Table.Th>{t('admin.flag.column.score')}</Table.Th>
+              <Table.Th>{t('admin.flag.column.answer_type')}</Table.Th>
+              <Table.Th>{t('admin.flag.column.level')}</Table.Th>
+              <Table.Th>{t('admin.flag.column.track')}</Table.Th>
+              <Table.Th>{t('admin.flag.column.status')}</Table.Th>
               <Table.Th>{t('admin.flag.column.sort')}</Table.Th>
               <Table.Th>{t('admin.flag.column.actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {flags.map((flag) => (
-              <Table.Tr key={flag.id}>
+              <Table.Tr key={flag.id ?? ''}>
                 <Table.Td>
                   <Text size="sm" ff="monospace">
                     {flag.flagValue}
                   </Text>
                 </Table.Td>
-                {isHybridLine && (
-                  <Table.Td>
-                    <Badge variant="light">{answerTypeLabel(flag.answerType)}</Badge>
-                  </Table.Td>
-                )}
-                {isHybridLine && (
-                  <Table.Td>
-                    <Stack gap={2}>
-                      {flag.flawNo && <Text size="xs">{flag.flawNo}</Text>}
-                      {flag.repository && (
-                        <Text size="xs" c="dimmed">
-                          {flag.repository}
-                        </Text>
-                      )}
-                      {flag.module && (
-                        <Text size="xs" c="dimmed">
-                          {flag.module}
-                        </Text>
-                      )}
-                      {flag.filePath && (
-                        <Text size="xs" ff="monospace" lineClamp={1}>
-                          {flag.filePath}
-                        </Text>
-                      )}
-                      {flag.cwe && (
-                        <Text size="xs" c="dimmed">
-                          {flag.cwe}
-                        </Text>
-                      )}
-                    </Stack>
-                  </Table.Td>
-                )}
-                {isHybridLine && (
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Badge variant="light" color={(flag.isVisible ?? true) ? 'blue' : 'gray'}>
-                        {(flag.isVisible ?? true) ? t('admin.flag.visible') : t('admin.flag.hidden')}
-                      </Badge>
-                      <Badge variant="light" color={(flag.isEnabled ?? true) ? 'green' : 'gray'}>
-                        {(flag.isEnabled ?? true) ? t('admin.flag.enabled') : t('admin.flag.disabled')}
-                      </Badge>
-                    </Group>
-                  </Table.Td>
-                )}
                 <Table.Td>
-                  <Badge variant="light" color="green">
-                    +{flag.score}
+                  <Badge variant="light">{answerTypeLabel(flag.answerType)}</Badge>
+                </Table.Td>
+                <Table.Td>
+                  <Badge variant="light" color="indigo">
+                    L{flag.level ?? 1}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{flag.sortOrder}</Table.Td>
+                <Table.Td>
+                  <Text size="xs" ff="monospace" lineClamp={1}>
+                    {flag.trackId ? flag.trackId.slice(0, 8) : '-'}
+                  </Text>
+                </Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    <Badge variant="light" color={(flag.isVisible ?? true) ? 'blue' : 'gray'}>
+                      {(flag.isVisible ?? true) ? t('admin.flag.visible') : t('admin.flag.hidden')}
+                    </Badge>
+                    <Badge variant="light" color={(flag.isEnabled ?? true) ? 'green' : 'gray'}>
+                      {(flag.isEnabled ?? true) ? t('admin.flag.enabled') : t('admin.flag.disabled')}
+                    </Badge>
+                  </Group>
+                </Table.Td>
+                <Table.Td>{flag.sortOrder ?? 0}</Table.Td>
                 <Table.Td>
                   <Group gap="xs">
                     <ActionIcon variant="subtle" size="sm" onClick={() => openEdit(flag)} disabled={isLocked}>
@@ -341,81 +292,58 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, flagMatchMode, di
             }
             required
           />
-          {isHybridLine && (
-            <>
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <Select
-                  label={t('admin.flag.column.answer_type')}
-                  value={formValues.answerType}
-                  data={answerTypeData}
-                  onChange={(value) =>
-                    setFormValues({
-                      ...formValues,
-                      answerType: (value as ChallengeFlagAnswerType) ?? ChallengeFlagAnswerType.SingleLine,
-                    })
-                  }
-                  required
-                />
-                <Group align="flex-end" gap="lg">
-                  <Switch
-                    checked={formValues.isVisible}
-                    label={t('admin.flag.visible')}
-                    onChange={(e) => setFormValues({ ...formValues, isVisible: e.currentTarget.checked })}
-                  />
-                  <Switch
-                    checked={formValues.isEnabled}
-                    label={t('admin.flag.enabled')}
-                    onChange={(e) => setFormValues({ ...formValues, isEnabled: e.currentTarget.checked })}
-                  />
-                </Group>
-              </SimpleGrid>
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <TextInput
-                  label={t('admin.flag.metadata.flaw_no')}
-                  value={formValues.flawNo}
-                  onChange={(e) => setFormValues({ ...formValues, flawNo: e.currentTarget.value })}
-                />
-                <TextInput
-                  label={t('admin.flag.metadata.cwe')}
-                  value={formValues.cwe}
-                  onChange={(e) => setFormValues({ ...formValues, cwe: e.currentTarget.value })}
-                />
-                <TextInput
-                  label={t('admin.flag.metadata.repository')}
-                  value={formValues.repository}
-                  onChange={(e) => setFormValues({ ...formValues, repository: e.currentTarget.value })}
-                />
-                <TextInput
-                  label={t('admin.flag.metadata.module')}
-                  value={formValues.module}
-                  onChange={(e) => setFormValues({ ...formValues, module: e.currentTarget.value })}
-                />
-              </SimpleGrid>
-              <TextInput
-                label={t('admin.flag.metadata.file_path')}
-                value={formValues.filePath}
-                onChange={(e) => setFormValues({ ...formValues, filePath: e.currentTarget.value })}
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <Select
+              label={t('admin.flag.column.answer_type')}
+              value={formValues.answerType}
+              data={answerTypeData}
+              onChange={(value) =>
+                setFormValues({
+                  ...formValues,
+                  answerType: (value as ChallengeFlagAnswerType) ?? ChallengeFlagAnswerType.SingleLine,
+                })
+              }
+              required
+            />
+            <Group align="flex-end" gap="lg">
+              <Switch
+                checked={formValues.isVisible}
+                label={t('admin.flag.visible')}
+                onChange={(e) => setFormValues({ ...formValues, isVisible: e.currentTarget.checked })}
               />
-            </>
-          )}
-          <NumberInput
-            label={t('admin.flag.column.score')}
-            value={formValues.score}
-            onChange={(v) => {
-              const num = getInputNumber(v)
-              if (isNaN(num)) return
-              setFormValues({ ...formValues, score: num })
-            }}
-            min={1}
-            required
-          />
-          <NumberInput
+              <Switch
+                checked={formValues.isEnabled}
+                label={t('admin.flag.enabled')}
+                onChange={(e) => setFormValues({ ...formValues, isEnabled: e.currentTarget.checked })}
+              />
+            </Group>
+          </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <TextInput
+              label={t('admin.flag.column.level')}
+              type="number"
+              value={formValues.level}
+              onChange={(e) => {
+                const num = parseInt(e.currentTarget.value, 10)
+                if (!isNaN(num)) setFormValues({ ...formValues, level: num })
+              }}
+              min={1}
+              required
+            />
+            <TextInput
+              label={t('admin.flag.column.track')}
+              value={formValues.trackId}
+              onChange={(e) => setFormValues({ ...formValues, trackId: e.currentTarget.value })}
+              placeholder={t('admin.flag.column.track_optional')}
+            />
+          </SimpleGrid>
+          <TextInput
             label={t('admin.flag.column.sort')}
+            type="number"
             value={formValues.sortOrder}
-            onChange={(v) => {
-              const num = getInputNumber(v)
-              if (isNaN(num)) return
-              setFormValues({ ...formValues, sortOrder: num })
+            onChange={(e) => {
+              const num = parseInt(e.currentTarget.value, 10)
+              if (!isNaN(num)) setFormValues({ ...formValues, sortOrder: num })
             }}
           />
           <Group justify="flex-end">

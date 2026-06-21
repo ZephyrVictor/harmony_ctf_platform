@@ -10,6 +10,18 @@
  * ---------------------------------------------------------------
  */
 
+export enum ZeroDayTicketStatus {
+  Pending = "Pending",
+  Approved = "Approved",
+  Rejected = "Rejected",
+}
+
+export enum TicketStatus {
+  Pending = "Pending",
+  Approved = "Approved",
+  Rejected = "Rejected",
+}
+
 export enum CaptchaProvider {
   None = "None",
   HashPow = "HashPow",
@@ -19,15 +31,6 @@ export enum CaptchaProvider {
 export enum ContainerPortMappingType {
   Default = "Default",
   PlatformProxy = "PlatformProxy",
-}
-
-/** Judgement result */
-export enum AnswerResult {
-  FlagSubmitted = "FlagSubmitted",
-  Accepted = "Accepted",
-  WrongAnswer = "WrongAnswer",
-  CheatDetected = "CheatDetected",
-  NotFound = "NotFound",
 }
 
 /** Game event type */
@@ -48,24 +51,44 @@ export enum SubmissionType {
   Normal = "Normal",
 }
 
-/** Container network mode */
-export enum NetworkMode {
-  Open = "Open",
-  Isolated = "Isolated",
-  Custom = "Custom",
+export enum BigScreenEventType {
+  Bonus = "Bonus",
 }
 
-export enum FlagMatchMode {
-  Exact = "Exact",
-  LineRange = "LineRange",
-  HybridLine = "HybridLine",
+/** Challenge difficulty */
+export enum Difficulty {
+  Baby = "Baby",
+  Trivial = "Trivial",
+  Easy = "Easy",
+  Normal = "Normal",
+  Medium = "Medium",
+  Hard = "Hard",
+  Expert = "Expert",
+  Insane = "Insane",
 }
 
+/** Judgement result */
+export enum AnswerResult {
+  FlagSubmitted = "FlagSubmitted",
+  Accepted = "Accepted",
+  WrongAnswer = "WrongAnswer",
+  CheatDetected = "CheatDetected",
+  NotFound = "NotFound",
+}
+
+/** Per-flag answer type for hybrid line matching */
 export enum ChallengeFlagAnswerType {
   Exact = "Exact",
   SingleLine = "SingleLine",
   LineRange = "LineRange",
   MultiLine = "MultiLine",
+}
+
+/** Container network mode */
+export enum NetworkMode {
+  Open = "Open",
+  Isolated = "Isolated",
+  Custom = "Custom",
 }
 
 /** Container status */
@@ -1196,8 +1219,11 @@ export interface ChallengeEditDetailModel {
    * @format int32
    */
   submissionLimit: number;
-  /** Flag matching mode */
-  flagMatchMode?: FlagMatchMode;
+  /**
+   * 临时全题锁时长（分钟），0 = 永久
+   * @format int32
+   */
+  lockDurationMinutes?: number;
   /**
    * Initial score
    * @format int32
@@ -1252,13 +1278,21 @@ export interface ContainerInfoModel {
 export interface FlagInfoModel {
   /**
    * Flag Id
-   * @format uuid
+   * @format guid
    */
   id?: string;
   /** Flag text */
   flag?: string;
-  /** Score contribution of this flag */
-  score?: number;
+  /**
+   * Level of this flag (1, 2, 3...)
+   * @format int32
+   */
+  level?: number;
+  /**
+   * Track Id of this flag
+   * @format guid
+   */
+  trackId?: string;
   /** Attachment corresponding to the Flag */
   attachment?: Attachment | null;
 }
@@ -1337,8 +1371,13 @@ export interface ChallengeUpdateModel {
    * @max 10000
    */
   submissionLimit?: number | null;
-  /** Flag matching mode */
-  flagMatchMode?: FlagMatchMode | null;
+  /**
+   * 临时全题锁时长（分钟），0 = 永久
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  lockDurationMinutes?: number | null;
   /** Container image name and tag */
   containerImage?: string | null;
   /**
@@ -1410,12 +1449,977 @@ export interface FlagCreateModel {
    * @maxLength 127
    */
   flag: string;
+  /**
+   * Score contribution of this flag
+   * @format int32
+   */
+  score?: number;
+  /**
+   * Sort order for display
+   * @format int32
+   */
+  sortOrder?: number;
   /** Attachment type */
   attachmentType?: FileType;
   /** File hash (local file) */
   fileHash?: string | null;
   /** File URL (remote file) */
   remoteUrl?: string | null;
+}
+
+export interface ChallengeFlag {
+  /** @format guid */
+  id?: string;
+  /**
+   * Flag value（匹配用）
+   * @minLength 1
+   * @maxLength 127
+   */
+  flagValue: string;
+  /** Per-flag 答案类型，决定匹配算法 */
+  answerType?: ChallengeFlagAnswerType;
+  /**
+   * 原始答案文本（归一化前）
+   * @maxLength 127
+   */
+  rawAnswer?: string;
+  /**
+   * 归一化后的匹配键
+   * @maxLength 143
+   */
+  normalizedAnswerKey?: string;
+  /** 是否参与匹配 */
+  isEnabled?: boolean;
+  /** 是否对选手可见 */
+  isVisible?: boolean;
+  /** 是否已被分配（dynamic attachment 用） */
+  isOccupied?: boolean;
+  /**
+   * 显示顺序
+   * @format int32
+   */
+  sortOrder?: number;
+  /** @format uint64 */
+  createdAt?: number;
+  /** @format uint64 */
+  updatedAt?: number;
+  /**
+   * 所属层级（1, 2, 3...）
+   * @format int32
+   */
+  level?: number;
+  /**
+   * 所属 Track（同 TrackId 的 flags 属于同一漏洞实例）
+   * @format guid
+   */
+  trackId?: string;
+  /** @format int32 */
+  challengeId?: number;
+  challenge?: GameChallenge | null;
+  /** @format int32 */
+  exerciseId?: number | null;
+  exercise?: ExerciseChallenge | null;
+  /** @format int32 */
+  attachmentId?: number | null;
+  attachment?: Attachment | null;
+  submissionRecords?: SubmissionRecord[];
+}
+
+export type GameChallenge = Challenge & {
+  /** Whether to record traffic */
+  enableTrafficCapture?: boolean;
+  /** Whether to disable blood bonus */
+  disableBloodBonus?: boolean;
+  /**
+   * Initial score
+   * @format int32
+   */
+  originalScore: number;
+  /**
+   * Minimum score rate
+   * @format double
+   * @min 0
+   * @max 1
+   */
+  minScoreRate: number;
+  /**
+   * Difficulty coefficient
+   * @format double
+   */
+  difficulty: number;
+  /**
+   * Current score of the challenge
+   * @format int32
+   */
+  currentScore?: number;
+  /** Submissions */
+  submissions?: Submission[];
+  /** Challenge instances */
+  instances?: GameInstance[];
+  /** Teams that activated the challenge */
+  teams?: Participation[];
+  /** Configurations for divisions */
+  divisionConfigs?: DivisionChallengeConfig[];
+  /** First solves recorded for this challenge. */
+  firstSolves?: FirstSolve[] | null;
+  /**
+   * Game ID
+   * @format int32
+   */
+  gameId?: number;
+  /** Game object */
+  game?: Game;
+};
+
+export interface Submission {
+  /**
+   * Submitted answer string
+   * @maxLength 127
+   */
+  answer?: string;
+  /** Status of the submitted answer */
+  status?: AnswerResult;
+  /**
+   * Time the answer was submitted
+   * @format uint64
+   */
+  time?: number;
+  /** User who submitted */
+  user?: string;
+  /** Team that submitted */
+  team?: string;
+  /** Challenge that was submitted */
+  challenge?: string;
+}
+
+export type GameInstance = Instance & {
+  /** Get instance attachment */
+  attachment?: Attachment | null;
+  /** Get instance attachment URL */
+  attachmentUrl?: string | null;
+  /** @format int32 */
+  challengeId: number;
+  /** Challenge object */
+  challenge?: GameChallenge;
+  /** @format int32 */
+  participationId: number;
+  /** Participation team object */
+  participation?: Participation;
+};
+
+/** Participation information */
+export interface Participation {
+  /** Participation status */
+  status: ParticipationStatus;
+  /**
+   * Team token
+   * @minLength 1
+   */
+  token: string;
+  /** Team writeup */
+  writeup?: LocalFile | null;
+  /** Members participating in the team */
+  members?: UserParticipation[];
+  /** Challenges activated by the team */
+  challenges?: GameChallenge[];
+  /** Game instances */
+  instances?: GameInstance[];
+  /** Submissions */
+  submissions?: Submission[];
+  /** First solves recorded for this participation. */
+  firstSolves?: FirstSolve[];
+  /**
+   * Game ID
+   * @format int32
+   */
+  gameId: number;
+  /** Game */
+  game?: Game;
+  /**
+   * Team ID
+   * @format int32
+   */
+  teamId: number;
+  /** Team */
+  team?: Team;
+  /**
+   * Division ID
+   * @format int32
+   */
+  divisionId?: number | null;
+  /** Division this participation belongs to */
+  division?: Division | null;
+}
+
+export interface UserParticipation {
+  /**
+   * User ID
+   * @format guid
+   * @minLength 1
+   */
+  userId: string;
+  /** User */
+  user?: UserInfo;
+  /**
+   * Team ID
+   * @format int32
+   */
+  teamId: number;
+  /** Team */
+  team?: Team;
+  /**
+   * Game ID
+   * @format int32
+   */
+  gameId: number;
+  /** Game */
+  game?: Game;
+  /**
+   * Participation ID
+   * @format int32
+   */
+  participationId: number;
+}
+
+export type UserInfo = IdentityUserOfGuid & {
+  /**
+   * Override Guid to use Ulid
+   * @format guid
+   */
+  id?: string;
+  /** User role */
+  role?: Role;
+  /** User's recent IP address */
+  ip?: string;
+  /**
+   * User's last sign-in time
+   * @format uint64
+   */
+  lastSignedInUtc?: number;
+  /**
+   * User's last visit time
+   * @format uint64
+   */
+  lastVisitedUtc?: number;
+  /**
+   * User registration time
+   * @format uint64
+   */
+  registerTimeUtc?: number;
+  /**
+   * User bio
+   * @maxLength 128
+   */
+  bio?: string;
+  /**
+   * Real name
+   * @maxLength 128
+   */
+  realName?: string;
+  /**
+   * Student ID
+   * @maxLength 64
+   */
+  stdNumber?: string;
+  /** Hide in exercise scoreboard */
+  exerciseVisible?: boolean;
+  avatarUrl?: string | null;
+  /**
+   * Avatar hash
+   * @maxLength 64
+   */
+  avatarHash?: string | null;
+  /** Personal submission records */
+  submissions?: Submission[];
+  /** Participated teams */
+  teams?: Team[];
+};
+
+export interface Team {
+  /** @format int32 */
+  id?: number;
+  /**
+   * Team name
+   * @minLength 1
+   * @maxLength 20
+   */
+  name: string;
+  /**
+   * Team bio
+   * @maxLength 72
+   */
+  bio?: string | null;
+  /**
+   * Avatar hash
+   * @maxLength 64
+   */
+  avatarHash?: string | null;
+  /** Is the team locked */
+  locked?: boolean;
+  /**
+   * Invite token
+   * @maxLength 32
+   */
+  inviteToken?: string;
+  /** Invitation code */
+  inviteCode?: string;
+  avatarUrl?: string | null;
+  /**
+   * Captain user ID
+   * @format guid
+   */
+  captainId?: string;
+  /** Captain */
+  captain?: UserInfo | null;
+  /** Participation objects */
+  participations?: Participation[];
+  /** Games */
+  games?: Game[] | null;
+  /** Members */
+  members?: UserInfo[];
+}
+
+export interface Game {
+  /** @format int32 */
+  id: number;
+  /**
+   * Game title
+   * @minLength 1
+   */
+  title: string;
+  /**
+   * Token signature public key
+   * @minLength 1
+   * @maxLength 63
+   */
+  publicKey: string;
+  /**
+   * Token signature private key
+   * @minLength 1
+   * @maxLength 63
+   */
+  privateKey: string;
+  /** Whether to hide */
+  hidden: boolean;
+  /** Whether the game is in practice mode (most operations can still be performed after the game ends) */
+  practiceMode?: boolean;
+  /**
+   * Poster hash
+   * @maxLength 64
+   */
+  posterHash?: string | null;
+  /** Game description */
+  summary?: string;
+  /** Detailed introduction of the game */
+  content?: string;
+  /** Teams can join without review */
+  acceptWithoutReview?: boolean;
+  /** Whether writeup is required */
+  writeupRequired?: boolean;
+  /**
+   * Game invitation code
+   * @maxLength 32
+   */
+  inviteCode?: string | null;
+  /**
+   * Limit on the number of team members, 0 means no limit
+   * @format int32
+   */
+  teamMemberCountLimit?: number;
+  /**
+   * Limit on the number of containers a team can have simultaneously
+   * @format int32
+   */
+  containerCountLimit?: number;
+  /**
+   * Start time
+   * @format uint64
+   */
+  start: number;
+  /**
+   * End time
+   * @format uint64
+   */
+  end: number;
+  /**
+   * Writeup submission deadline
+   * @format uint64
+   */
+  writeupDeadline: number;
+  /**
+   * Additional notes for writeup
+   * @minLength 1
+   */
+  writeupNote: string;
+  /** Blood bonus */
+  bloodBonus: BloodBonus;
+  /** Poster URL */
+  posterUrl?: string | null;
+  /** Team hash salt */
+  teamHashSalt?: string;
+  /** List of divisions for the game */
+  divisions?: Division[] | null;
+}
+
+/** Blood bonus */
+export interface BloodBonus {
+  /** @format int64 */
+  val?: number;
+  /** @format int64 */
+  firstBlood?: number;
+  /** @format float */
+  firstBloodFactor?: number;
+  /** @format int64 */
+  secondBlood?: number;
+  /** @format float */
+  secondBloodFactor?: number;
+  /** @format int64 */
+  thirdBlood?: number;
+  /** @format float */
+  thirdBloodFactor?: number;
+  noBonus?: boolean;
+}
+
+export interface IdentityUserOfGuid {
+  /** @format guid */
+  id?: string;
+  userName?: string | null;
+  normalizedUserName?: string | null;
+  email?: string | null;
+  normalizedEmail?: string | null;
+  emailConfirmed?: boolean;
+  passwordHash?: string | null;
+  securityStamp?: string | null;
+  concurrencyStamp?: string | null;
+  phoneNumber?: string | null;
+  phoneNumberConfirmed?: boolean;
+  twoFactorEnabled?: boolean;
+  /** @format uint64 */
+  lockoutEnd?: number | null;
+  lockoutEnabled?: boolean;
+  /** @format int32 */
+  accessFailedCount?: number;
+}
+
+/**
+ * Represents the first successful solve of a challenge for a specific participation.
+ * This table acts as the immutable fact source for scoreboard and scoring related logic.
+ */
+export interface FirstSolve {
+  /**
+   * Participation ID.
+   * @format int32
+   */
+  participationId: number;
+  /**
+   * Challenge ID.
+   * @format int32
+   */
+  challengeId: number;
+  /**
+   * Submission ID that produced this solve.
+   * @format int32
+   */
+  submissionId: number;
+  /** Participation information */
+  participation?: Participation;
+  challenge?: GameChallenge;
+  submission?: Submission;
+}
+
+export interface Instance {
+  /** Whether the challenge is loaded */
+  isLoaded?: boolean;
+  /**
+   * Last container operation time to ensure operations are not too frequent
+   * @format uint64
+   */
+  lastContainerOperation?: number;
+  isContainerOperationTooFrequent?: boolean;
+  /** @format guid */
+  flagId?: string | null;
+  /** Flag context object */
+  flagContext?: ChallengeFlag | null;
+  /** @format guid */
+  containerId?: string | null;
+  /** Container object */
+  container?: Container | null;
+}
+
+export interface Container {
+  /**
+   * Container GUID
+   * @format guid
+   */
+  id?: string;
+  /**
+   * The Image used to create the container
+   * @minLength 1
+   */
+  image: string;
+  /**
+   * Container ID
+   * @minLength 1
+   */
+  containerId: string;
+  /** Container status */
+  status: ContainerStatus;
+  /**
+   * Container creation time
+   * @format uint64
+   */
+  startedAt: number;
+  /**
+   * Expected container stop time
+   * @format uint64
+   */
+  expectStopAt: number;
+  /** Whether the container has a reverse proxy */
+  isProxy: boolean;
+  /**
+   * Local IP
+   * @minLength 1
+   */
+  ip: string;
+  /**
+   * Local port
+   * @format int32
+   */
+  port: number;
+  /** Public IP */
+  publicIP?: string | null;
+  /**
+   * Public port
+   * @format int32
+   */
+  publicPort?: number | null;
+  /** Container instance access method */
+  entry?: string;
+  /** Whether traffic capture is enabled */
+  enableTrafficCapture?: boolean;
+  /** Shortened container GUID for logging purposes */
+  shortId?: string;
+  /** The container ID for logging purposes */
+  logId?: string;
+  /** Game challenge instance object */
+  gameInstance?: GameInstance | null;
+  /**
+   * Game challenge instance object ID
+   * @format int32
+   */
+  gameInstanceId?: number | null;
+  /** Exercise challenge instance object */
+  exerciseInstance?: ExerciseInstance | null;
+  /**
+   * Exercise challenge instance object ID
+   * @format int32
+   */
+  exerciseInstanceId?: number | null;
+}
+
+export type ExerciseInstance = Instance & {
+  /** Get instance attachment */
+  attachment?: Attachment | null;
+  /** Get instance attachment URL */
+  attachmentUrl?: string | null;
+  /**
+   * Time when the answer was solved
+   * @format uint64
+   */
+  solveTimeUtc?: number;
+  /**
+   * User ID
+   * @format guid
+   * @minLength 1
+   */
+  userId: string;
+  /** Participating user */
+  user?: UserInfo;
+  /**
+   * Exercise ID
+   * @format int32
+   */
+  exerciseId: number;
+  /** Exercise object */
+  exercise?: ExerciseChallenge;
+};
+
+export type ExerciseChallenge = Challenge & {
+  /** Credits for the exercise challenge */
+  credit?: boolean;
+  /** Difficulty of the exercise challenge, used for tags, sorting, etc. */
+  difficulty?: Difficulty;
+  /** Additional tags for the exercise challenge */
+  tags?: string[] | null;
+  /** Dependent exercise challenges */
+  dependencies?: ExerciseChallenge[];
+};
+
+export interface Challenge {
+  /** @format int32 */
+  id: number;
+  /**
+   * Challenge title
+   * @minLength 1
+   */
+  title: string;
+  /**
+   * Challenge content
+   * @minLength 1
+   */
+  content: string;
+  /** Challenge category */
+  category: ChallengeCategory;
+  /** Challenge type, cannot be changed after creation */
+  type: ChallengeType;
+  /** Challenge hints */
+  hints?: string[] | null;
+  /** Whether the challenge is enabled */
+  isEnabled?: boolean;
+  /**
+   * The deadline of the challenge, null means no deadline
+   * @format uint64
+   */
+  deadlineUtc?: number | null;
+  /**
+   * Maximum number of submissions allowed per team (0 = no limit)
+   * @format int32
+   */
+  submissionLimit: number;
+  /**
+   * 临时全题锁时长（分钟），0 = 永久
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  lockDurationMinutes?: number;
+  /** Image name and tag */
+  containerImage?: string | null;
+  /**
+   * Memory limit (MB)
+   * @format int32
+   */
+  memoryLimit?: number | null;
+  /**
+   * Storage limit (MB)
+   * @format int32
+   */
+  storageLimit?: number | null;
+  /**
+   * CPU limit (0.1 CPUs)
+   * @format int32
+   */
+  cpuCount?: number | null;
+  /**
+   * Container exposed port
+   * @format int32
+   */
+  exposePort?: number | null;
+  /** Container network mode */
+  networkMode?: NetworkMode | null;
+  /** Download file name, used only for dynamic attachment unified file name */
+  fileName?: string | null;
+  /**
+   * Flag template, used to generate flags based on token and challenge, game information
+   * @maxLength 120
+   */
+  flagTemplate?: string | null;
+  /**
+   * Challenge attachment ID
+   * @format int32
+   */
+  attachmentId?: number | null;
+  /** Challenge attachment (dynamic attachments are stored per-flag) */
+  attachment?: Attachment | null;
+  /**
+   * Test container ID
+   * @format guid
+   */
+  testContainerId?: string | null;
+  /** Test container */
+  testContainer?: Container | null;
+  /** List of flags for the challenge */
+  flags?: ChallengeFlag[];
+  /** 多级 flag Track 列表（每个 Track 对应一个漏洞实例） */
+  tracks?: ChallengeTrack[];
+  /** 多级 flag LevelConfig 列表（所有 Track 共享） */
+  levelConfigs?: ChallengeLevelConfig[];
+}
+
+/** 漏洞实例 track（数据集一行 = 一个 Track） */
+export interface ChallengeTrack {
+  /** @format guid */
+  id?: string;
+  /** @format int32 */
+  challengeId?: number;
+  /** @maxLength 200 */
+  title?: string | null;
+  /** @maxLength 64 */
+  flawNo?: string | null;
+  /** @maxLength 128 */
+  repository?: string | null;
+  /** @maxLength 128 */
+  module?: string | null;
+  /** @maxLength 512 */
+  filePath?: string | null;
+  /** @maxLength 128 */
+  category?: string | null;
+  /** @maxLength 512 */
+  referenceUrl?: string | null;
+  isEnabled?: boolean;
+  /** @format int32 */
+  sortOrder?: number;
+  /** @format uint64 */
+  createdAt?: number;
+  /** @format uint64 */
+  updatedAt?: number;
+  challenge?: GameChallenge;
+}
+
+/** Per-challenge per-level 配置（所有 Track 共享） */
+export interface ChallengeLevelConfig {
+  /** @format int32 */
+  id?: number;
+  /** @format int32 */
+  challengeId?: number;
+  /**
+   * 层级编号，1, 2, 3...
+   * @format int32
+   */
+  level?: number;
+  /** @maxLength 64 */
+  title?: string | null;
+  /**
+   * 本 level 解出分值
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  score?: number;
+  /**
+   * 0 = 继承 Challenge.SubmissionLimit
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  submissionLimit?: number;
+  /**
+   * 0 = 继承 ChallengePenalty
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  penaltyScore?: number;
+  /** 触发临时全题锁的 trap 答案 */
+  lockOnAnswers?: string[];
+  /** 触发永久 (Track, Level) 封禁的 trap 答案（仅 Level 2+ 生效） */
+  banOnAnswers?: string[];
+  isEnabled?: boolean;
+  /** @format int32 */
+  sortOrder?: number;
+  challenge?: GameChallenge;
+}
+
+export interface SubmissionRecord {
+  /** @format guid */
+  id?: string;
+  /**
+   * Score change (positive = correct flag, negative = penalty)
+   * @format int32
+   */
+  scoreChange?: number;
+  /** Whether this record represents a penalty (wrong answer) */
+  isPenalty?: boolean;
+  /** @format uint64 */
+  createdAt?: number;
+  /**
+   * Denormalized game ID
+   * @format int32
+   */
+  gameId?: number | null;
+  /**
+   * Denormalized challenge ID
+   * @format int32
+   */
+  challengeId?: number | null;
+  /**
+   * Denormalized participation ID
+   * @format int32
+   */
+  participationId?: number | null;
+  /**
+   * Denormalized level
+   * @format int32
+   */
+  level?: number | null;
+  /**
+   * Denormalized track ID
+   * @format guid
+   */
+  trackId?: string | null;
+  /**
+   * 提交类型：Correct | Wrong | Trap | Ban | Duplicate
+   * @maxLength 20
+   */
+  submissionType?: string | null;
+  /** @format int32 */
+  submissionId?: number;
+  submission?: Submission | null;
+  /** @format guid */
+  matchedFlagId?: string | null;
+  matchedFlag?: ChallengeFlag | null;
+}
+
+export interface ChallengeFlagCreateModel {
+  flagValue?: string;
+  /** Per-flag answer type for hybrid line matching */
+  answerType?: ChallengeFlagAnswerType;
+  rawAnswer?: string | null;
+  isVisible?: boolean;
+  isEnabled?: boolean;
+  /** @format int32 */
+  level?: number;
+  /** @format guid */
+  trackId?: string | null;
+  /** @format int32 */
+  sortOrder?: number;
+}
+
+export interface ChallengeFlagUpdateModel {
+  flagValue?: string | null;
+  answerType?: ChallengeFlagAnswerType | null;
+  rawAnswer?: string | null;
+  isVisible?: boolean | null;
+  isEnabled?: boolean | null;
+  /** @format int32 */
+  level?: number | null;
+  /** @format guid */
+  trackId?: string | null;
+  /** @format int32 */
+  sortOrder?: number | null;
+}
+
+export interface ChallengePenalty {
+  /** @format guid */
+  id?: string;
+  /**
+   * Score deducted for each wrong submission. 0 means no penalty.
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  penaltyScore: number;
+  /** @format uint64 */
+  createdAt?: number;
+  /** @format uint64 */
+  updatedAt?: number;
+  /**
+   * Challenge ID
+   * @format int32
+   */
+  challengeId?: number;
+  /** Challenge */
+  challenge?: GameChallenge | null;
+}
+
+export interface PenaltyUpdateModel {
+  /** @format int32 */
+  penaltyScore?: number;
+}
+
+export interface BigScreenEvent {
+  /** @format guid */
+  id?: string;
+  /** Event type */
+  eventType?: BigScreenEventType;
+  /**
+   * Display message
+   * @minLength 1
+   */
+  message: string;
+  /**
+   * Team name for display
+   * @maxLength 50
+   */
+  teamName?: string | null;
+  /**
+   * Challenge name for display
+   * @maxLength 100
+   */
+  challengeName?: string | null;
+  /**
+   * Related score change
+   * @format int32
+   */
+  scoreChange?: number | null;
+  /** Whether this event has been consumed by the big screen */
+  isConsumed?: boolean;
+  /** @format uint64 */
+  createdAt?: number;
+  /**
+   * Challenge ID
+   * @format int32
+   */
+  challengeId?: number;
+  /** Challenge */
+  challenge?: GameChallenge | null;
+  /**
+   * Related user ID
+   * @format guid
+   */
+  userId?: string | null;
+  /** Related user */
+  user?: UserInfo | null;
+}
+
+export interface SubmissionRecordDto {
+  /** @format guid */
+  id?: string;
+  /** @format int32 */
+  submissionId?: number;
+  /** @format int32 */
+  scoreChange?: number;
+  isPenalty?: boolean;
+  /** @format uint64 */
+  createdAt?: number;
+  challengeName?: string;
+  /** @format int32 */
+  challengeId?: number;
+  /** @format int32 */
+  gameId?: number;
+  answer?: string | null;
+  /** @format guid */
+  matchedFlagId?: string | null;
+  /** @format int32 */
+  level?: number | null;
+  /** @format guid */
+  trackId?: string | null;
+  submissionType?: string | null;
+}
+
+export interface FlagImportFilePreview {
+  columnNames?: string[];
+  sampleRows?: Record<string, string>[];
+}
+
+export interface FlagImportResult {
+  /** @format int32 */
+  totalRows?: number;
+  /** @format int32 */
+  imported?: number;
+  /** @format int32 */
+  updated?: number;
+  /** @format int32 */
+  skipped?: number;
+  /** @format int32 */
+  failed?: number;
+  errors?: FlagImportError[];
+}
+
+export interface FlagImportError {
+  /** @format int32 */
+  row?: number;
+  error?: string;
 }
 
 /** Basic game information, excluding detailed description and current team registration status */
@@ -1665,7 +2669,7 @@ export interface ScoreboardItem {
   /** List of solved challenges */
   solvedChallenges: ChallengeItem[];
   /**
-   * Number of solved challenges
+   * Number of solved (Track, Level) pairs (D8)
    * @format int32
    */
   solvedCount: number;
@@ -1796,27 +2800,6 @@ export interface FormattableDataOfEventType {
   type: EventType;
   /** List of formatted values */
   values: string[];
-}
-
-export interface Submission {
-  /**
-   * Submitted answer string
-   * @maxLength 127
-   */
-  answer?: string;
-  /** Status of the submitted answer */
-  status?: AnswerResult;
-  /**
-   * Time the answer was submitted
-   * @format uint64
-   */
-  time?: number;
-  /** User who submitted */
-  user?: string;
-  /** Team that submitted */
-  team?: string;
-  /** Challenge that was submitted */
-  challenge?: string;
 }
 
 /** Cheat behavior information */
@@ -2011,11 +2994,14 @@ export interface ChallengeDetailModel {
    * @format int32
    */
   limit?: number;
-  /** Flag matching mode */
-  flagMatchMode?: FlagMatchMode;
-  /** Player-visible flag metadata for HybridLine subsystem challenges */
+  /**
+   * 临时全题锁时长（分钟），0 = 永久（只读，展示用）
+   * @format int32
+   */
+  lockDurationMinutes?: number;
+  /** Player-visible flag metadata (legacy HybridLine view; superseded by Tracks) */
   flags?: HybridLineFlagInfoModel[];
-  /** Whether all enabled HybridLine flags have been solved */
+  /** Whether all enabled flags have been solved */
   allEnabledFlagsSolved?: boolean;
   /**
    * Current attempt count
@@ -2027,22 +3013,15 @@ export interface ChallengeDetailModel {
    * @format uint64
    */
   deadline?: number | null;
-}
-
-export interface HybridLineFlagInfoModel {
-  /** @format uuid */
-  id?: string;
-  /** @format int32 */
-  score?: number;
-  /** @format int32 */
-  sortOrder?: number;
-  answerType?: ChallengeFlagAnswerType;
-  flawNo?: string | null;
-  repository?: string | null;
-  module?: string | null;
-  filePath?: string | null;
-  cwe?: string | null;
-  isSolved?: boolean;
+  /** 多级 flag 状态：每个 Track 的进度 */
+  tracks?: TrackStatusModel[] | null;
+  /** 全题锁状态 */
+  challengeLock?: ChallengeLockStatusModel | null;
+  /**
+   * 当前可提交的最低 Level（前端引导用）
+   * @format int32
+   */
+  currentLevel?: number;
 }
 
 export interface ClientFlagContext {
@@ -2062,6 +3041,75 @@ export interface ClientFlagContext {
   fileSize?: number | null;
 }
 
+export interface HybridLineFlagInfoModel {
+  /** @format guid */
+  id?: string;
+  /** @format int32 */
+  level?: number;
+  /** @format guid */
+  trackId?: string;
+  /** @format int32 */
+  sortOrder?: number;
+  /** Per-flag answer type for hybrid line matching */
+  answerType?: ChallengeFlagAnswerType;
+  isSolved?: boolean;
+}
+
+/** 选手视图的 Track 状态 */
+export interface TrackStatusModel {
+  /** @format guid */
+  trackId?: string;
+  title?: string | null;
+  isEnabled?: boolean;
+  levels?: TrackLevelStatusModel[];
+}
+
+/** 选手视图的 Track × Level 状态 */
+export interface TrackLevelStatusModel {
+  /** @format int32 */
+  level?: number;
+  title?: string | null;
+  /** Unsolved | Solved | Banned | Locked */
+  status?: string;
+  /** @format uint64 */
+  solvedAt?: number | null;
+  /** @format int32 */
+  attemptsUsed?: number;
+  /** @format int32 */
+  submissionLimit?: number;
+  /** @format uint64 */
+  unlocksAt?: number | null;
+}
+
+/** 全题锁状态（选手视图） */
+export interface ChallengeLockStatusModel {
+  isLocked?: boolean;
+  /** @format uint64 */
+  unlocksAt?: number | null;
+  reason?: string | null;
+}
+
+/** Flag submission response (D6) */
+export interface FlagSubmitResponse {
+  /**
+   * Submission ID
+   * @format int32
+   */
+  id: number;
+  /** Result message (e.g., "Accepted", "Wrong answer", "Trap answer triggered") */
+  message?: string | null;
+  /**
+   * Matched Track ID (D6: L1 response returns matched trackId for L2+ submissions)
+   * @format guid
+   */
+  trackId?: string | null;
+  /**
+   * Matched Level (D6: current level that was submitted)
+   * @format int32
+   */
+  level?: number | null;
+}
+
 /** Flag submission */
 export interface FlagSubmitModel {
   /**
@@ -2069,6 +3117,16 @@ export interface FlagSubmitModel {
    * @minLength 1
    */
   flag: string;
+  /**
+   * Track Id (Level 1 入口可为空；Level ≥2 必填)
+   * @format guid
+   */
+  trackId?: string | null;
+  /**
+   * Level (1, 2, 3...)
+   * @format int32
+   */
+  level?: number;
 }
 
 /** Game writeup submission information */
@@ -2172,6 +3230,76 @@ export interface HashPowChallenge {
   difficulty?: number;
 }
 
+export interface LevelConfigCreateModel {
+  /**
+   * @format int32
+   * @min 1
+   * @max 2147483647
+   */
+  level?: number;
+  /** @maxLength 64 */
+  title?: string | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  score?: number;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  submissionLimit?: number | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  penaltyScore?: number | null;
+  lockOnAnswers?: string[] | null;
+  banOnAnswers?: string[] | null;
+  isEnabled?: boolean | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  sortOrder?: number | null;
+}
+
+export interface LevelConfigUpdateModel {
+  /** @maxLength 64 */
+  title?: string | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  score?: number | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  submissionLimit?: number | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  penaltyScore?: number | null;
+  lockOnAnswers?: string[] | null;
+  banOnAnswers?: string[] | null;
+  isEnabled?: boolean | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  sortOrder?: number | null;
+}
+
 /** Team information update */
 export interface TeamUpdateModel {
   /**
@@ -2207,6 +3335,147 @@ export interface SignatureVerifyModel {
    * @minLength 1
    */
   publicKey: string;
+}
+
+export interface TicketDto {
+  /** @format guid */
+  id?: string;
+  description?: string;
+  status?: TicketStatus;
+  reviewComment?: string | null;
+  /** @format int32 */
+  refundScore?: number;
+  /** @format int32 */
+  bonusScore?: number;
+  /** @format uint64 */
+  createdAt?: number;
+  /** @format uint64 */
+  reviewedAt?: number | null;
+  /** @format int32 */
+  submissionId?: number;
+  /** @format int32 */
+  gameId?: number | null;
+  userName?: string | null;
+  reviewerName?: string | null;
+  challengeName?: string | null;
+  answer?: string | null;
+  /** @format int32 */
+  penaltyScore?: number;
+  attachments?: TicketAttachmentDto[];
+}
+
+export interface TicketAttachmentDto {
+  /** @format guid */
+  id?: string;
+  fileName?: string;
+  /** @format int64 */
+  fileSize?: number;
+  url?: string | null;
+  contentType?: string | null;
+  /** @format uint64 */
+  createdAt?: number;
+}
+
+export interface TicketCreateModel {
+  /** @format int32 */
+  submissionId?: number;
+  /** @format int32 */
+  gameId?: number | null;
+  description?: string;
+}
+
+export interface TicketReviewModel {
+  /** @format int32 */
+  refundScore?: number;
+  /** @format int32 */
+  bonusScore?: number;
+  comment?: string | null;
+}
+
+export interface TrackCreateModel {
+  /** @maxLength 200 */
+  title?: string | null;
+  /** @maxLength 64 */
+  flawNo?: string | null;
+  /** @maxLength 128 */
+  repository?: string | null;
+  /** @maxLength 128 */
+  module?: string | null;
+  /** @maxLength 512 */
+  filePath?: string | null;
+  /** @maxLength 128 */
+  category?: string | null;
+  /** @maxLength 512 */
+  referenceUrl?: string | null;
+  isEnabled?: boolean | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  sortOrder?: number | null;
+}
+
+export interface TrackUpdateModel {
+  /** @maxLength 200 */
+  title?: string | null;
+  /** @maxLength 64 */
+  flawNo?: string | null;
+  /** @maxLength 128 */
+  repository?: string | null;
+  /** @maxLength 128 */
+  module?: string | null;
+  /** @maxLength 512 */
+  filePath?: string | null;
+  /** @maxLength 128 */
+  category?: string | null;
+  /** @maxLength 512 */
+  referenceUrl?: string | null;
+  isEnabled?: boolean | null;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  sortOrder?: number | null;
+}
+
+export interface ZeroDayTicketDto {
+  /** @format guid */
+  id?: string;
+  title?: string | null;
+  description?: string;
+  status?: ZeroDayTicketStatus;
+  reviewComment?: string | null;
+  /** @format int32 */
+  bonusScore?: number;
+  /** @format uint64 */
+  createdAt?: number;
+  /** @format uint64 */
+  reviewedAt?: number | null;
+  /** @format int32 */
+  gameId?: number;
+  /** @format int32 */
+  challengeId?: number | null;
+  userName?: string | null;
+  reviewerName?: string | null;
+  gameTitle?: string | null;
+  challengeTitle?: string | null;
+}
+
+export interface ZeroDayTicketCreateModel {
+  title?: string | null;
+  description?: string;
+  /** @format int32 */
+  gameId?: number;
+  /** @format int32 */
+  challengeId?: number | null;
+}
+
+export interface ZeroDayTicketReviewModel {
+  /** @format int32 */
+  bonusScore?: number;
+  comment?: string | null;
 }
 
 import { apiLanguage } from "@Utils/I18n";
@@ -4481,6 +5750,646 @@ export class Api<
         ...params,
       }),
   };
+  ext = {
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtCreateFlag
+     * @summary Create a new flag for a challenge
+     * @request POST:/api/ext/challenges/{challengeId}/flags
+     */
+    extCreateFlag: (
+      challengeId: number,
+      data: ChallengeFlagCreateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeFlag, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtDeleteFlag
+     * @summary Delete a flag
+     * @request DELETE:/api/ext/challenges/{challengeId}/flags/{flagId}
+     */
+    extDeleteFlag: (
+      challengeId: number,
+      flagId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags/${flagId}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetEvents
+     * @summary Get big screen events
+     * @request GET:/api/ext/events
+     */
+    extGetEvents: (
+      query?: {
+        unconsumedOnly?: boolean | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<BigScreenEvent[], RequestResponse>({
+        path: `/api/ext/events`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetEvents
+     * @summary Get big screen events
+     * @request GET:/api/ext/events
+     */
+    useExtGetEvents: (
+      query?: {
+        unconsumedOnly?: boolean | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<BigScreenEvent[], RequestResponse>(
+        doFetch ? [`/api/ext/events`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetEvents
+     * @summary Get big screen events
+     * @request GET:/api/ext/events
+     */
+    mutateExtGetEvents: (
+      query?: {
+        unconsumedOnly?: boolean | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+      },
+      data?: BigScreenEvent[] | Promise<BigScreenEvent[]>,
+      options?: MutatorOptions,
+    ) => mutate<BigScreenEvent[]>([`/api/ext/events`, query], data, options),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetFlag
+     * @summary Get a single flag by ID
+     * @request GET:/api/ext/challenges/{challengeId}/flags/{flagId}
+     */
+    extGetFlag: (
+      challengeId: number,
+      flagId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeFlag, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags/${flagId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetFlag
+     * @summary Get a single flag by ID
+     * @request GET:/api/ext/challenges/{challengeId}/flags/{flagId}
+     */
+    useExtGetFlag: (
+      challengeId: number,
+      flagId: string,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengeFlag, RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/flags/${flagId}` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetFlag
+     * @summary Get a single flag by ID
+     * @request GET:/api/ext/challenges/{challengeId}/flags/{flagId}
+     */
+    mutateExtGetFlag: (
+      challengeId: number,
+      flagId: string,
+      data?: ChallengeFlag | Promise<ChallengeFlag>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengeFlag>(
+        `/api/ext/challenges/${challengeId}/flags/${flagId}`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetFlags
+     * @summary Get all flags for a challenge
+     * @request GET:/api/ext/challenges/{challengeId}/flags
+     */
+    extGetFlags: (challengeId: number, params: RequestParams = {}) =>
+      this.request<ChallengeFlag[], RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetFlags
+     * @summary Get all flags for a challenge
+     * @request GET:/api/ext/challenges/{challengeId}/flags
+     */
+    useExtGetFlags: (
+      challengeId: number,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengeFlag[], RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/flags` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetFlags
+     * @summary Get all flags for a challenge
+     * @request GET:/api/ext/challenges/{challengeId}/flags
+     */
+    mutateExtGetFlags: (
+      challengeId: number,
+      data?: ChallengeFlag[] | Promise<ChallengeFlag[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengeFlag[]>(
+        `/api/ext/challenges/${challengeId}/flags`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetPenalty
+     * @summary Get penalty configuration for a challenge
+     * @request GET:/api/ext/challenges/{challengeId}/penalty
+     */
+    extGetPenalty: (challengeId: number, params: RequestParams = {}) =>
+      this.request<ChallengePenalty, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/penalty`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetPenalty
+     * @summary Get penalty configuration for a challenge
+     * @request GET:/api/ext/challenges/{challengeId}/penalty
+     */
+    useExtGetPenalty: (
+      challengeId: number,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengePenalty, RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/penalty` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetPenalty
+     * @summary Get penalty configuration for a challenge
+     * @request GET:/api/ext/challenges/{challengeId}/penalty
+     */
+    mutateExtGetPenalty: (
+      challengeId: number,
+      data?: ChallengePenalty | Promise<ChallengePenalty>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengePenalty>(
+        `/api/ext/challenges/${challengeId}/penalty`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetSettings
+     * @summary Get all competition settings
+     * @request GET:/api/ext/settings
+     */
+    extGetSettings: (params: RequestParams = {}) =>
+      this.request<Record<string, string>, RequestResponse>({
+        path: `/api/ext/settings`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetSettings
+     * @summary Get all competition settings
+     * @request GET:/api/ext/settings
+     */
+    useExtGetSettings: (options?: SWRConfiguration, doFetch: boolean = true) =>
+      useSWR<Record<string, string>, RequestResponse>(
+        doFetch ? `/api/ext/settings` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtGetSettings
+     * @summary Get all competition settings
+     * @request GET:/api/ext/settings
+     */
+    mutateExtGetSettings: (
+      data?: Record<string, string> | Promise<Record<string, string>>,
+      options?: MutatorOptions,
+    ) => mutate<Record<string, string>>(`/api/ext/settings`, data, options),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtUpdateFlag
+     * @summary Update an existing flag
+     * @request PUT:/api/ext/challenges/{challengeId}/flags/{flagId}
+     */
+    extUpdateFlag: (
+      challengeId: number,
+      flagId: string,
+      data: ChallengeFlagUpdateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeFlag, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags/${flagId}`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtUpdatePenalty
+     * @summary Update penalty configuration for a challenge
+     * @request PUT:/api/ext/challenges/{challengeId}/penalty
+     */
+    extUpdatePenalty: (
+      challengeId: number,
+      data: PenaltyUpdateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengePenalty, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/penalty`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ext
+     * @name ExtUpdateSettings
+     * @summary Update competition settings
+     * @request PUT:/api/ext/settings
+     */
+    extUpdateSettings: (
+      data: Record<string, any>,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, RequestResponse>({
+        path: `/api/ext/settings`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+  };
+  extSubmission = {
+    /**
+     * No description
+     *
+     * @tags ExtSubmission
+     * @name ExtSubmissionGetMySubmissions
+     * @summary Get current user's submission records
+     * @request GET:/api/ext/submissions/mine
+     */
+    extSubmissionGetMySubmissions: (
+      query?: {
+        /** @format int32 */
+        challengeId?: number | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<SubmissionRecordDto[], RequestResponse>({
+        path: `/api/ext/submissions/mine`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags ExtSubmission
+     * @name ExtSubmissionGetMySubmissions
+     * @summary Get current user's submission records
+     * @request GET:/api/ext/submissions/mine
+     */
+    useExtSubmissionGetMySubmissions: (
+      query?: {
+        /** @format int32 */
+        challengeId?: number | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<SubmissionRecordDto[], RequestResponse>(
+        doFetch ? [`/api/ext/submissions/mine`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ExtSubmission
+     * @name ExtSubmissionGetMySubmissions
+     * @summary Get current user's submission records
+     * @request GET:/api/ext/submissions/mine
+     */
+    mutateExtSubmissionGetMySubmissions: (
+      query?: {
+        /** @format int32 */
+        challengeId?: number | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      data?: SubmissionRecordDto[] | Promise<SubmissionRecordDto[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<SubmissionRecordDto[]>(
+        [`/api/ext/submissions/mine`, query],
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ExtSubmission
+     * @name ExtSubmissionGetUserSubmissions
+     * @summary Get a specific user's submission records (admin only)
+     * @request GET:/api/ext/submissions/user/{userId}
+     */
+    extSubmissionGetUserSubmissions: (
+      userId: string,
+      query?: {
+        /** @format int32 */
+        challengeId?: number | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<SubmissionRecordDto[], RequestResponse>({
+        path: `/api/ext/submissions/user/${userId}`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags ExtSubmission
+     * @name ExtSubmissionGetUserSubmissions
+     * @summary Get a specific user's submission records (admin only)
+     * @request GET:/api/ext/submissions/user/{userId}
+     */
+    useExtSubmissionGetUserSubmissions: (
+      userId: string,
+      query?: {
+        /** @format int32 */
+        challengeId?: number | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<SubmissionRecordDto[], RequestResponse>(
+        doFetch ? [`/api/ext/submissions/user/${userId}`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ExtSubmission
+     * @name ExtSubmissionGetUserSubmissions
+     * @summary Get a specific user's submission records (admin only)
+     * @request GET:/api/ext/submissions/user/{userId}
+     */
+    mutateExtSubmissionGetUserSubmissions: (
+      userId: string,
+      query?: {
+        /** @format int32 */
+        challengeId?: number | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      data?: SubmissionRecordDto[] | Promise<SubmissionRecordDto[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<SubmissionRecordDto[]>(
+        [`/api/ext/submissions/user/${userId}`, query],
+        data,
+        options,
+      ),
+  };
+  flagImport = {
+    /**
+     * No description
+     *
+     * @tags FlagImport
+     * @name FlagImportImport
+     * @request POST:/api/ext/challenges/{challengeId}/flags/import
+     */
+    flagImportImport: (
+      challengeId: number,
+      data: {
+        /** @format binary */
+        file?: File | null;
+        mapping?: string | null;
+        mode?: string | null;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<FlagImportResult, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags/import`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags FlagImport
+     * @name FlagImportPreview
+     * @request POST:/api/ext/challenges/{challengeId}/flags/import/preview
+     */
+    flagImportPreview: (
+      challengeId: number,
+      data: {
+        /** @format binary */
+        file?: File | null;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<FlagImportFilePreview, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/flags/import/preview`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
+        format: "json",
+        ...params,
+      }),
+  };
   game = {
     /**
      * @description Retrieves all challenges of the game; requires User permission and active team participation
@@ -5808,7 +7717,7 @@ export class Api<
       data: FlagSubmitModel,
       params: RequestParams = {},
     ) =>
-      this.request<{ id: number; message?: string }, RequestResponse>({
+      this.request<FlagSubmitResponse, RequestResponse>({
         path: `/api/game/${id}/challenges/${challengeId}`,
         method: "POST",
         body: data,
@@ -6103,6 +8012,172 @@ export class Api<
       data?: HashPowChallenge | Promise<HashPowChallenge>,
       options?: MutatorOptions,
     ) => mutate<HashPowChallenge>(`/api/captcha/powchallenge`, data, options),
+  };
+  levelConfig = {
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigCreateLevel
+     * @request POST:/api/ext/challenges/{challengeId}/levels
+     */
+    levelConfigCreateLevel: (
+      challengeId: number,
+      data: LevelConfigCreateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeLevelConfig, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/levels`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigDeleteLevel
+     * @request DELETE:/api/ext/challenges/{challengeId}/levels/{levelId}
+     */
+    levelConfigDeleteLevel: (
+      challengeId: number,
+      levelId: number,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/levels/${levelId}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigGetLevel
+     * @request GET:/api/ext/challenges/{challengeId}/levels/{levelId}
+     */
+    levelConfigGetLevel: (
+      challengeId: number,
+      levelId: number,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeLevelConfig, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/levels/${levelId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigGetLevel
+     * @request GET:/api/ext/challenges/{challengeId}/levels/{levelId}
+     */
+    useLevelConfigGetLevel: (
+      challengeId: number,
+      levelId: number,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengeLevelConfig, RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/levels/${levelId}` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigGetLevel
+     * @request GET:/api/ext/challenges/{challengeId}/levels/{levelId}
+     */
+    mutateLevelConfigGetLevel: (
+      challengeId: number,
+      levelId: number,
+      data?: ChallengeLevelConfig | Promise<ChallengeLevelConfig>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengeLevelConfig>(
+        `/api/ext/challenges/${challengeId}/levels/${levelId}`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigGetLevels
+     * @request GET:/api/ext/challenges/{challengeId}/levels
+     */
+    levelConfigGetLevels: (challengeId: number, params: RequestParams = {}) =>
+      this.request<ChallengeLevelConfig[], RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/levels`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigGetLevels
+     * @request GET:/api/ext/challenges/{challengeId}/levels
+     */
+    useLevelConfigGetLevels: (
+      challengeId: number,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengeLevelConfig[], RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/levels` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigGetLevels
+     * @request GET:/api/ext/challenges/{challengeId}/levels
+     */
+    mutateLevelConfigGetLevels: (
+      challengeId: number,
+      data?: ChallengeLevelConfig[] | Promise<ChallengeLevelConfig[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengeLevelConfig[]>(
+        `/api/ext/challenges/${challengeId}/levels`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags LevelConfig
+     * @name LevelConfigUpdateLevel
+     * @request PUT:/api/ext/challenges/{challengeId}/levels/{levelId}
+     */
+    levelConfigUpdateLevel: (
+      challengeId: number,
+      levelId: number,
+      data: LevelConfigUpdateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeLevelConfig, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/levels/${levelId}`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
   };
   proxy = {
     /**
@@ -6459,6 +8534,800 @@ export class Api<
         method: "POST",
         body: data,
         type: ContentType.Json,
+        ...params,
+      }),
+  };
+  ticket = {
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketApprove
+     * @summary Approve a ticket (admin)
+     * @request PUT:/api/ext/tickets/{ticketId}/approve
+     */
+    ticketApprove: (
+      ticketId: string,
+      data: TicketReviewModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<TicketDto, RequestResponse>({
+        path: `/api/ext/tickets/${ticketId}/approve`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketCreate
+     * @summary Create a ticket for a penalty submission
+     * @request POST:/api/ext/tickets
+     */
+    ticketCreate: (data: TicketCreateModel, params: RequestParams = {}) =>
+      this.request<TicketDto, RequestResponse>({
+        path: `/api/ext/tickets`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetAllTickets
+     * @summary Get all tickets (admin)
+     * @request GET:/api/ext/tickets
+     */
+    ticketGetAllTickets: (
+      query?: {
+        status?: TicketStatus | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<TicketDto[], RequestResponse>({
+        path: `/api/ext/tickets`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetAllTickets
+     * @summary Get all tickets (admin)
+     * @request GET:/api/ext/tickets
+     */
+    useTicketGetAllTickets: (
+      query?: {
+        status?: TicketStatus | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<TicketDto[], RequestResponse>(
+        doFetch ? [`/api/ext/tickets`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetAllTickets
+     * @summary Get all tickets (admin)
+     * @request GET:/api/ext/tickets
+     */
+    mutateTicketGetAllTickets: (
+      query?: {
+        status?: TicketStatus | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      data?: TicketDto[] | Promise<TicketDto[]>,
+      options?: MutatorOptions,
+    ) => mutate<TicketDto[]>([`/api/ext/tickets`, query], data, options),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetMyTickets
+     * @summary Get current user's tickets
+     * @request GET:/api/ext/tickets/mine
+     */
+    ticketGetMyTickets: (
+      query?: {
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+        /** @format int32 */
+        gameId?: number | null;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<TicketDto[], RequestResponse>({
+        path: `/api/ext/tickets/mine`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetMyTickets
+     * @summary Get current user's tickets
+     * @request GET:/api/ext/tickets/mine
+     */
+    useTicketGetMyTickets: (
+      query?: {
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+        /** @format int32 */
+        gameId?: number | null;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<TicketDto[], RequestResponse>(
+        doFetch ? [`/api/ext/tickets/mine`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetMyTickets
+     * @summary Get current user's tickets
+     * @request GET:/api/ext/tickets/mine
+     */
+    mutateTicketGetMyTickets: (
+      query?: {
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+        /** @format int32 */
+        gameId?: number | null;
+      },
+      data?: TicketDto[] | Promise<TicketDto[]>,
+      options?: MutatorOptions,
+    ) => mutate<TicketDto[]>([`/api/ext/tickets/mine`, query], data, options),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetTicket
+     * @summary Get a single ticket by ID
+     * @request GET:/api/ext/tickets/{ticketId}
+     */
+    ticketGetTicket: (ticketId: string, params: RequestParams = {}) =>
+      this.request<TicketDto, RequestResponse>({
+        path: `/api/ext/tickets/${ticketId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetTicket
+     * @summary Get a single ticket by ID
+     * @request GET:/api/ext/tickets/{ticketId}
+     */
+    useTicketGetTicket: (
+      ticketId: string,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<TicketDto, RequestResponse>(
+        doFetch ? `/api/ext/tickets/${ticketId}` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketGetTicket
+     * @summary Get a single ticket by ID
+     * @request GET:/api/ext/tickets/{ticketId}
+     */
+    mutateTicketGetTicket: (
+      ticketId: string,
+      data?: TicketDto | Promise<TicketDto>,
+      options?: MutatorOptions,
+    ) => mutate<TicketDto>(`/api/ext/tickets/${ticketId}`, data, options),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketReject
+     * @summary Reject a ticket (admin)
+     * @request PUT:/api/ext/tickets/{ticketId}/reject
+     */
+    ticketReject: (
+      ticketId: string,
+      data: TicketReviewModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<TicketDto, RequestResponse>({
+        path: `/api/ext/tickets/${ticketId}/reject`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ticket
+     * @name TicketUploadAttachments
+     * @summary Upload image attachments to a pending ticket
+     * @request POST:/api/ext/tickets/{ticketId}/attachments
+     */
+    ticketUploadAttachments: (
+      ticketId: string,
+      data: {
+        files?: File[] | null;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<TicketAttachmentDto[], RequestResponse>({
+        path: `/api/ext/tickets/${ticketId}/attachments`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
+        format: "json",
+        ...params,
+      }),
+  };
+  track = {
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackCreateTrack
+     * @request POST:/api/ext/challenges/{challengeId}/tracks
+     */
+    trackCreateTrack: (
+      challengeId: number,
+      data: TrackCreateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeTrack, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/tracks`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackDeleteTrack
+     * @request DELETE:/api/ext/challenges/{challengeId}/tracks/{trackId}
+     */
+    trackDeleteTrack: (
+      challengeId: number,
+      trackId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/tracks/${trackId}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackGetTrack
+     * @request GET:/api/ext/challenges/{challengeId}/tracks/{trackId}
+     */
+    trackGetTrack: (
+      challengeId: number,
+      trackId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeTrack, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/tracks/${trackId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackGetTrack
+     * @request GET:/api/ext/challenges/{challengeId}/tracks/{trackId}
+     */
+    useTrackGetTrack: (
+      challengeId: number,
+      trackId: string,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengeTrack, RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/tracks/${trackId}` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackGetTrack
+     * @request GET:/api/ext/challenges/{challengeId}/tracks/{trackId}
+     */
+    mutateTrackGetTrack: (
+      challengeId: number,
+      trackId: string,
+      data?: ChallengeTrack | Promise<ChallengeTrack>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengeTrack>(
+        `/api/ext/challenges/${challengeId}/tracks/${trackId}`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackGetTracks
+     * @request GET:/api/ext/challenges/{challengeId}/tracks
+     */
+    trackGetTracks: (challengeId: number, params: RequestParams = {}) =>
+      this.request<ChallengeTrack[], RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/tracks`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackGetTracks
+     * @request GET:/api/ext/challenges/{challengeId}/tracks
+     */
+    useTrackGetTracks: (
+      challengeId: number,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ChallengeTrack[], RequestResponse>(
+        doFetch ? `/api/ext/challenges/${challengeId}/tracks` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackGetTracks
+     * @request GET:/api/ext/challenges/{challengeId}/tracks
+     */
+    mutateTrackGetTracks: (
+      challengeId: number,
+      data?: ChallengeTrack[] | Promise<ChallengeTrack[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ChallengeTrack[]>(
+        `/api/ext/challenges/${challengeId}/tracks`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags Track
+     * @name TrackUpdateTrack
+     * @request PUT:/api/ext/challenges/{challengeId}/tracks/{trackId}
+     */
+    trackUpdateTrack: (
+      challengeId: number,
+      trackId: string,
+      data: TrackUpdateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ChallengeTrack, RequestResponse>({
+        path: `/api/ext/challenges/${challengeId}/tracks/${trackId}`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  zeroDayTicket = {
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketApprove
+     * @summary Approve a zero-day ticket (admin)
+     * @request PUT:/api/ext/zeroday-tickets/{ticketId}/approve
+     */
+    zeroDayTicketApprove: (
+      ticketId: string,
+      data: ZeroDayTicketReviewModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ZeroDayTicketDto, RequestResponse>({
+        path: `/api/ext/zeroday-tickets/${ticketId}/approve`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketCreate
+     * @summary Create a zero-day vulnerability ticket
+     * @request POST:/api/ext/zeroday-tickets
+     */
+    zeroDayTicketCreate: (
+      data: ZeroDayTicketCreateModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ZeroDayTicketDto, RequestResponse>({
+        path: `/api/ext/zeroday-tickets`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetAllTickets
+     * @summary Get all zero-day tickets (admin)
+     * @request GET:/api/ext/zeroday-tickets
+     */
+    zeroDayTicketGetAllTickets: (
+      query?: {
+        status?: ZeroDayTicketStatus | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ZeroDayTicketDto[], RequestResponse>({
+        path: `/api/ext/zeroday-tickets`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetAllTickets
+     * @summary Get all zero-day tickets (admin)
+     * @request GET:/api/ext/zeroday-tickets
+     */
+    useZeroDayTicketGetAllTickets: (
+      query?: {
+        status?: ZeroDayTicketStatus | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ZeroDayTicketDto[], RequestResponse>(
+        doFetch ? [`/api/ext/zeroday-tickets`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetAllTickets
+     * @summary Get all zero-day tickets (admin)
+     * @request GET:/api/ext/zeroday-tickets
+     */
+    mutateZeroDayTicketGetAllTickets: (
+      query?: {
+        status?: ZeroDayTicketStatus | null;
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      data?: ZeroDayTicketDto[] | Promise<ZeroDayTicketDto[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ZeroDayTicketDto[]>(
+        [`/api/ext/zeroday-tickets`, query],
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetMyTickets
+     * @summary Get current user's zero-day tickets
+     * @request GET:/api/ext/zeroday-tickets/mine
+     */
+    zeroDayTicketGetMyTickets: (
+      query?: {
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ZeroDayTicketDto[], RequestResponse>({
+        path: `/api/ext/zeroday-tickets/mine`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetMyTickets
+     * @summary Get current user's zero-day tickets
+     * @request GET:/api/ext/zeroday-tickets/mine
+     */
+    useZeroDayTicketGetMyTickets: (
+      query?: {
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ZeroDayTicketDto[], RequestResponse>(
+        doFetch ? [`/api/ext/zeroday-tickets/mine`, query] : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetMyTickets
+     * @summary Get current user's zero-day tickets
+     * @request GET:/api/ext/zeroday-tickets/mine
+     */
+    mutateZeroDayTicketGetMyTickets: (
+      query?: {
+        /** @format int32 */
+        gameId?: number | null;
+        /**
+         * @format int32
+         * @default 100
+         */
+        count?: number;
+        /**
+         * @format int32
+         * @default 0
+         */
+        skip?: number;
+      },
+      data?: ZeroDayTicketDto[] | Promise<ZeroDayTicketDto[]>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ZeroDayTicketDto[]>(
+        [`/api/ext/zeroday-tickets/mine`, query],
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetTicket
+     * @summary Get a single zero-day ticket by ID
+     * @request GET:/api/ext/zeroday-tickets/{ticketId}
+     */
+    zeroDayTicketGetTicket: (ticketId: string, params: RequestParams = {}) =>
+      this.request<ZeroDayTicketDto, RequestResponse>({
+        path: `/api/ext/zeroday-tickets/${ticketId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetTicket
+     * @summary Get a single zero-day ticket by ID
+     * @request GET:/api/ext/zeroday-tickets/{ticketId}
+     */
+    useZeroDayTicketGetTicket: (
+      ticketId: string,
+      options?: SWRConfiguration,
+      doFetch: boolean = true,
+    ) =>
+      useSWR<ZeroDayTicketDto, RequestResponse>(
+        doFetch ? `/api/ext/zeroday-tickets/${ticketId}` : null,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketGetTicket
+     * @summary Get a single zero-day ticket by ID
+     * @request GET:/api/ext/zeroday-tickets/{ticketId}
+     */
+    mutateZeroDayTicketGetTicket: (
+      ticketId: string,
+      data?: ZeroDayTicketDto | Promise<ZeroDayTicketDto>,
+      options?: MutatorOptions,
+    ) =>
+      mutate<ZeroDayTicketDto>(
+        `/api/ext/zeroday-tickets/${ticketId}`,
+        data,
+        options,
+      ),
+
+    /**
+     * No description
+     *
+     * @tags ZeroDayTicket
+     * @name ZeroDayTicketReject
+     * @summary Reject a zero-day ticket (admin)
+     * @request PUT:/api/ext/zeroday-tickets/{ticketId}/reject
+     */
+    zeroDayTicketReject: (
+      ticketId: string,
+      data: ZeroDayTicketReviewModel,
+      params: RequestParams = {},
+    ) =>
+      this.request<ZeroDayTicketDto, RequestResponse>({
+        path: `/api/ext/zeroday-tickets/${ticketId}/reject`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
   };

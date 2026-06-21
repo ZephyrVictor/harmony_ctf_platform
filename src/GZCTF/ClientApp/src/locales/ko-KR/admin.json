@@ -187,9 +187,6 @@
         "type": {
           "description": "생성된 이후 변경할 수 없습니다.",
           "label": "분야"
-        },
-        "flag_match_mode": {
-          "hybrid_line": "Hybrid Line"
         }
       },
       "divisions": {
@@ -616,7 +613,10 @@
     "column": {
       "answer_type": "Answer Type",
       "metadata": "Metadata",
-      "status": "Status"
+      "status": "Status",
+      "level": "레벨",
+      "track": "트랙",
+      "track_optional": "트랙 ID (선택, 비어 있으면 자동 생성)"
     },
     "answer_type": {
       "exact": "Exact",
@@ -628,13 +628,59 @@
     "hidden": "Hidden",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "mode_save_required": "The challenge flag match mode has not been saved. Save the challenge mode before editing flags.",
     "metadata": {
       "flaw_no": "Flaw No.",
       "repository": "Repository",
       "module": "Module",
       "file_path": "File Path",
       "cwe": "CWE"
-    }
+    },
+    "invalid_level": "레벨은 1 이상이어야 합니다",
+    "total_count": "개수"
+  },
+  "track": {
+    "title": "트랙",
+    "list": "트랙 목록",
+    "create": "트랙 생성",
+    "edit": "트랙 편집",
+    "delete": "트랙 삭제",
+    "title_label": "제목",
+    "flawNo": "FlawNo",
+    "repository": "저장소",
+    "module": "모듈",
+    "filePath": "파일 경로",
+    "category": "카테고리",
+    "referenceUrl": "참조 URL"
+  },
+  "level": {
+    "title": "레벨 설정",
+    "list": "레벨 목록",
+    "create": "레벨 생성",
+    "edit": "레벨 편집",
+    "delete": "레벨 삭제",
+    "level": "레벨",
+    "score": "점수",
+    "submissionLimit": "제출 횟수 제한",
+    "penaltyScore": "페널티 점수",
+    "lockOnAnswers": "잠금 트리거 답안",
+    "banOnAnswers": "밴 트리거 답안",
+    "levelTitle": "레벨 제목"
+  },
+  "import": {
+    "title": "일괄 가져오기",
+    "upload": "파일 업로드",
+    "preview": "미리보기",
+    "mapping": "열 매핑",
+    "mode": "충돌 모드",
+    "upsert": "업서트",
+    "skip": "건너뛰기",
+    "fail": "실패",
+    "submit": "가져오기 시작",
+    "result": "가져오기 결과",
+    "totalRows": "전체 행",
+    "imported": "가져옴",
+    "updated": "업데이트됨",
+    "skipped": "건너뜀",
+    "failed": "실패"
   }
 }

@@ -48,4 +48,27 @@ public class ChallengeFlagRepository(AppDbContext context) : RepositoryBase(cont
     public Task<bool> ExistsByValue(int challengeId, string flagValue, CancellationToken token = default)
         => Context.ChallengeFlags
             .AnyAsync(f => f.ChallengeId == challengeId && f.FlagValue == flagValue, token);
+
+    public Task<ChallengeFlag[]> GetFlagsByLevel(int challengeId, int level, CancellationToken token = default) =>
+        Context.ChallengeFlags
+            .Where(f => f.ChallengeId == challengeId && f.Level == level && f.IsEnabled)
+            .OrderBy(f => f.SortOrder)
+            .ToArrayAsync(token);
+
+    public Task<ChallengeFlag[]> GetFlagsByTrack(Guid trackId, CancellationToken token = default) =>
+        Context.ChallengeFlags
+            .Where(f => f.TrackId == trackId && f.IsEnabled)
+            .OrderBy(f => f.Level)
+            .ThenBy(f => f.SortOrder)
+            .ToArrayAsync(token);
+
+    public Task<ChallengeFlag[]> GetFlagsByTrackLevel(Guid trackId, int level, CancellationToken token = default) =>
+        Context.ChallengeFlags
+            .Where(f => f.TrackId == trackId && f.Level == level && f.IsEnabled)
+            .OrderBy(f => f.SortOrder)
+            .ToArrayAsync(token);
+
+    public Task<int> CountFlagsByLevel(int challengeId, int level, CancellationToken token = default) =>
+        Context.ChallengeFlags
+            .CountAsync(f => f.ChallengeId == challengeId && f.Level == level && f.IsEnabled, token);
 }

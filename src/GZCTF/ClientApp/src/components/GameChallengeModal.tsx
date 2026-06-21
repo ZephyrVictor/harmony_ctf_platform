@@ -10,7 +10,7 @@ import { encryptApiData } from '@Utils/Crypto'
 import { showErrorMsg } from '@Utils/Shared'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
 import { useConfig } from '@Hooks/useConfig'
-import api, { AnswerResult, ChallengeType, FlagMatchMode, SubmissionType } from '@Api'
+import api, { AnswerResult, ChallengeType, SubmissionType } from '@Api'
 
 interface GameChallengeModalProps extends ModalProps {
   gameId: number
@@ -41,7 +41,31 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
 
   const isDynamic =
     challenge?.type === ChallengeType.StaticContainer || challenge?.type === ChallengeType.DynamicContainer
-  const isHybridLine = challenge?.flagMatchMode === FlagMatchMode.HybridLine
+  const isHybridLine = (challenge?.flags?.length ?? 0) > 0
+
+  // D6: 多级 flag 状态
+  const isMultiLevel = (challenge?.tracks?.length ?? 0) > 0
+  const currentLevel = challenge?.currentLevel ?? 1
+  const [currentTrackId, setCurrentTrackId] = useState<string | undefined>(undefined)
+
+  // D6 fallback: 页面刷新后从 GetChallenge 推导 trackId
+  // 找"前置 Level 已解 + 当前 Level 未解"的 Track
+  useEffect(() => {
+    if (!isMultiLevel || !challenge?.tracks) return
+    if (currentTrackId) return // 已有 trackId，不重新推导
+    if (currentLevel <= 1) return // L1 不需要 trackId
+
+    const prevLevel = currentLevel - 1
+    const activeTrack = challenge.tracks.find(
+      (track) =>
+        track.isEnabled !== false &&
+        track.levels?.find((l) => l.level === prevLevel)?.status === 'Solved' &&
+        track.levels?.find((l) => l.level === currentLevel)?.status !== 'Solved'
+    )
+    if (activeTrack) {
+      setCurrentTrackId(activeTrack.trackId)
+    }
+  }, [challenge, isMultiLevel, currentLevel, currentTrackId])
 
   const [disabled, setDisabled] = useState(false)
   const [submitId, setSubmitId] = useState(0)
@@ -50,6 +74,8 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
   const [solvedChallengeId, setSolvedChallengeId] = useState<number | null>(null)
 
   const isLimitReached = (challenge?.limit && (challenge.attempts ?? 0) >= challenge.limit) || false
+  // D6: currentLevel > 1 但 currentTrackId 尚未恢复时，禁用提交
+  const canSubmitMultiLevel = !isMultiLevel || currentLevel === 1 || currentTrackId !== undefined
 
   const onCreate = async () => {
     if (!challengeId || disabled) return
@@ -143,14 +169,33 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       return
     }
 
+    if (!canSubmitMultiLevel) {
+      showNotification({
+        color: 'red',
+        message: t('challenge.notification.flag.multi_level_track_required'),
+        icon: <Icon path={mdiClose} size={1} />,
+      })
+      return
+    }
+
     setDisabled(true)
 
     try {
+      // D6: L1 不传 trackId；L2+ 用缓存的 trackId
+      const submitLevel = isMultiLevel ? currentLevel : 1
+      const submitTrackId = isMultiLevel && currentLevel > 1 ? currentTrackId : undefined
+
       const res = await api.game.gameSubmit(gameId, challengeId, {
         flag: await encryptApiData(t, flag, config.apiPublicKey),
+        level: submitLevel,
+        trackId: submitTrackId,
       })
       const submitId = res.data.id
-      const message = res.data.message
+      const message = res.data.message ?? undefined
+      // D6: 缓存 L1 响应返回的 trackId 用于 L2+ 提交
+      if (res.data.trackId) {
+        setCurrentTrackId(res.data.trackId)
+      }
       setSubmitId(submitId)
       setSubmitMessage(message)
       notifications.clean()
@@ -212,7 +257,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
 
   const checkDataFlag = async (id: number, data: string) => {
     if (data === AnswerResult.Accepted) {
-      if (!isHybridLine) {
+      if (!isHybridLine && !isMultiLevel) {
         setSolvedChallengeId(challengeId)
       }
       updateNotification({
@@ -226,7 +271,8 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         autoClose: 8000,
         loading: false,
       })
-      if (isHybridLine) {
+      if (isHybridLine || isMultiLevel) {
+        // D6: 多级提交成功后 mutate 刷新 currentLevel，等玩家输入下一级
         await mutate()
       } else {
         if (isDynamic && challenge.context?.instanceEntry) await requestDestroy()
@@ -264,16 +310,19 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       challenge={challenge ?? { title, score }}
       cateData={cateData}
       solved={
-        isHybridLine
-          ? challenge?.allEnabledFlagsSolved === true
-          : (status !== SubmissionType.Unaccepted && status !== undefined) || solvedChallengeId === challengeId
+        // D5: 多级 flag 题目永远不标记为整体 solved
+        isMultiLevel
+          ? false
+          : isHybridLine
+            ? challenge?.allEnabledFlagsSolved === true
+            : (status !== SubmissionType.Unaccepted && status !== undefined) || solvedChallengeId === challengeId
       }
       flag={flag}
       setFlag={setFlag}
       onCreate={onCreate}
       onDestroy={onDestroy}
       onSubmitFlag={onSubmit}
-      disabled={disabled || isLimitReached}
+      disabled={disabled || isLimitReached || !canSubmitMultiLevel}
       onExtend={onExtend}
       gameEnded={gameEnded}
       practiceMode={practiceMode}

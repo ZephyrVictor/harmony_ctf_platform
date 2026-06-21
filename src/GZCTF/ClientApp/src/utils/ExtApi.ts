@@ -1,12 +1,5 @@
 const BASE = '/api/ext'
 
-export enum ChallengeFlagAnswerType {
-  Exact = 'Exact',
-  SingleLine = 'SingleLine',
-  LineRange = 'LineRange',
-  MultiLine = 'MultiLine',
-}
-
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -40,65 +33,8 @@ async function requestForm<T>(url: string, formData: FormData): Promise<T> {
 }
 
 // ---- Flag Management ----
-
-export interface ChallengeFlag {
-  id: string
-  challengeId: number
-  flagValue: string
-  answerType: ChallengeFlagAnswerType
-  rawAnswer: string
-  normalizedAnswerKey: string
-  isVisible: boolean
-  isEnabled: boolean
-  flawNo?: string | null
-  repository?: string | null
-  module?: string | null
-  filePath?: string | null
-  cwe?: string | null
-  score: number
-  sortOrder: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ChallengeFlagInput {
-  flagValue?: string
-  answerType?: ChallengeFlagAnswerType
-  rawAnswer?: string
-  isVisible?: boolean
-  isEnabled?: boolean
-  flawNo?: string | null
-  repository?: string | null
-  module?: string | null
-  filePath?: string | null
-  cwe?: string | null
-  score?: number
-  sortOrder?: number
-}
-
-export const getFlags = (challengeId: number) => request<ChallengeFlag[]>(`/challenges/${challengeId}/flags`)
-
-export const createFlag = (
-  challengeId: number,
-  data: ChallengeFlagInput & {
-    flagValue: string
-    score: number
-    sortOrder: number
-  }
-) =>
-  request<ChallengeFlag>(`/challenges/${challengeId}/flags`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-
-export const updateFlag = (challengeId: number, flagId: string, data: ChallengeFlagInput) =>
-  request<ChallengeFlag>(`/challenges/${challengeId}/flags/${flagId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  })
-
-export const deleteFlag = (challengeId: number, flagId: string) =>
-  request<void>(`/challenges/${challengeId}/flags/${flagId}`, { method: 'DELETE' })
+// Flag CRUD helpers 已迁移到 Api.ts (api.ext.extGetFlags / extCreateFlag / extUpdateFlag / extDeleteFlag)
+// ChallengeFlag / ChallengeFlagAnswerType / ChallengeFlagCreateModel / ChallengeFlagUpdateModel 接口也由 Api.ts 提供
 
 // ---- Penalty Configuration ----
 

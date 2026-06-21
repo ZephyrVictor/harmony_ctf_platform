@@ -75,7 +75,7 @@ public class GameChallenge : Challenge
         FileName = model.FileName ?? FileName;
         DisableBloodBonus = model.DisableBloodBonus ?? DisableBloodBonus;
         SubmissionLimit = model.SubmissionLimit ?? SubmissionLimit;
-        FlagMatchMode = model.FlagMatchMode ?? FlagMatchMode;
+        LockDurationMinutes = model.LockDurationMinutes ?? LockDurationMinutes;
 
         // isEnabled should be updated alone
         IsEnabled = model.IsEnabled ?? IsEnabled;
@@ -118,6 +118,16 @@ public class GameChallenge : Challenge
     /// First solves recorded for this challenge.
     /// </summary>
     public List<FirstSolve>? FirstSolves { get; set; } = [];
+
+    /// <summary>
+    /// 多级 flag Track 列表（每个 Track 对应一个漏洞实例）
+    /// </summary>
+    public List<ChallengeTrack> Tracks { get; set; } = [];
+
+    /// <summary>
+    /// 多级 flag LevelConfig 列表（所有 Track 共享）
+    /// </summary>
+    public List<ChallengeLevelConfig> LevelConfigs { get; set; } = [];
 
     /// <summary>
     /// Game ID

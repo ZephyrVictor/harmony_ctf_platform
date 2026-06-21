@@ -60,9 +60,10 @@ public class ChallengeUpdateModel
     public int? SubmissionLimit { get; set; }
 
     /// <summary>
-    /// Flag matching mode (Exact or LineRange)
+    /// 临时全题锁时长（分钟），0 = 永久
     /// </summary>
-    public FlagMatchMode? FlagMatchMode { get; set; }
+    [Range(0, int.MaxValue)]
+    public int? LockDurationMinutes { get; set; }
 
     /// <summary>
     /// Container image name and tag

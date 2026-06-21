@@ -19,6 +19,11 @@ public class ScoringService
     private readonly CompetitionSettingsService _settings;
     private readonly IHubContext<BigScreenHub, IBigScreenClient> _bigScreenHub;
     private readonly IStringLocalizer<Program> _localizer;
+    private readonly IChallengeTrackRepository _trackRepo;
+    private readonly IChallengeLevelConfigRepository _levelConfigRepo;
+    private readonly IChallengeLockStateRepository _lockStateRepo;
+    private readonly IChallengeTrackLevelBanStateRepository _banStateRepo;
+    private readonly IChallengeWrongCountStateRepository _wrongCountRepo;
 
     public ScoringService(
         AppDbContext context,
@@ -30,7 +35,12 @@ public class ScoringService
         IGameNoticeRepository noticeRepo,
         CompetitionSettingsService settings,
         IHubContext<BigScreenHub, IBigScreenClient> bigScreenHub,
-        IStringLocalizer<Program> localizer)
+        IStringLocalizer<Program> localizer,
+        IChallengeTrackRepository trackRepo,
+        IChallengeLevelConfigRepository levelConfigRepo,
+        IChallengeLockStateRepository lockStateRepo,
+        IChallengeTrackLevelBanStateRepository banStateRepo,
+        IChallengeWrongCountStateRepository wrongCountRepo)
     {
         _context = context;
         _flagRepo = flagRepo;
@@ -42,51 +52,148 @@ public class ScoringService
         _settings = settings;
         _bigScreenHub = bigScreenHub;
         _localizer = localizer;
+        _trackRepo = trackRepo;
+        _levelConfigRepo = levelConfigRepo;
+        _lockStateRepo = lockStateRepo;
+        _banStateRepo = banStateRepo;
+        _wrongCountRepo = wrongCountRepo;
     }
 
     /// <summary>
-    /// Process a flag submission and determine the score change.
-    /// Must be called within an existing database transaction.
+    /// 处理 flag 提交。必须在数据库事务内调用。
     /// </summary>
     public async Task<ScoreResult> ProcessSubmission(
         GameChallenge challenge,
         Participation participation,
         string answer,
+        Guid? trackId,
+        int level,
         CancellationToken token = default)
     {
-        // 1. Try to match against ChallengeFlags
-        var flags = await _flagRepo.GetFlags(challenge.Id, token);
-        var activeFlags = flags.Where(f => f.IsEnabled).ToArray();
-
-        var matchedFlag = challenge.FlagMatchMode switch
+        // 1. 过期锁清理 + 计数重置
+        var expiredLocks = await _lockStateRepo.GetExpiredLocks(participation.Id, challenge.Id, token);
+        if (expiredLocks.Count > 0)
         {
-            FlagMatchMode.LineRange => MatchLineRange(activeFlags, answer),
-            FlagMatchMode.HybridLine => await MatchHybridLine(challenge, participation, activeFlags, answer, token),
-            _ => activeFlags.FirstOrDefault(f =>
-                string.Equals(f.FlagValue, answer, StringComparison.Ordinal))
-        };
+            await _lockStateRepo.DeleteLocks(expiredLocks, token);
+            await _wrongCountRepo.ResetAllLevels(participation.Id, challenge.Id, token);
+        }
 
-        if (matchedFlag is not null)
-            return await HandleCorrectSubmission(challenge, participation, matchedFlag, token);
-
-        // 2. Check for duplicate wrong answer — same answer previously submitted
-        var duplicate = await _context.Submissions
-            .AsNoTracking()
-            .AnyAsync(s => s.ParticipationId == participation.Id
-                && s.ChallengeId == challenge.Id
-                && s.Answer == answer, token);
-
-        if (duplicate)
+        // 2. 活跃锁检查
+        var activeLock = await _lockStateRepo.GetActiveLock(participation.Id, challenge.Id, token);
+        if (activeLock is not null)
         {
             return new ScoreResult
             {
                 Status = AnswerResult.WrongAnswer,
                 ScoreChange = 0,
-                Message = "Duplicate submission, no penalty applied"
+                ChallengeLocked = true,
+                UnlocksAt = activeLock.UnlocksAt,
+                Message = $"Challenge locked until {activeLock.UnlocksAt:O} (reason: {activeLock.TriggerReason})"
             };
         }
 
-        return await HandleWrongSubmission(challenge, participation, token);
+        // 3. 匹配
+        ChallengeFlag[] candidates;
+        if (trackId is null)
+        {
+            // Level 1 入口：所有 Level 1 flags
+            if (level != 1)
+                return new ScoreResult
+                {
+                    Status = AnswerResult.WrongAnswer,
+                    ScoreChange = 0,
+                    Message = "trackId is required for Level > 1"
+                };
+            candidates = await _flagRepo.GetFlagsByLevel(challenge.Id, 1, token);
+        }
+        else
+        {
+            candidates = await _flagRepo.GetFlagsByTrackLevel(trackId.Value, level, token);
+        }
+
+        // 4. 找匹配的 flags
+        var matchedFlags = candidates
+            .Where(f => TryMatch(f, answer))
+            .ToList();
+
+        if (matchedFlags.Count == 0)
+            return await HandleWrongSubmission(challenge, participation, answer, level, trackId, token);
+
+        // 5. 分类匹配结果
+        var firstValid = await PickFirstValidMatch(challenge, participation, matchedFlags, level, token);
+
+        if (firstValid is null)
+        {
+            // 所有匹配都不可计分（已解/已封禁/锁定）
+            // 不扣分，不泄漏具体原因
+            return new ScoreResult
+            {
+                Status = AnswerResult.FlagSubmitted,
+                ScoreChange = 0,
+                TrackId = trackId,
+                Level = level,
+                Message = "Answer not acceptable at this time"
+            };
+        }
+
+        return await HandleCorrectSubmission(challenge, participation, firstValid, token);
+    }
+
+    private async Task<ChallengeFlag?> PickFirstValidMatch(
+        GameChallenge challenge,
+        Participation participation,
+        List<ChallengeFlag> matchedFlags,
+        int requestedLevel,
+        CancellationToken token)
+    {
+        // 按 Level 升序、SortOrder 升序排序
+        var ordered = matchedFlags.OrderBy(f => f.Level).ThenBy(f => f.SortOrder).ToList();
+
+        foreach (var flag in ordered)
+        {
+            // 解锁检查
+            if (flag.Level > 1)
+            {
+                var prevSolved = await _recordRepo.HasCorrectSubmission(
+                    challenge.Id, participation.Id, flag.TrackId, flag.Level - 1, token);
+                if (!prevSolved) continue;
+            }
+
+            // 已解检查
+            var alreadySolved = await _recordRepo.HasCorrectSubmission(
+                challenge.Id, participation.Id, flag.TrackId, flag.Level, token);
+            if (alreadySolved) continue;
+
+            // 封禁检查
+            var isBanned = await _banStateRepo.IsBanned(
+                participation.Id, challenge.Id, flag.TrackId, flag.Level, token);
+            if (isBanned) continue;
+
+            return flag;
+        }
+
+        return null;
+    }
+
+    private static bool TryMatch(ChallengeFlag flag, string answer)
+    {
+        var submitted = ParseHybridLineAnswer(answer, flag.AnswerType);
+        if (submitted is null)
+        {
+            // 不能解析时尝试 Exact 字面比对
+            if (flag.AnswerType == ChallengeFlagAnswerType.Exact)
+                return string.Equals(flag.FlagValue, answer, StringComparison.Ordinal);
+            return false;
+        }
+
+        var flagAnswerStr = string.IsNullOrWhiteSpace(flag.RawAnswer) ? flag.FlagValue : flag.RawAnswer;
+        var flagAnswer = ParseHybridLineAnswer(flagAnswerStr, flag.AnswerType);
+        if (flagAnswer is null)
+        {
+            return string.Equals(flag.FlagValue, answer, StringComparison.Ordinal);
+        }
+
+        return HybridLineMatches(flagAnswer.Value, submitted.Value);
     }
 
     private async Task<ScoreResult> HandleCorrectSubmission(
@@ -95,32 +202,171 @@ public class ScoringService
         ChallengeFlag matchedFlag,
         CancellationToken token)
     {
-        // Check if already submitted this flag
-        var alreadySubmitted = await _recordRepo.HasCorrectSubmission(
-            challenge.Id, participation.Id, matchedFlag.Id, token);
+        var levelConfig = await _levelConfigRepo.GetConfig(challenge.Id, matchedFlag.Level, token);
+        var score = levelConfig?.Score ?? 0;
 
-        if (alreadySubmitted)
+        var submissionType = await DetermineSubmissionType(challenge, participation, token);
+
+        return new ScoreResult
+        {
+            Status = AnswerResult.Accepted,
+            ScoreChange = score,
+            MatchedFlagId = matchedFlag.Id,
+            SubmissionType = submissionType,
+            Level = matchedFlag.Level,
+            TrackId = matchedFlag.TrackId,
+            Message = "Accepted"
+        };
+    }
+
+    private async Task<ScoreResult> HandleWrongSubmission(
+        GameChallenge challenge,
+        Participation participation,
+        string answer,
+        int level,
+        Guid? trackId,
+        CancellationToken token)
+    {
+        // 1. 加载 Level 配置（先加载以便检测 trap/ban）
+        var levelConfig = await _levelConfigRepo.GetConfig(challenge.Id, level, token);
+
+        var lockOnAnswers = levelConfig?.LockOnAnswers ?? [];
+        var banOnAnswers = levelConfig?.BanOnAnswers ?? [];
+
+        // 2. Trap / Ban 检测 — 必须在 dedup 之前，确保 ban 答案幂等生效
+        bool triggerChallengeLock = false;
+        string lockReason = "SubmissionLimitExceeded";
+        Guid? bannedTrackId = null;
+        int? bannedLevel = null;
+
+        if (lockOnAnswers.Contains(answer))
+        {
+            triggerChallengeLock = true;
+            lockReason = "TrapAnswer";
+        }
+
+        // BanOnAnswers 仅 Level 2+ 且有 trackId 时生效；幂等创建 ban state
+        if (banOnAnswers.Contains(answer) && level > 1 && trackId is not null)
+        {
+            var alreadySolved = await _recordRepo.HasCorrectSubmission(
+                challenge.Id, participation.Id, trackId.Value, level, token);
+            if (!alreadySolved)
+            {
+                var alreadyBanned = await _banStateRepo.IsBanned(
+                    participation.Id, challenge.Id, trackId.Value, level, token);
+                if (!alreadyBanned)
+                {
+                    await _banStateRepo.CreateBan(new ChallengeTrackLevelBanState
+                    {
+                        ParticipationId = participation.Id,
+                        ChallengeId = challenge.Id,
+                        TrackId = trackId.Value,
+                        Level = level,
+                        BanAnswer = answer
+                    }, token);
+                }
+                bannedTrackId = trackId;
+                bannedLevel = level;
+            }
+        }
+
+        // 3. Duplicate 检查：同一 answer 之前错误提交过 → 不扣分
+        // 但 trap/ban 状态已经处理（幂等），所以这里仅控制是否再次扣分
+        var duplicate = await _context.Submissions
+            .AsNoTracking()
+            .AnyAsync(s => s.ParticipationId == participation.Id
+                && s.ChallengeId == challenge.Id
+                && s.Answer == answer
+                && s.Status == AnswerResult.WrongAnswer, token);
+
+        if (duplicate && !triggerChallengeLock && bannedTrackId is null)
         {
             return new ScoreResult
             {
                 Status = AnswerResult.WrongAnswer,
                 ScoreChange = 0,
-                MatchedFlagId = matchedFlag.Id,
-                Message = "This flag has already been submitted"
+                TrackId = trackId,
+                Level = level,
+                BannedTrackId = bannedTrackId,
+                BannedLevel = bannedLevel,
+                Message = "Duplicate wrong submission, no penalty"
             };
         }
 
-        // HybridLine uses SubmissionRecords as the authoritative per-flag score ledger.
-        var submissionType = challenge.FlagMatchMode == FlagMatchMode.HybridLine
-            ? SubmissionType.Unaccepted
-            : await DetermineSubmissionType(challenge, participation, token);
+        // 4. Penalty 计算（重复提交不扣分）
+        var penaltyScore = 0;
+        if (!duplicate)
+        {
+            penaltyScore = levelConfig?.PenaltyScore ?? 0;
+            if (penaltyScore <= 0)
+            {
+                var penalty = await _penaltyRepo.GetPenalty(challenge.Id, token);
+                var defaultPenalty = await _settings.Get<int>("Scoring.DefaultPenaltyScore", token);
+                penaltyScore = penalty?.PenaltyScore ?? defaultPenalty;
+            }
+        }
+
+        // 5. WrongCount 累加 + SubmissionLimit 检查（重复提交不累加）
+        int wrongCount = 0;
+        if (!duplicate)
+        {
+            wrongCount = await _wrongCountRepo.IncrementWrongCount(
+                participation.Id, challenge.Id, level, token);
+
+            if (!triggerChallengeLock)
+            {
+                var limit = levelConfig?.SubmissionLimit > 0
+                    ? levelConfig.SubmissionLimit
+                    : challenge.SubmissionLimit;
+
+                if (limit > 0 && wrongCount >= limit)
+                {
+                    triggerChallengeLock = true;
+                    lockReason = "SubmissionLimitExceeded";
+                }
+            }
+        }
+
+        // 6. 创建全题锁
+        DateTimeOffset? unlocksAt = null;
+        if (triggerChallengeLock)
+        {
+            var lockMinutes = challenge.LockDurationMinutes;
+            unlocksAt = lockMinutes > 0
+                ? DateTimeOffset.UtcNow.AddMinutes(lockMinutes)
+                : DateTimeOffset.MaxValue;
+
+            await _lockStateRepo.CreateLock(new ChallengeLockState
+            {
+                ParticipationId = participation.Id,
+                ChallengeId = challenge.Id,
+                TriggeringLevel = level,
+                TriggeringTrackId = trackId,
+                TriggerReason = lockReason,
+                TriggerAnswer = answer,
+                LockedAt = DateTimeOffset.UtcNow,
+                UnlocksAt = unlocksAt.Value
+            }, token);
+        }
+
+        // 7. 返回
+        string submissionType = triggerChallengeLock ? "Trap" : (bannedTrackId is not null ? "Ban" : "Wrong");
 
         return new ScoreResult
         {
-            Status = AnswerResult.Accepted,
-            ScoreChange = matchedFlag.Score,
-            MatchedFlagId = matchedFlag.Id,
-            SubmissionType = submissionType
+            Status = AnswerResult.WrongAnswer,
+            ScoreChange = -penaltyScore,
+            IsPenalty = penaltyScore > 0,
+            Level = level,
+            TrackId = trackId,
+            BannedTrackId = bannedTrackId,
+            BannedLevel = bannedLevel,
+            ChallengeLocked = triggerChallengeLock,
+            UnlocksAt = unlocksAt,
+            Message = submissionType == "Trap" ? "Trap answer triggered"
+                : submissionType == "Ban" ? "Answer banned this track-level"
+                : duplicate ? "Duplicate wrong submission, no penalty"
+                : "Wrong answer"
         };
     }
 
@@ -218,7 +464,9 @@ public class ScoringService
 
     /// <summary>
     /// Create a FirstSolves entry after the submission has been saved.
-    /// Only creates the entry when ALL flags for the challenge have been submitted correctly.
+    /// D7: Creates the entry when ANY single track's all levels have been solved.
+    /// 一血播报：第一个完全解出任意 Track 的所有 Level 的 participation 触发。
+    /// 对于无 Track 的传统单 flag 题目，只要有正确提交即创建 FirstSolve（保持向后兼容）。
     /// </summary>
     public async Task CreateFirstSolve(int participationId, int challengeId, int submissionId,
         CancellationToken token = default)
@@ -229,20 +477,23 @@ public class ScoringService
         if (exists)
             return;
 
-        // Only mark as solved when all flags for this challenge have been submitted
-        var totalFlags = await _context.ChallengeFlags
-            .CountAsync(f => f.ChallengeId == challengeId && f.IsEnabled, token);
+        var activeTrackIds = await _context.Set<ChallengeTrack>()
+            .Where(t => t.ChallengeId == challengeId && t.IsEnabled)
+            .Select(t => t.Id).ToListAsync(token);
 
-        var submittedFlags = await _context.SubmissionRecords
-            .Where(r => r.MatchedFlagId != null
-                && r.ScoreChange > 0
-                && r.Submission!.ParticipationId == participationId
-                && r.Submission!.ChallengeId == challengeId)
-            .Select(r => r.MatchedFlagId)
-            .Distinct()
-            .CountAsync(token);
+        var hasBan = await _context.Set<ChallengeTrackLevelBanState>()
+            .AnyAsync(b => b.ParticipationId == participationId
+                && b.ChallengeId == challengeId
+                && activeTrackIds.Contains(b.TrackId), token);
+        if (hasBan) return;
 
-        if (submittedFlags >= totalFlags)
+        var levels = await _context.Set<ChallengeLevelConfig>()
+            .Where(c => c.ChallengeId == challengeId && c.IsEnabled)
+            .Select(c => c.Level).Distinct().ToListAsync(token);
+
+        // 传统单 flag 题目（无 Track）：CreateFirstSolve 只在正确提交后调用，
+        // 直接创建 FirstSolve（保持与原逻辑一致 — 空集视为 vacuously solved）
+        if (activeTrackIds.Count == 0)
         {
             _context.FirstSolves.Add(new FirstSolve
             {
@@ -251,134 +502,40 @@ public class ScoringService
                 SubmissionId = submissionId
             });
             await _context.SaveChangesAsync(token);
+            return;
         }
-    }
 
-    private async Task<ScoreResult> HandleWrongSubmission(
-        GameChallenge challenge,
-        Participation participation,
-        CancellationToken token)
-    {
-        var penalty = await _penaltyRepo.GetPenalty(challenge.Id, token);
-        var defaultPenaltyScore = await _settings.Get<int>("Scoring.DefaultPenaltyScore", token);
-
-        // Fall back to global default if no per-challenge penalty is configured or score is 0
-        var penaltyScore = penalty?.PenaltyScore ?? defaultPenaltyScore;
-        if (penaltyScore <= 0)
-            penaltyScore = defaultPenaltyScore;
-
-        if (penaltyScore <= 0)
+        // D7: 多 Track 题目 — 任意 Track 完全解出即创建 FirstSolve
+        foreach (var trackId in activeTrackIds)
         {
-            return new ScoreResult
+            var allLevelsSolved = true;
+            foreach (var level in levels)
             {
-                Status = AnswerResult.WrongAnswer,
-                ScoreChange = 0
-            };
+                var solved = await _context.SubmissionRecords.AnyAsync(r =>
+                    r.ParticipationId == participationId
+                    && r.ChallengeId == challengeId
+                    && r.TrackId == trackId
+                    && r.Level == level
+                    && r.ScoreChange > 0, token);
+                if (!solved)
+                {
+                    allLevelsSolved = false;
+                    break;
+                }
+            }
+
+            if (allLevelsSolved)
+            {
+                _context.FirstSolves.Add(new FirstSolve
+                {
+                    ParticipationId = participationId,
+                    ChallengeId = challengeId,
+                    SubmissionId = submissionId
+                });
+                await _context.SaveChangesAsync(token);
+                return;
+            }
         }
-
-        var minScore = await _settings.Get<int>("Scoring.MinScore", token);
-        var maxPenalty = await _settings.Get<int>("Scoring.MaxPenaltyPerSubmission", token);
-
-        var effectivePenalty = Math.Min(penaltyScore, maxPenalty);
-
-        // Calculate current combined total score (GZCTF base + SubmissionRecords)
-        var gzctfBaseScore = await _recordRepo.GetGZCTFBaseScore(participation.Id, participation.GameId, token);
-        var currentExtraScore = await _recordRepo.GetTotalScoreChange(participation.Id, token);
-        var combinedTotal = gzctfBaseScore + currentExtraScore;
-
-        // Ensure combined score doesn't go below MinScore
-        var actualPenalty = Math.Min(effectivePenalty, combinedTotal - minScore);
-        if (actualPenalty <= 0)
-            actualPenalty = 0;
-
-        return new ScoreResult
-        {
-            Status = AnswerResult.WrongAnswer,
-            ScoreChange = -actualPenalty,
-            IsPenalty = actualPenalty > 0
-        };
-    }
-
-    static ChallengeFlag? MatchLineRange(ChallengeFlag[] flags, string answer)
-    {
-        if (!TryParseLineRange(answer, out var subStart, out var subEnd))
-            return null;
-
-        foreach (var flag in flags)
-        {
-            if (!TryParseLineRange(flag.FlagValue, out var flagStart, out var flagEnd))
-                continue;
-
-            if (subStart >= flagStart && subEnd <= flagEnd)
-                return flag;
-        }
-
-        return null;
-    }
-
-    private async Task<ChallengeFlag?> MatchHybridLine(GameChallenge challenge, Participation participation,
-        ChallengeFlag[] flags, string answer, CancellationToken token)
-    {
-        var submitted = ParseHybridLineAnswer(answer, ChallengeFlagAnswerType.Exact);
-        if (submitted is null)
-            throw new InvalidFlagSubmissionException(
-                "Invalid line answer format. Use a single line, a range, or a comma-separated multi-line answer.");
-
-        var completedFlagIds = await _context.SubmissionRecords
-            .AsNoTracking()
-            .Where(r => r.MatchedFlagId != null
-                        && r.ScoreChange > 0
-                        && (r.ParticipationId == participation.Id
-                            || (r.ParticipationId == null
-                                && r.Submission != null
-                                && r.Submission.ParticipationId == participation.Id))
-                        && (r.ChallengeId == challenge.Id
-                            || (r.ChallengeId == null
-                                && r.Submission != null
-                                && r.Submission.ChallengeId == challenge.Id)))
-            .Select(r => r.MatchedFlagId!.Value)
-            .ToArrayAsync(token);
-
-        HashSet<Guid> completed = [.. completedFlagIds];
-        List<ChallengeFlag> openMatches = [];
-        List<ChallengeFlag> completedMatches = [];
-
-        foreach (var flag in flags)
-        {
-            var flagAnswer = ParseHybridLineAnswer(
-                string.IsNullOrWhiteSpace(flag.RawAnswer) ? flag.FlagValue : flag.RawAnswer,
-                flag.AnswerType);
-
-            if (flagAnswer is null)
-                continue;
-
-            if (!HybridLineMatches(flagAnswer.Value, submitted.Value))
-                continue;
-
-            if (completed.Contains(flag.Id))
-                completedMatches.Add(flag);
-            else
-                openMatches.Add(flag);
-        }
-
-        var openMatch = openMatches.Count switch
-        {
-            0 => null,
-            1 => openMatches[0],
-            _ => throw new InvalidFlagSubmissionException(
-                "Submission matches multiple enabled flags in this subsystem; please fix flag configuration.")
-        };
-
-        if (openMatch is not null)
-            return openMatch;
-
-        return completedMatches.Count switch
-        {
-            0 => null,
-            1 => completedMatches[0],
-            _ => throw new InvalidFlagSubmissionException(
-                "Submission matches multiple completed flags in this subsystem; please fix flag configuration.")
-        };
     }
 
     public static bool TryNormalizeHybridLineAnswer(string input, ChallengeFlagAnswerType answerType,
@@ -540,7 +697,14 @@ public class ScoringService
             MatchedFlagId = result.MatchedFlagId,
             GameId = submission.GameId,
             ChallengeId = submission.ChallengeId,
-            ParticipationId = submission.ParticipationId
+            ParticipationId = submission.ParticipationId,
+            Level = result.Level,
+            TrackId = result.TrackId,
+            SubmissionType = result.Status == AnswerResult.Accepted ? "Correct"
+                : result.ChallengeLocked ? "Trap"
+                : result.BannedTrackId is not null ? "Ban"
+                : result.Status == AnswerResult.FlagSubmitted ? "Duplicate"
+                : "Wrong"
         };
 
         return await _recordRepo.CreateRecord(record, token);
@@ -616,16 +780,6 @@ public class ScoringService
             await _bigScreenHub.Clients.Group("BigScreen").ReceiveEvent(dto);
         }
     }
-}
-
-public class ScoreResult
-{
-    public AnswerResult Status { get; init; }
-    public int ScoreChange { get; init; }
-    public Guid? MatchedFlagId { get; init; }
-    public bool IsPenalty { get; init; }
-    public string? Message { get; init; }
-    public SubmissionType SubmissionType { get; init; }
 }
 
 public class InvalidFlagSubmissionException(string message) : Exception(message);

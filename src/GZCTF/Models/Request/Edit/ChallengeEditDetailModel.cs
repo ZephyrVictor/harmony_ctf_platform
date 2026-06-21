@@ -137,10 +137,9 @@ public class ChallengeEditDetailModel
     public int SubmissionLimit { get; set; }
 
     /// <summary>
-    /// Flag matching mode
+    /// 临时全题锁时长（分钟），0 = 永久
     /// </summary>
-    [Required]
-    public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
+    public int LockDurationMinutes { get; set; } = 0;
 
     /// <summary>
     /// Initial score
@@ -186,7 +185,7 @@ public class ChallengeEditDetailModel
             FileName = chal.FileName,
             Attachment = chal.Attachment,
             SubmissionLimit = chal.SubmissionLimit,
-            FlagMatchMode = chal.FlagMatchMode,
+            LockDurationMinutes = chal.LockDurationMinutes,
             DeadlineUtc = chal.DeadlineUtc,
             AcceptedCount = 0, // This field should be set externally
             TestContainer = chal.TestContainer is null ? null : ContainerInfoModel.FromContainer(chal.TestContainer),

@@ -38,16 +38,16 @@
     "already_solved": "该题目已被解出",
     "line_range_placeholder": "输入行号或范围，如 56 或 77-82",
     "line_range_label": "漏洞行号",
-    "hybrid_line_placeholder": "输入行号、范围或多行，如 166 / 347-352 / 281,286",
-    "hybrid_line_label": "subsystem 统一提交入口",
-    "all_flags_completed": "该 subsystem 的可见 flag 已全部完成",
-    "visible_flags": "可见 flag",
-    "visible_flags_empty": "暂无可见 flag",
+    "hybrid_line_placeholder": "输入行号、范围或精确答案",
+    "hybrid_line_label": "漏洞行号 / 答案",
+    "all_flags_completed": "全部 Flag 已完成",
+    "visible_flags": "可见 Flag",
+    "visible_flags_empty": "暂无可见 Flag 配置",
     "visible_flag_fallback": "Flag {{index}}",
     "answer_type": {
-      "exact": "精确",
+      "exact": "精确匹配",
       "single_line": "单行",
-      "line_range": "范围",
+      "line_range": "行号范围",
       "multi_line": "多行"
     },
     "flag_status": {
@@ -137,23 +137,7 @@
       "万籁俱寂，唯有 flag 的错误提示在耳边响起。",
       "陌上花开，可缓缓归矣。flag 未得而返。",
       "风萧萧兮易水寒，无奈 flag 仍未到彼岸。"
-    ],
-    "hybrid_line_placeholder": "输入行号、范围或精确答案",
-    "hybrid_line_label": "漏洞行号 / 答案",
-    "visible_flags": "可见 Flag",
-    "visible_flags_empty": "暂无可见 Flag 配置",
-    "visible_flag_fallback": "Flag {{index}}",
-    "all_flags_completed": "全部 Flag 已完成",
-    "answer_type": {
-      "exact": "精确匹配",
-      "single_line": "单行",
-      "line_range": "行号范围",
-      "multi_line": "多行"
-    },
-    "flag_status": {
-      "completed": "已完成",
-      "pending": "未完成"
-    }
+    ]
   },
   "file_type": {
     "local": "本地附件",
@@ -176,7 +160,11 @@
         "message": "请联系管理员确认提交：{{id}}",
         "title": "flag 状态未知"
       },
-      "wrong": "flag 错误"
+      "wrong": "flag 错误",
+      "trap": "陷阱答案已触发",
+      "banned": "此关卡已封禁",
+      "duplicate": "重复错误提交，不扣分",
+      "multi_level_track_required": "上下文未恢复，请刷新页面"
     },
     "instance": {
       "copied": {
@@ -223,5 +211,31 @@
       "desrc": "共用容器，任意 flag 均可提交",
       "label": "静态容器"
     }
+  },
+  "trackList": {
+    "title": "Track 列表",
+    "progress": "进度",
+    "enterTrack": "进入 Track"
+  },
+  "trackDetail": {
+    "level1": "Level 1：漏洞定位",
+    "level2": "Level 2：漏洞类型",
+    "level3": "Level 3：漏洞验证",
+    "submit": "提交",
+    "solved": "已解出",
+    "unsolved": "未解出",
+    "banned": "已封禁",
+    "locked": "已锁定",
+    "attemptsUsed": "已用次数",
+    "remainingAttempts": "剩余次数",
+    "unlocksAt": "解锁时间"
+  },
+  "level": {
+    "progress": "进度",
+    "current": "当前",
+    "solved": "已解决",
+    "locked": "已锁定",
+    "banned": "已封禁",
+    "unlock_at": "{{time}} 解锁"
   }
 }

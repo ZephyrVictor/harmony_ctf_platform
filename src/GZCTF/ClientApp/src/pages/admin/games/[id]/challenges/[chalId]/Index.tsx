@@ -42,7 +42,7 @@ import {
 } from '@Utils/Shared'
 import { useEditChallenge, useEditChallenges } from '@Hooks/useEdit'
 import { useGame } from '@Hooks/useGame'
-import api, { ChallengeCategory, ChallengeType, ChallengeUpdateModel, FlagMatchMode, NetworkMode } from '@Api'
+import api, { ChallengeCategory, ChallengeType, ChallengeUpdateModel, NetworkMode } from '@Api'
 import misc from '@Styles/Misc.module.css'
 
 const GameChallengeEdit: FC = () => {
@@ -74,10 +74,6 @@ const GameChallengeEdit: FC = () => {
   const networkModeLabelMap = useNetworkModeMap()
 
   const { t } = useTranslation()
-
-  const persistedFlagMatchMode = challenge?.flagMatchMode ?? FlagMatchMode.Exact
-  const currentFlagMatchMode = challengeInfo.flagMatchMode ?? FlagMatchMode.Exact
-  const flagMatchModeUnsaved = currentFlagMatchMode !== persistedFlagMatchMode
 
   useEffect(() => {
     if (challenge) {
@@ -357,26 +353,6 @@ const GameChallengeEdit: FC = () => {
                   setChallengeInfo({ ...challengeInfo, submissionLimit: number })
                 }}
               />
-              <Select
-                label={t('admin.content.games.challenges.flag_match_mode.label')}
-                description={t('admin.content.games.challenges.flag_match_mode.description')}
-                value={challengeInfo?.flagMatchMode ?? FlagMatchMode.Exact}
-                disabled={disabled}
-                data={[
-                  { value: FlagMatchMode.Exact, label: t('admin.content.games.challenges.flag_match_mode.exact') },
-                  {
-                    value: FlagMatchMode.LineRange,
-                    label: t('admin.content.games.challenges.flag_match_mode.line_range'),
-                  },
-                  {
-                    value: FlagMatchMode.HybridLine,
-                    label: t('admin.content.games.challenges.flag_match_mode.hybrid_line'),
-                  },
-                ]}
-                onChange={(e) => {
-                  setChallengeInfo({ ...challengeInfo, flagMatchMode: e as FlagMatchMode })
-                }}
-              />
               <DateTimePicker
                 label={t('admin.content.games.challenges.deadline.label')}
                 placeholder={t('admin.content.games.challenges.deadline.placeholder')}
@@ -632,9 +608,7 @@ const GameChallengeEdit: FC = () => {
             <Divider />
             <FlagEditor
               challengeId={numCId}
-              flagMatchMode={persistedFlagMatchMode}
-              disabled={disabled || flagMatchModeUnsaved}
-              disabledReason={flagMatchModeUnsaved ? t('admin.flag.mode_save_required') : undefined}
+              disabled={disabled}
             />
             <Divider />
             <PenaltyConfig challengeId={numCId} />

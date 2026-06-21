@@ -18,7 +18,7 @@ import { mdiLightbulbOnOutline, mdiOpenInNew, mdiPackageVariantClosed } from '@m
 import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
-import { FC, useEffect, useMemo, useState } from 'react'
+import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InstanceEntry } from '@Components/InstanceEntry'
 import { ContentPlaceholder, InlineMarkdown, Markdown } from '@Components/MarkdownRenderer'
@@ -28,13 +28,88 @@ import {
   ChallengeDetailModel,
   ChallengeFlagAnswerType,
   ChallengeType,
-  FlagMatchMode,
   HybridLineFlagInfoModel,
+  TrackLevelStatusModel,
 } from '@Api'
 import classes from '@Styles/ChallengeModal.module.css'
 import misc from '@Styles/Misc.module.css'
 
 dayjs.extend(duration)
+
+interface MultiLevelProgressProps {
+  tracks: NonNullable<ChallengeDetailModel['tracks']>
+  currentLevel?: number
+}
+
+const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel }) => {
+  const { t } = useTranslation()
+
+  // 取所有 track 的 level 集合（level 数跨 track 一致，因为 LevelConfig 是 per-challenge 共享的）
+  // 用第一个 track 的 levels 作为展示基准；status 取该 level 在所有 track 中的最佳状态
+  const firstTrackLevels = tracks[0]?.levels ?? []
+
+  const bestStatusForLevel = (level: number): string => {
+    let best: string = 'Unsolved'
+    for (const track of tracks) {
+      const levelInfo = track.levels?.find((l) => l.level === level)
+      if (!levelInfo) continue
+      const s = levelInfo.status ?? 'Unsolved'
+      if (s === 'Solved') return 'Solved'
+      if (s === 'Banned' && best === 'Unsolved') best = 'Banned'
+      if (s === 'Locked' && best === 'Unsolved') best = 'Locked'
+    }
+    return best
+  }
+
+  return (
+    <Stack gap="xs" pt="sm">
+      <Group justify="space-between" gap="xs">
+        <Text fw={700} size="sm">
+          {t('challenge.level.progress')}
+        </Text>
+        {currentLevel !== undefined && (
+          <Badge variant="light" color="indigo">
+            {t('challenge.level.current')}: L{currentLevel}
+          </Badge>
+        )}
+      </Group>
+      <Group gap="xs" wrap="nowrap">
+        {firstTrackLevels.map((levelInfo, idx) => {
+          const level = levelInfo.level ?? idx + 1
+          const status = bestStatusForLevel(level)
+          const isCurrent = level === currentLevel
+
+          let color = 'gray'
+          let icon = ''
+          if (status === 'Solved') {
+            color = 'teal'
+            icon = ' ✓'
+          } else if (status === 'Banned') {
+            color = 'red'
+            icon = ' 🔴'
+          } else if (status === 'Locked') {
+            color = 'orange'
+            icon = ' ⏸'
+          } else if (isCurrent) {
+            color = 'blue'
+            icon = ` (${t('challenge.level.current')})`
+          } else {
+            icon = ' 🔒'
+          }
+
+          return (
+            <React.Fragment key={level}>
+              {idx > 0 && <Text size="sm" c="dimmed">→</Text>}
+              <Badge variant={isCurrent ? 'filled' : 'light'} color={color}>
+                L{level}{icon}
+              </Badge>
+            </React.Fragment>
+          )
+        })}
+      </Group>
+    </Stack>
+  )
+}
 
 interface ChallengeDeadlineNoticeProps {
   deadline: dayjs.Dayjs
@@ -122,7 +197,6 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   const { t } = useTranslation()
   const theme = useMantineTheme()
   const { locale } = useLanguage()
-  const isHybridLine = challenge?.flagMatchMode === FlagMatchMode.HybridLine
 
   const hybridFlags = useMemo(
     () => [...(challenge?.flags ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
@@ -132,7 +206,9 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   const isFlagSolved = (flag: HybridLineFlagInfoModel) => flag.isSolved === true
   const solvedFlagCount = hybridFlags.filter(isFlagSolved).length
   const hasHybridFlags = hybridFlags.length > 0
-  const allHybridFlagsSolved = isHybridLine && hasHybridFlags && solvedFlagCount === hybridFlags.length
+  const isHybridLine = hasHybridFlags
+  const isMultiLevel = (challenge?.tracks?.length ?? 0) > 0
+  const allHybridFlagsSolved = hasHybridFlags && solvedFlagCount === hybridFlags.length
 
   const answerTypeLabel = (type?: ChallengeFlagAnswerType) => {
     switch (type) {
@@ -149,8 +225,7 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   }
 
   const flagDisplayName = (hybridFlag: HybridLineFlagInfoModel, index: number) =>
-    hybridFlag.flawNo ||
-    hybridFlag.filePath?.split(/[\\/]/).pop() ||
+    hybridFlag.trackId?.slice(0, 8) ||
     t('challenge.content.visible_flag_fallback', { index })
 
   const placeholders = t('challenge.content.flag_placeholders', {
@@ -208,6 +283,9 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
               ))}
             </Stack>
           )}
+          {isMultiLevel && challenge?.tracks && (
+            <MultiLevelProgress tracks={challenge.tracks} currentLevel={challenge.currentLevel} />
+          )}
           {isHybridLine && (
             <Stack gap="xs" className={classes.flagList}>
               <Group justify="space-between" gap="xs">
@@ -222,12 +300,6 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
                   {hybridFlags.map((hybridFlag, index) => {
                     const solved = isFlagSolved(hybridFlag)
-                    const metadata = [
-                      hybridFlag.repository,
-                      hybridFlag.module,
-                      hybridFlag.filePath,
-                      hybridFlag.cwe,
-                    ].filter(Boolean)
 
                     return (
                       <Stack key={hybridFlag.id ?? index} gap={4} className={classes.flagItem}>
@@ -243,15 +315,12 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
                         </Group>
                         <Group gap={6}>
                           <Badge variant="outline">{answerTypeLabel(hybridFlag.answerType)}</Badge>
-                          <Badge variant="outline" color="green">
-                            +{hybridFlag.score ?? 0}
-                          </Badge>
+                          {hybridFlag.level !== undefined && (
+                            <Badge variant="outline" color="indigo">
+                              L{hybridFlag.level}
+                            </Badge>
+                          )}
                         </Group>
-                        {metadata.length > 0 && (
-                          <Text size="xs" c="dimmed" lineClamp={2} className={misc.wordBreakAll}>
-                            {metadata.join(' / ')}
-                          </Text>
-                        )}
                       </Stack>
                     )
                   })}
@@ -376,16 +445,12 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
             placeholder={
               isHybridLine
                 ? t('challenge.content.hybrid_line_placeholder')
-                : challenge?.flagMatchMode === FlagMatchMode.LineRange
-                  ? t('challenge.content.line_range_placeholder')
-                  : placeholder
+                : placeholder
             }
             label={
               isHybridLine
                 ? t('challenge.content.hybrid_line_label')
-                : challenge?.flagMatchMode === FlagMatchMode.LineRange
-                  ? t('challenge.content.line_range_label')
-                  : undefined
+                : undefined
             }
             value={inputValue}
             disabled={inputDisabled}

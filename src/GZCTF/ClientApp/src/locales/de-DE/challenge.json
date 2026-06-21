@@ -160,7 +160,11 @@
         "message": "Bitte kontaktieren Sie den Administrator, um die Einreichung zu bestätigen: {{id}}",
         "title": "Status der Flagge unbekannt"
       },
-      "wrong": "Flagge falsch"
+      "wrong": "Flagge falsch",
+      "trap": "Trap-Antwort ausgelöst",
+      "banned": "Diese Ebene ist verbannt",
+      "duplicate": "Doppelte falsche Einreichung, keine Strafe",
+      "multi_level_track_required": "Kontext noch nicht wiederhergestellt, bitte Seite aktualisieren"
     },
     "instance": {
       "copied": {
@@ -207,5 +211,13 @@
       "desrc": "Freigegebene Container, jedes Flag kann übermittelt werden",
       "label": "Statischer Container"
     }
+  },
+  "level": {
+    "progress": "Fortschritt",
+    "current": "Aktuell",
+    "solved": "Gelöst",
+    "locked": "Gesperrt",
+    "banned": "Verbannt",
+    "unlock_at": "Entsperrt um {{time}}"
   }
 }

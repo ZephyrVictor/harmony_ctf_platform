@@ -179,13 +179,6 @@
           "label": "最大提交次数",
           "placeholder": "不限制"
         },
-        "flag_match_mode": {
-          "label": "Flag 匹配模式",
-          "description": "选择答案匹配方式",
-          "exact": "精确匹配",
-          "line_range": "行号范围匹配",
-          "hybrid_line": "混合行号"
-        },
         "title": "题目标题",
         "traffic_capture": {
           "description": "捕获队伍解题流量，需要开启平台代理",
@@ -609,15 +602,20 @@
       "value": "Flag 值",
       "answer_type": "答案类型",
       "metadata": "元数据",
-      "status": "状态"
+      "status": "状态",
+      "level": "层级",
+      "track": "Track",
+      "track_optional": "Track ID（可选，留空将自动创建）"
     },
     "confirm_delete": "确定删除此 Flag 吗？",
     "edit": "编辑 Flag",
     "empty_value": "Flag 值不能为空",
     "invalid_score": "分值必须大于等于 1",
+    "invalid_level": "层级必须大于等于 1",
     "no_flags": "暂无 Flag 配置，点击添加 Flag 创建",
     "title": "Flag 管理",
     "total_score": "总分",
+    "total_count": "总数",
     "answer_type": {
       "exact": "精确匹配",
       "single_line": "单行",
@@ -628,7 +626,6 @@
     "hidden": "隐藏",
     "enabled": "启用",
     "disabled": "禁用",
-    "mode_save_required": "题目匹配模式尚未保存。请先保存题目模式，再编辑 Flag。",
     "metadata": {
       "flaw_no": "漏洞编号",
       "repository": "仓库",
@@ -710,5 +707,50 @@
     "settings": "系统设置",
     "teams": "队伍管理",
     "users": "用户管理"
+  },
+  "track": {
+    "title": "Track",
+    "list": "Track 列表",
+    "create": "新建 Track",
+    "edit": "编辑 Track",
+    "delete": "删除 Track",
+    "title_label": "标题",
+    "flawNo": "FlawNo",
+    "repository": "所属仓库",
+    "module": "模块",
+    "filePath": "文件路径",
+    "category": "参考类别",
+    "referenceUrl": "参考链接"
+  },
+  "level": {
+    "title": "Level 配置",
+    "list": "Level 列表",
+    "create": "新建 Level",
+    "edit": "编辑 Level",
+    "delete": "删除 Level",
+    "level": "层级",
+    "score": "分值",
+    "submissionLimit": "提交次数限制",
+    "penaltyScore": "错误扣分",
+    "lockOnAnswers": "触发锁定答案",
+    "banOnAnswers": "触发封禁答案",
+    "levelTitle": "Level 标题"
+  },
+  "import": {
+    "title": "批量导入",
+    "upload": "上传文件",
+    "preview": "预览",
+    "mapping": "列映射",
+    "mode": "冲突模式",
+    "upsert": "更新",
+    "skip": "跳过",
+    "fail": "失败",
+    "submit": "开始导入",
+    "result": "导入结果",
+    "totalRows": "总行数",
+    "imported": "新建",
+    "updated": "更新",
+    "skipped": "跳过",
+    "failed": "失败"
   }
 }

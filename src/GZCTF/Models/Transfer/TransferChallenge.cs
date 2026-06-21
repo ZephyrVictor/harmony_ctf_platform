@@ -144,13 +144,138 @@ public class FlagsSection
     public string? Template { get; set; }
 
     /// <summary>
-    /// Static flags list
+    /// Static flags list (legacy format, single-level)
     /// </summary>
     public List<StaticFlagSection>? Static { get; set; }
+
+    /// <summary>
+    /// Multi-level flags structure (new format, takes precedence over Static when present)
+    /// </summary>
+    public MultiLevelFlagsSection? MultiLevel { get; set; }
 
     // Note: Individual StaticFlagSection items are validated by their own
     // DataAnnotations attributes ([Required], [MaxLength]). TransferValidator
     // will recursively validate all items in the Static list automatically.
+}
+
+/// <summary>
+/// 多级 flag 结构（Track + LevelConfig + Flag 三层）
+/// </summary>
+public class MultiLevelFlagsSection
+{
+    /// <summary>
+    /// Track 列表（每个 Track 对应一个漏洞实例）
+    /// </summary>
+    public List<TransferTrack> Tracks { get; set; } = [];
+
+    /// <summary>
+    /// LevelConfig 列表（所有 Track 共享）
+    /// </summary>
+    public List<TransferLevelConfig> LevelConfigs { get; set; } = [];
+
+    /// <summary>
+    /// Flag 列表（通过 TrackId + Level 关联）
+    /// </summary>
+    public List<TransferFlag> Flags { get; set; } = [];
+}
+
+/// <summary>
+/// Transfer format for ChallengeTrack
+/// </summary>
+public class TransferTrack
+{
+    public Guid Id { get; set; }
+
+    [MaxLength(200)]
+    public string? Title { get; set; }
+
+    [MaxLength(64)]
+    public string? FlawNo { get; set; }
+
+    [MaxLength(128)]
+    public string? Repository { get; set; }
+
+    [MaxLength(128)]
+    public string? Module { get; set; }
+
+    [MaxLength(512)]
+    public string? FilePath { get; set; }
+
+    [MaxLength(128)]
+    public string? Category { get; set; }
+
+    [MaxLength(512)]
+    public string? ReferenceUrl { get; set; }
+
+    public bool IsEnabled { get; set; } = true;
+    public int SortOrder { get; set; }
+}
+
+/// <summary>
+/// Transfer format for ChallengeLevelConfig (D4: 包含 LockOnAnswers / BanOnAnswers)
+/// </summary>
+public class TransferLevelConfig
+{
+    public int Level { get; set; }
+
+    [MaxLength(64)]
+    public string? Title { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int Score { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int SubmissionLimit { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int PenaltyScore { get; set; }
+
+    /// <summary>
+    /// D4: 触发临时全题锁的 trap 答案（完整导出/导入）
+    /// </summary>
+    public List<string> LockOnAnswers { get; set; } = [];
+
+    /// <summary>
+    /// D4: 触发永久 (Track, Level) 封禁的 trap 答案（完整导出/导入）
+    /// </summary>
+    public List<string> BanOnAnswers { get; set; } = [];
+
+    public bool IsEnabled { get; set; } = true;
+    public int SortOrder { get; set; }
+}
+
+/// <summary>
+/// Transfer format for ChallengeFlag (multi-level mode)
+/// </summary>
+public class TransferFlag
+{
+    public Guid Id { get; set; }
+
+    [Required(ErrorMessage = "Flag value is required")]
+    [MaxLength(Limits.MaxFlagLength, ErrorMessage = "Flag value is too long")]
+    public string FlagValue { get; set; } = string.Empty;
+
+    public ChallengeFlagAnswerType AnswerType { get; set; } = ChallengeFlagAnswerType.Exact;
+
+    [MaxLength(Limits.MaxFlagLength)]
+    public string RawAnswer { get; set; } = string.Empty;
+
+    public int Level { get; set; } = 1;
+
+    /// <summary>
+    /// 关联 TransferTrack.Id
+    /// </summary>
+    public Guid TrackId { get; set; }
+
+    public bool IsEnabled { get; set; } = true;
+    public bool IsVisible { get; set; } = true;
+    public bool IsOccupied { get; set; }
+    public int SortOrder { get; set; }
+
+    /// <summary>
+    /// Per-flag attachment (null = no attachment)
+    /// </summary>
+    public AttachmentSection? Attachment { get; set; }
 }
 
 public class StaticFlagSection

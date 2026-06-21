@@ -4,116 +4,81 @@ using Microsoft.EntityFrameworkCore;
 namespace GZCTF.Models.Data;
 
 [Index(nameof(ChallengeId))]
+[Index(nameof(ChallengeId), nameof(Level), nameof(TrackId))]
 public class ChallengeFlag
 {
     [Key]
     public Guid Id { get; set; }
 
     /// <summary>
-    /// Flag value
+    /// Flag value（匹配用）
     /// </summary>
     [Required]
     [MaxLength(Limits.MaxFlagLength)]
     public string FlagValue { get; set; } = string.Empty;
 
     /// <summary>
-    /// Explicit answer type for HybridLine challenges
+    /// Per-flag 答案类型，决定匹配算法
     /// </summary>
     public ChallengeFlagAnswerType AnswerType { get; set; } = ChallengeFlagAnswerType.Exact;
 
     /// <summary>
-    /// Original answer text used for HybridLine normalization
+    /// 原始答案文本（归一化前）
     /// </summary>
     [MaxLength(Limits.MaxFlagLength)]
     public string RawAnswer { get; set; } = string.Empty;
 
     /// <summary>
-    /// Canonical key after HybridLine normalization
+    /// 归一化后的匹配键
     /// </summary>
     [MaxLength(Limits.MaxFlagLength + 16)]
     public string NormalizedAnswerKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Independent score for this flag
+    /// 是否参与匹配
     /// </summary>
-    [Required]
-    [Range(1, int.MaxValue)]
-    public int Score { get; set; } = 100;
+    public bool IsEnabled { get; set; } = true;
 
     /// <summary>
-    /// Sort order for display
-    /// </summary>
-    public int SortOrder { get; set; } = 0;
-
-    /// <summary>
-    /// Whether this flag has been assigned to a participant (for dynamic attachment dispatch)
-    /// </summary>
-    public bool IsOccupied { get; set; }
-
-    /// <summary>
-    /// Whether this flag is visible to players in HybridLine subsystem details
+    /// 是否对选手可见
     /// </summary>
     public bool IsVisible { get; set; } = true;
 
     /// <summary>
-    /// Whether this flag participates in matching
+    /// 是否已被分配（dynamic attachment 用）
     /// </summary>
-    public bool IsEnabled { get; set; } = true;
+    public bool IsOccupied { get; set; }
 
-    [MaxLength(64)]
-    public string? FlawNo { get; set; }
-
-    [MaxLength(128)]
-    public string? Repository { get; set; }
-
-    [MaxLength(128)]
-    public string? Module { get; set; }
-
-    [MaxLength(512)]
-    public string? FilePath { get; set; }
-
-    [MaxLength(64)]
-    public string? Cwe { get; set; }
+    /// <summary>
+    /// 显示顺序
+    /// </summary>
+    public int SortOrder { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// 所属层级（1, 2, 3...）
+    /// </summary>
+    public int Level { get; set; } = 1;
+
+    /// <summary>
+    /// 所属 Track（同 TrackId 的 flags 属于同一漏洞实例）
+    /// </summary>
+    public Guid TrackId { get; set; } = Guid.NewGuid();
+
     #region Db Relationship
 
-    /// <summary>
-    /// Challenge ID
-    /// </summary>
     public int ChallengeId { get; set; }
-
-    /// <summary>
-    /// Challenge
-    /// </summary>
     public GameChallenge? Challenge { get; set; }
 
-    /// <summary>
-    /// Exercise ID (for exercise challenges)
-    /// </summary>
     public int? ExerciseId { get; set; }
-
-    /// <summary>
-    /// Exercise challenge
-    /// </summary>
     public ExerciseChallenge? Exercise { get; set; }
 
-    /// <summary>
-    /// Per-flag attachment (for dynamic attachment challenges)
-    /// </summary>
     public int? AttachmentId { get; set; }
-
-    /// <summary>
-    /// Attachment
-    /// </summary>
     public Attachment? Attachment { get; set; }
 
-    /// <summary>
-    /// Submission records that matched this flag
-    /// </summary>
     public List<SubmissionRecord> SubmissionRecords { get; set; } = [];
 
-    #endregion Db Relationship
+    #endregion
 }

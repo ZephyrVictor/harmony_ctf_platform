@@ -160,7 +160,11 @@
         "message": "Por favor contacte al administrador para confirmar la presentación: {{id}}",
         "title": "estado de bandera desconocido"
       },
-      "wrong": "bandera incorrecta"
+      "wrong": "bandera incorrecta",
+      "trap": "Respuesta trampa activada",
+      "banned": "Este nivel está prohibido",
+      "duplicate": "Envío incorrecto duplicado, sin penalización",
+      "multi_level_track_required": "Contexto aún no recuperado, actualiza la página"
     },
     "instance": {
       "copied": {
@@ -207,5 +211,13 @@
       "desrc": "Contenedores compartidos, se puede enviar cualquier bandera",
       "label": "Contenedor estático"
     }
+  },
+  "level": {
+    "progress": "Progreso",
+    "current": "Actual",
+    "solved": "Resuelto",
+    "locked": "Bloqueado",
+    "banned": "Prohibido",
+    "unlock_at": "Desbloquea a las {{time}}"
   }
 }

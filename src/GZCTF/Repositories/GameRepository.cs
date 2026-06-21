@@ -347,7 +347,6 @@ public class GameRepository(
                 .Select(c => new ChallengeRecord
                 (
                     c.Id,
-                    c.FlagMatchMode,
                     new ChallengeScoreMeta(
                         c.OriginalScore,
                         c.MinScoreRate,
@@ -369,10 +368,6 @@ public class GameRepository(
             challengeMetas = challengeRecords.ToDictionary(c => c.Key, c => c.Value.Meta);
 
             var challengeIds = challengeRecords.Keys.ToArray();
-            var hybridChallengeIds = challengeRecords.Values
-                .Where(c => c.MatchMode == FlagMatchMode.HybridLine)
-                .Select(c => c.Id)
-                .ToArray();
 
             // 4. fetch all recorded first solves for this game
             solveSnapshots = await Context.FirstSolves
@@ -383,8 +378,7 @@ public class GameRepository(
                     (fs, participation) => new { fs, participation })
                 .Where(x => x.participation.GameId == game.Id &&
                             x.participation.Status == ParticipationStatus.Accepted &&
-                            challengeIds.Contains(x.fs.ChallengeId) &&
-                            !hybridChallengeIds.Contains(x.fs.ChallengeId))
+                            challengeIds.Contains(x.fs.ChallengeId))
                 .Join(Context.Submissions.AsNoTracking().IgnoreAutoIncludes().Include(s => s.User),
                     x => x.fs.SubmissionId,
                     submission => submission.Id,
@@ -398,7 +392,15 @@ public class GameRepository(
             await trans.CommitAsync(token);
         }
 
-        // Prepare solve metadata for scoring and statistics
+        // Prepare solve metadata for scoring and statistics.
+        // Note: solveSnapshots are sourced from FirstSolves, which (per D7) are created
+        // when ANY single track's all levels have been correctly solved
+        // (see ScoringService.CreateFirstSolve). Therefore:
+        //   - solvedChallenges reflects challenges where at least one track is fully solved.
+        //   - Per-team SolvedCount is computed separately (D8) as distinct (TrackId, Level)
+        //     pairs from SubmissionRecords — see solvedTrackLevelCounts below.
+        //   - A team with partial solves (some but not all levels) will receive partial
+        //     Score from SubmissionRecords, and SolvedCount reflects partial progress.
         Dictionary<int, int> challengeAcceptedCounts = [];
         List<ScoreboardSolve> solves = [];
 
@@ -552,20 +554,32 @@ public class GameRepository(
                 r.Submission!.ChallengeId,
                 r.ScoreChange,
                 r.MatchedFlagId,
-                r.Submission!.SubmitTimeUtc))
+                r.Submission!.SubmitTimeUtc,
+                r.TrackId,
+                r.Level))
             .ToListAsync(token);
 
-        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and HybridLine flag hits)
+        // D8: SolvedCount = distinct (TrackId, Level) pairs with positive ScoreChange
+        var solvedTrackLevelCounts = submissionRecordsDetail
+            .Where(r => r.ScoreChange > 0 && r.TrackId is not null && r.Level is not null)
+            .Select(r => (r.ParticipationId, TrackId: r.TrackId!.Value, Level: r.Level!.Value))
+            .Distinct()
+            .GroupBy(x => x.ParticipationId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        foreach (var item in items.Values)
+        {
+            item.SolvedCount = solvedTrackLevelCounts.GetValueOrDefault(item.ParticipantId);
+        }
+
+        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and multi-level flag hits)
         // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
         foreach (var rec in submissionRecordsDetail)
         {
             if (!items.TryGetValue(rec.ParticipationId, out var item))
                 continue;
 
-            var isHybridLinePositiveScore = rec.MatchedFlagId is not null
-                                            && rec.ScoreChange > 0
-                                            && challengeRecords.TryGetValue(rec.ChallengeId, out var recordChallenge)
-                                            && recordChallenge.MatchMode == FlagMatchMode.HybridLine;
+            var isPositiveFlagScore = rec.MatchedFlagId is not null && rec.ScoreChange > 0;
 
             if (rec.MatchedFlagId is null)
             {
@@ -577,7 +591,7 @@ public class GameRepository(
                 continue;
             }
 
-            if (!isHybridLinePositiveScore)
+            if (!isPositiveFlagScore)
                 continue;
 
             var division = item.DivisionId is { } div ? divisions.GetValueOrDefault(div) : null;
@@ -604,7 +618,7 @@ public class GameRepository(
 
         // 5.6. update LastSubmissionTime from SubmissionRecords
         // SolvedChallenges is populated only from FirstSolves (step 5.2),
-        // which is created only when ALL flags for a challenge have been submitted.
+        // which (per D7) is created when ANY track's all levels are solved.
         foreach (var rec in submissionRecordsDetail)
         {
             if (!items.TryGetValue(rec.ParticipationId, out var item))
@@ -612,8 +626,6 @@ public class GameRepository(
 
             if (rec.MatchedFlagId is not null
                 && rec.ScoreChange > 0
-                && challengeRecords.TryGetValue(rec.ChallengeId, out var recordChallenge)
-                && recordChallenge.MatchMode != FlagMatchMode.HybridLine
                 && rec.SubmitTimeUtc > item.LastSubmissionTime)
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
         }
@@ -713,7 +725,6 @@ public class GameRepository(
 
     private readonly record struct ChallengeRecord(
         int Id,
-        FlagMatchMode MatchMode,
         ChallengeScoreMeta Meta,
         ChallengeInfo Info);
 
@@ -741,7 +752,9 @@ public class GameRepository(
         int ChallengeId,
         int ScoreChange,
         Guid? MatchedFlagId,
-        DateTimeOffset SubmitTimeUtc);
+        DateTimeOffset SubmitTimeUtc,
+        Guid? TrackId,
+        int? Level);
 
     private readonly record struct ScoreTimelineEvent(
         int ParticipationId,

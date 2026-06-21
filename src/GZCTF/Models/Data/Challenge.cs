@@ -61,10 +61,10 @@ public class Challenge
     public int SubmissionLimit { get; set; }
 
     /// <summary>
-    /// Flag matching mode for this challenge
+    /// 临时全题锁时长（分钟），0 = 永久
     /// </summary>
-    [Required]
-    public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
+    [Range(0, int.MaxValue)]
+    public int LockDurationMinutes { get; set; } = 0;
 
     /// <summary>
     /// Image name and tag

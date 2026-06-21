@@ -187,9 +187,6 @@
         "type": {
           "description": "創建後不可更改",
           "label": "題目類型"
-        },
-        "flag_match_mode": {
-          "hybrid_line": "混合行号"
         }
       },
       "divisions": {
@@ -616,7 +613,10 @@
     "column": {
       "answer_type": "答案类型",
       "metadata": "元数据",
-      "status": "状态"
+      "status": "状态",
+      "level": "層級",
+      "track": "Track",
+      "track_optional": "Track ID（可選，留空將自動建立）"
     },
     "answer_type": {
       "exact": "精确匹配",
@@ -628,13 +628,59 @@
     "hidden": "隐藏",
     "enabled": "启用",
     "disabled": "禁用",
-    "mode_save_required": "題目匹配模式尚未儲存。請先儲存題目模式，再編輯 Flag。",
     "metadata": {
       "flaw_no": "漏洞编号",
       "repository": "仓库",
       "module": "模块",
       "file_path": "文件路径",
       "cwe": "CWE"
-    }
+    },
+    "invalid_level": "層級必須大於等於 1",
+    "total_count": "總數"
+  },
+  "track": {
+    "title": "Track",
+    "list": "Track 列表",
+    "create": "新建 Track",
+    "edit": "編輯 Track",
+    "delete": "刪除 Track",
+    "title_label": "標題",
+    "flawNo": "FlawNo",
+    "repository": "所屬倉庫",
+    "module": "模組",
+    "filePath": "檔案路徑",
+    "category": "參考類別",
+    "referenceUrl": "參考連結"
+  },
+  "level": {
+    "title": "Level 配置",
+    "list": "Level 列表",
+    "create": "新建 Level",
+    "edit": "編輯 Level",
+    "delete": "刪除 Level",
+    "level": "層級",
+    "score": "分值",
+    "submissionLimit": "提交次數限制",
+    "penaltyScore": "錯誤扣分",
+    "lockOnAnswers": "觸發鎖定答案",
+    "banOnAnswers": "觸發封禁答案",
+    "levelTitle": "Level 標題"
+  },
+  "import": {
+    "title": "批次匯入",
+    "upload": "上傳檔案",
+    "preview": "預覽",
+    "mapping": "列映射",
+    "mode": "衝突模式",
+    "upsert": "更新",
+    "skip": "跳過",
+    "fail": "失敗",
+    "submit": "開始匯入",
+    "result": "匯入結果",
+    "totalRows": "總行數",
+    "imported": "新建",
+    "updated": "更新",
+    "skipped": "跳過",
+    "failed": "失敗"
   }
 }

@@ -145,13 +145,13 @@ namespace GZCTF.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("AttachmentId")
-                        .HasColumnType("integer");
-
                     b.Property<byte>("AnswerType")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("smallint")
                         .HasDefaultValue((byte)0);
+
+                    b.Property<int?>("AttachmentId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");
@@ -162,22 +162,10 @@ namespace GZCTF.Migrations
                     b.Property<int?>("ExerciseId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Cwe")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("FilePath")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
                     b.Property<string>("FlagValue")
                         .IsRequired()
                         .HasMaxLength(127)
                         .HasColumnType("character varying(127)");
-
-                    b.Property<string>("FlawNo")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
@@ -192,9 +180,8 @@ namespace GZCTF.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("Module")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
 
                     b.Property<string>("NormalizedAnswerKey")
                         .IsRequired()
@@ -210,15 +197,11 @@ namespace GZCTF.Migrations
                         .HasColumnType("character varying(127)")
                         .HasDefaultValue("");
 
-                    b.Property<string>("Repository")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("integer");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("TrackId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -231,12 +214,108 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("ExerciseId");
 
-                    b.HasIndex("ChallengeId", "FlagValue")
-                        .IsUnique();
+                    b.HasIndex("ChallengeId", "FlagValue");
 
                     b.HasIndex("ChallengeId", "NormalizedAnswerKey");
 
+                    b.HasIndex("ChallengeId", "Level", "TrackId");
+
                     b.ToTable("ChallengeFlags");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeLevelConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BanOnAnswers")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LockOnAnswers")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("PenaltyScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubmissionLimit")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId", "Level")
+                        .IsUnique();
+
+                    b.ToTable("ChallengeLevelConfigs");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeLockState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("LockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ParticipationId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TriggerAnswer")
+                        .HasMaxLength(127)
+                        .HasColumnType("character varying(127)");
+
+                    b.Property<string>("TriggerReason")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("TriggeringLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TriggeringTrackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UnlocksAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UnlocksAt");
+
+                    b.HasIndex("ParticipationId", "ChallengeId");
+
+                    b.HasIndex("ParticipationId", "ChallengeId", "UnlocksAt");
+
+                    b.ToTable("ChallengeLockStates");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.ChallengePenalty", b =>
@@ -263,6 +342,131 @@ namespace GZCTF.Migrations
                         .IsUnique();
 
                     b.ToTable("ChallengePenalties");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeTrack", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("FlawNo")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Module")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ReferenceUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Repository")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("ChallengeId", "SortOrder");
+
+                    b.ToTable("ChallengeTracks");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeTrackLevelBanState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BanAnswer")
+                        .IsRequired()
+                        .HasMaxLength(127)
+                        .HasColumnType("character varying(127)");
+
+                    b.Property<DateTimeOffset>("BannedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ParticipationId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TrackId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParticipationId", "ChallengeId", "TrackId", "Level")
+                        .IsUnique();
+
+                    b.ToTable("ChallengeTrackLevelBanStates");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeWrongCountState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("LastResetAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ParticipationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WrongCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParticipationId", "ChallengeId", "Level")
+                        .IsUnique();
+
+                    b.ToTable("ChallengeWrongCountStates");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.CheatInfo", b =>
@@ -481,9 +685,6 @@ namespace GZCTF.Migrations
                     b.Property<string>("FileName")
                         .HasColumnType("text");
 
-                    b.Property<byte>("FlagMatchMode")
-                        .HasColumnType("smallint");
-
                     b.Property<string>("FlagTemplate")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
@@ -493,6 +694,9 @@ namespace GZCTF.Migrations
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("LockDurationMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("MemoryLimit")
                         .HasColumnType("integer");
@@ -739,9 +943,6 @@ namespace GZCTF.Migrations
                     b.Property<string>("FileName")
                         .HasColumnType("text");
 
-                    b.Property<byte>("FlagMatchMode")
-                        .HasColumnType("smallint");
-
                     b.Property<string>("FlagTemplate")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
@@ -754,6 +955,9 @@ namespace GZCTF.Migrations
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("LockDurationMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("MemoryLimit")
                         .HasColumnType("integer");
@@ -1116,17 +1320,20 @@ namespace GZCTF.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int?>("ChallengeId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("GameId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsPenalty")
                         .HasColumnType("boolean");
+
+                    b.Property<int?>("Level")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("MatchedFlagId")
                         .HasColumnType("uuid");
@@ -1139,6 +1346,13 @@ namespace GZCTF.Migrations
 
                     b.Property<int>("SubmissionId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SubmissionType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("TrackId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -1154,9 +1368,8 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("ChallengeId", "ParticipationId");
 
-                    b.HasIndex("ParticipationId", "MatchedFlagId")
-                        .IsUnique()
-                        .HasFilter("\"ParticipationId\" IS NOT NULL AND \"MatchedFlagId\" IS NOT NULL AND \"ScoreChange\" > 0");
+                    b.HasIndex("ParticipationId", "ChallengeId", "TrackId", "Level")
+                        .HasFilter("\"ParticipationId\" IS NOT NULL AND \"TrackId\" IS NOT NULL AND \"ScoreChange\" > 0");
 
                     b.ToTable("SubmissionRecords", t =>
                         {
@@ -1301,66 +1514,6 @@ namespace GZCTF.Migrations
                     b.ToTable("TicketAttachments");
                 });
 
-            modelBuilder.Entity("GZCTF.Models.Data.ZeroDayTicket", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("BonusScore")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ChallengeId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<int>("GameId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ReviewComment")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTimeOffset?>("ReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ReviewerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChallengeId");
-
-                    b.HasIndex("GameId");
-
-                    b.HasIndex("ReviewerId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ZeroDayTickets");
-                });
-
             modelBuilder.Entity("GZCTF.Models.Data.UserInfo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1490,6 +1643,66 @@ namespace GZCTF.Migrations
                         .IsUnique();
 
                     b.ToTable("UserParticipations");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ZeroDayTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BonusScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("GameId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReviewComment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("GameId");
+
+                    b.HasIndex("ReviewerId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ZeroDayTickets");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -1719,10 +1932,43 @@ namespace GZCTF.Migrations
                     b.Navigation("Exercise");
                 });
 
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeLevelConfig", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
+                        .WithMany("LevelConfigs")
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeLockState", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.Participation", "Participation")
+                        .WithMany()
+                        .HasForeignKey("ParticipationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Participation");
+                });
+
             modelBuilder.Entity("GZCTF.Models.Data.ChallengePenalty", b =>
                 {
                     b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
                         .WithMany()
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeTrack", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
+                        .WithMany("Tracks")
                         .HasForeignKey("ChallengeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2149,39 +2395,6 @@ namespace GZCTF.Migrations
                     b.Navigation("Uploader");
                 });
 
-            modelBuilder.Entity("GZCTF.Models.Data.ZeroDayTicket", b =>
-                {
-                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
-                        .WithMany()
-                        .HasForeignKey("ChallengeId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("GZCTF.Models.Data.Game", "Game")
-                        .WithMany()
-                        .HasForeignKey("GameId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("GZCTF.Models.Data.UserInfo", "Reviewer")
-                        .WithMany()
-                        .HasForeignKey("ReviewerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("GZCTF.Models.Data.UserInfo", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Challenge");
-
-                    b.Navigation("Game");
-
-                    b.Navigation("Reviewer");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("GZCTF.Models.Data.UserParticipation", b =>
                 {
                     b.HasOne("GZCTF.Models.Data.Game", "Game")
@@ -2213,6 +2426,39 @@ namespace GZCTF.Migrations
                     b.Navigation("Participation");
 
                     b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ZeroDayTicket", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
+                        .WithMany()
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("GZCTF.Models.Data.Game", "Game")
+                        .WithMany()
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", "Reviewer")
+                        .WithMany()
+                        .HasForeignKey("ReviewerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("Game");
+
+                    b.Navigation("Reviewer");
 
                     b.Navigation("User");
                 });
@@ -2330,7 +2576,11 @@ namespace GZCTF.Migrations
 
                     b.Navigation("Instances");
 
+                    b.Navigation("LevelConfigs");
+
                     b.Navigation("Submissions");
+
+                    b.Navigation("Tracks");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.Participation", b =>

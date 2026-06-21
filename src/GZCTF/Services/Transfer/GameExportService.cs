@@ -137,6 +137,39 @@ public class GameExportService(AppDbContext dbContext, IBlobStorage blobStorage)
                     ch.Flags = list;
         }
 
+        // 3.2) Load ChallengeTracks and ChallengeLevelConfigs for multi-level flag export
+        var allChallengeIds = challenges.Select(c => c.Id).ToList();
+
+        if (allChallengeIds.Count > 0)
+        {
+            var tracks = await dbContext.ChallengeTracks
+                .AsNoTracking()
+                .Where(t => allChallengeIds.Contains(t.ChallengeId))
+                .ToListAsync(ct);
+
+            var levelConfigs = await dbContext.ChallengeLevelConfigs
+                .AsNoTracking()
+                .Where(c => allChallengeIds.Contains(c.ChallengeId))
+                .ToListAsync(ct);
+
+            var tracksByChallenge = tracks
+                .GroupBy(t => t.ChallengeId)
+                .ToDictionary(gp => gp.Key, gp => gp.ToList());
+
+            var levelConfigsByChallenge = levelConfigs
+                .GroupBy(c => c.ChallengeId)
+                .ToDictionary(gp => gp.Key, gp => gp.ToList());
+
+            foreach (var ch in challenges)
+            {
+                if (tracksByChallenge.TryGetValue(ch.Id, out var trackList))
+                    ch.Tracks = trackList;
+
+                if (levelConfigsByChallenge.TryGetValue(ch.Id, out var levelConfigList))
+                    ch.LevelConfigs = levelConfigList;
+            }
+        }
+
         // Assemble sliced data back into Game
         game.Divisions = divisions;
         game.Challenges = challenges;
@@ -249,9 +282,11 @@ public class GameExportService(AppDbContext dbContext, IBlobStorage blobStorage)
     {
         var filesDir = Path.Combine(workDir, "files");
 
-        // Count total flags
+        // Count total flags (包括多级 flag)
         var totalFlags = transferChallenges.Sum(c =>
-            (c.Flags.Template is not null ? 1 : 0) + (c.Flags.Static?.Count ?? 0));
+            (c.Flags.Template is not null ? 1 : 0)
+            + (c.Flags.Static?.Count ?? 0)
+            + (c.Flags.MultiLevel?.Flags.Count ?? 0));
 
         var statistics = new StatisticsSection
         {

@@ -9,4 +9,9 @@ public interface IChallengeFlagRepository : IRepository
     Task<bool> DeleteFlag(Guid flagId, CancellationToken token = default);
     Task<bool> HasSubmissions(Guid flagId, CancellationToken token = default);
     Task<bool> ExistsByValue(int challengeId, string flagValue, CancellationToken token = default);
+    Task<ChallengeFlag[]> GetFlagsByLevel(int challengeId, int level, CancellationToken token = default);
+    Task<ChallengeFlag[]> GetFlagsByTrack(Guid trackId, CancellationToken token = default);
+    Task<ChallengeFlag[]> GetFlagsByTrackLevel(Guid trackId, int level, CancellationToken token = default);
+    Task<int> CountFlagsByLevel(int challengeId, int level, CancellationToken token = default);
 }
+

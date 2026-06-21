@@ -160,7 +160,11 @@
         "message": "Harap hubungi admin untuk mengonfirmasi pengumpulan: {{id}}",
         "title": "status flag tidak diketahui"
       },
-      "wrong": "flag salah"
+      "wrong": "flag salah",
+      "trap": "Jawaban jebakan terpicu",
+      "banned": "Level ini dilarang",
+      "duplicate": "Pengiriman salah duplikat, tanpa penalti",
+      "multi_level_track_required": "Konteks belum dipulihkan, silakan refresh halaman"
     },
     "instance": {
       "copied": {
@@ -207,5 +211,13 @@
       "desrc": "Container yang dibagikan, fkag mana pun bisa disubmit",
       "label": "Container statis"
     }
+  },
+  "level": {
+    "progress": "Progres",
+    "current": "Saat ini",
+    "solved": "Selesai",
+    "locked": "Terkunci",
+    "banned": "Dilarang",
+    "unlock_at": "Terbuka pada {{time}}"
   }
 }

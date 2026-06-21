@@ -160,7 +160,11 @@
         "message": "Veuillez contacter l'administrateur pour confirmer la soumission : {{id}}",
         "title": "statut du drapeau inconnu"
       },
-      "wrong": "drapeau incorrect"
+      "wrong": "drapeau incorrect",
+      "trap": "Réponse piège déclenchée",
+      "banned": "Ce niveau est banni",
+      "duplicate": "Soumission fausse en double, pas de pénalité",
+      "multi_level_track_required": "Contexte non récupéré, veuillez rafraîchir la page"
     },
     "instance": {
       "copied": {
@@ -207,5 +211,13 @@
       "desrc": "Conteneurs partagés, n'importe quel drapeau peut être soumis",
       "label": "Conteneur statique"
     }
+  },
+  "level": {
+    "progress": "Progression",
+    "current": "Actuel",
+    "solved": "Résolu",
+    "locked": "Verrouillé",
+    "banned": "Banni",
+    "unlock_at": "Déverrouillé à {{time}}"
   }
 }

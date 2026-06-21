@@ -55,6 +55,17 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
                            && (r.ParticipationId == participationId
                                || r.Submission.ParticipationId == participationId), token);
 
+    public Task<bool> HasCorrectSubmission(int challengeId, int participationId, Guid trackId, int level,
+        CancellationToken token = default)
+        => Context.SubmissionRecords
+            .AnyAsync(r => r.TrackId == trackId
+                           && r.Level == level
+                           && r.ScoreChange > 0
+                           && (r.ChallengeId == challengeId
+                               || (r.Submission != null && r.Submission.ChallengeId == challengeId))
+                           && (r.ParticipationId == participationId
+                               || (r.Submission != null && r.Submission.ParticipationId == participationId)), token);
+
     public Task<Guid[]> GetSolvedFlagIds(int challengeId, int participationId, CancellationToken token = default)
         => Context.SubmissionRecords
             .AsNoTracking()
@@ -67,6 +78,45 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
             .Select(r => r.MatchedFlagId!.Value)
             .Distinct()
             .ToArrayAsync(token);
+
+    public async Task<List<(Guid TrackId, int Level, DateTimeOffset SolvedAt)>> GetSolvedTrackLevels(int challengeId, int participationId,
+        CancellationToken token = default)
+    {
+        var rows = await Context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.TrackId != null
+                        && r.Level != null
+                        && r.ScoreChange > 0
+                        && (r.ChallengeId == challengeId
+                            || (r.Submission != null && r.Submission.ChallengeId == challengeId))
+                        && (r.ParticipationId == participationId
+                            || (r.Submission != null && r.Submission.ParticipationId == participationId)))
+            .Select(r => new
+            {
+                TrackId = r.TrackId!.Value,
+                Level = r.Level!.Value,
+                SolvedAt = r.Submission != null ? r.Submission.SubmitTimeUtc : DateTimeOffset.MinValue
+            })
+            .ToArrayAsync(token);
+
+        // 取每个 (TrackId, Level) 最早的解决时间
+        return rows
+            .GroupBy(r => (r.TrackId, r.Level))
+            .Select(g => (g.Key.TrackId, g.Key.Level, g.Min(r => r.SolvedAt)))
+            .ToList();
+    }
+
+    public Task<int> CountSubmissionsByTrackLevel(int challengeId, int participationId, Guid trackId, int level,
+        CancellationToken token = default) =>
+        Context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.TrackId == trackId
+                        && r.Level == level
+                        && (r.ChallengeId == challengeId
+                            || (r.Submission != null && r.Submission.ChallengeId == challengeId))
+                        && (r.ParticipationId == participationId
+                            || (r.Submission != null && r.Submission.ParticipationId == participationId)))
+            .CountAsync(token);
 
     public Task<int> GetTotalScoreChange(int participationId, CancellationToken token = default)
         => Context.SubmissionRecords

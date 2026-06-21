@@ -26,7 +26,9 @@ public class ExtController(
     CompetitionSettingsService settingsService,
     IBigScreenEventRepository eventRepository,
     AppDbContext context,
-    CacheHelper cacheHelper) : ControllerBase
+    CacheHelper cacheHelper,
+    IChallengeTrackRepository trackRepository,
+    IChallengeLevelConfigRepository levelConfigRepository) : ControllerBase
 {
     private async Task FlushScoreboardForChallenge(int challengeId, CancellationToken token)
     {
@@ -54,6 +56,22 @@ public class ExtController(
     }
 
     /// <summary>
+    /// Get a single flag by ID
+    /// </summary>
+    [RequireAdmin]
+    [HttpGet("challenges/{challengeId:int}/flags/{flagId:guid}")]
+    [ProducesResponseType(typeof(ChallengeFlag), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFlag([FromRoute] int challengeId, [FromRoute] Guid flagId,
+        CancellationToken token)
+    {
+        var flag = await flagRepository.GetFlag(flagId, token);
+        if (flag is null || flag.ChallengeId != challengeId)
+            return NotFound(new RequestResponse("Flag not found"));
+        return Ok(flag);
+    }
+
+    /// <summary>
     /// Create a new flag for a challenge
     /// </summary>
     [RequireAdmin]
@@ -68,8 +86,37 @@ public class ExtController(
         if (model.FlagValue.Length > Limits.MaxFlagLength)
             return BadRequest(new RequestResponse("Flag value is too long"));
 
-        if (model.Score < 1)
-            return BadRequest(new RequestResponse("Score must be at least 1"));
+        var level = model.Level <= 0 ? 1 : model.Level;
+        var trackId = model.TrackId ?? Guid.NewGuid();
+
+        // Validate track exists and belongs to this challenge (when explicitly provided)
+        if (model.TrackId.HasValue)
+        {
+            var track = await trackRepository.GetTrack(model.TrackId.Value, token);
+            if (track is null || track.ChallengeId != challengeId)
+                return BadRequest(new RequestResponse("Track does not belong to this challenge"));
+        }
+        else
+        {
+            // No explicit track: synthesize one so the flag is visible in player view
+            var synthTrack = new ChallengeTrack
+            {
+                Id = trackId,
+                ChallengeId = challengeId,
+                Title = $"Track for Level {level}",
+                IsEnabled = true,
+                SortOrder = 0
+            };
+            await trackRepository.CreateTrack(synthTrack, token);
+        }
+
+        // Validate level config exists (when level > 1, must have config)
+        if (level > 1)
+        {
+            var levelConfig = await levelConfigRepository.GetConfig(challengeId, level, token);
+            if (levelConfig is null)
+                return BadRequest(new RequestResponse($"Level {level} config does not exist"));
+        }
 
         var exists = await flagRepository.ExistsByValue(challengeId, model.FlagValue, token);
         if (exists)
@@ -83,20 +130,15 @@ public class ExtController(
             RawAnswer = string.IsNullOrWhiteSpace(model.RawAnswer) ? model.FlagValue : model.RawAnswer,
             IsVisible = model.IsVisible,
             IsEnabled = model.IsEnabled,
-            FlawNo = model.FlawNo,
-            Repository = model.Repository,
-            Module = model.Module,
-            FilePath = model.FilePath,
-            Cwe = model.Cwe,
-            Score = model.Score,
+            Level = level,
+            TrackId = trackId,
             SortOrder = model.SortOrder
         };
 
-        var isHybridLine = await IsHybridLineChallenge(challengeId, token);
-        if (!TrySetNormalizedAnswerKey(flag, isHybridLine, out var error))
+        if (!TrySetNormalizedAnswerKey(flag, out var error))
             return BadRequest(error!);
 
-        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, null, isHybridLine, token))
+        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, null, token))
             return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
 
         flag = await flagRepository.CreateFlag(flag, token);
@@ -133,7 +175,14 @@ public class ExtController(
             flag.AnswerType = model.AnswerType.Value;
 
         if (model.RawAnswer is not null)
+        {
             flag.RawAnswer = model.RawAnswer;
+        }
+        else if (model.FlagValue is not null && flag.RawAnswer == flag.FlagValue)
+        {
+            // Keep RawAnswer in sync when it was mirroring FlagValue
+            flag.RawAnswer = model.FlagValue;
+        }
 
         if (model.IsVisible.HasValue)
             flag.IsVisible = model.IsVisible.Value;
@@ -141,37 +190,34 @@ public class ExtController(
         if (model.IsEnabled.HasValue)
             flag.IsEnabled = model.IsEnabled.Value;
 
-        if (model.FlawNo is not null)
-            flag.FlawNo = model.FlawNo;
+        if (model.Level.HasValue && model.Level.Value > 0)
+        {
+            var newLevel = model.Level.Value;
+            if (newLevel > 1)
+            {
+                var levelConfig = await levelConfigRepository.GetConfig(challengeId, newLevel, token);
+                if (levelConfig is null)
+                    return BadRequest(new RequestResponse($"Level {newLevel} config does not exist"));
+            }
+            flag.Level = newLevel;
+        }
 
-        if (model.Repository is not null)
-            flag.Repository = model.Repository;
-
-        if (model.Module is not null)
-            flag.Module = model.Module;
-
-        if (model.FilePath is not null)
-            flag.FilePath = model.FilePath;
-
-        if (model.Cwe is not null)
-            flag.Cwe = model.Cwe;
+        if (model.TrackId.HasValue)
+        {
+            var track = await trackRepository.GetTrack(model.TrackId.Value, token);
+            if (track is null || track.ChallengeId != challengeId)
+                return BadRequest(new RequestResponse("Track does not belong to this challenge"));
+            flag.TrackId = model.TrackId.Value;
+        }
 
         if (string.IsNullOrWhiteSpace(flag.RawAnswer))
             flag.RawAnswer = flag.FlagValue;
 
-        var isHybridLine = await IsHybridLineChallenge(challengeId, token);
-        if (!TrySetNormalizedAnswerKey(flag, isHybridLine, out var error))
+        if (!TrySetNormalizedAnswerKey(flag, out var error))
             return BadRequest(error!);
 
-        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, flag.Id, isHybridLine, token))
+        if (await HasNormalizedAnswerConflict(challengeId, flag.NormalizedAnswerKey, flag.Id, token))
             return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
-
-        if (model.Score.HasValue)
-        {
-            if (model.Score.Value < 1)
-                return BadRequest(new RequestResponse("Score must be at least 1"));
-            flag.Score = model.Score.Value;
-        }
 
         if (model.SortOrder.HasValue)
             flag.SortOrder = model.SortOrder.Value;
@@ -186,7 +232,7 @@ public class ExtController(
     /// </summary>
     [RequireAdmin]
     [HttpDelete("challenges/{challengeId:int}/flags/{flagId:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteFlag([FromRoute] int challengeId, [FromRoute] Guid flagId,
         CancellationToken token)
@@ -329,36 +375,21 @@ public class ExtController(
 
     #endregion
 
-    private Task<bool> IsHybridLineChallenge(int challengeId, CancellationToken token) =>
-        context.GameChallenges.AnyAsync(c => c.Id == challengeId && c.FlagMatchMode == FlagMatchMode.HybridLine,
-            token);
-
-    private static bool TrySetNormalizedAnswerKey(ChallengeFlag flag, bool isHybridLine, out RequestResponse? error)
+    private static bool TrySetNormalizedAnswerKey(ChallengeFlag flag, out RequestResponse? error)
     {
         var normalizedKey = ScoringService.NormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType);
-        if (isHybridLine &&
-            !ScoringService.TryNormalizeHybridLineAnswer(flag.RawAnswer, flag.AnswerType, out normalizedKey))
-        {
-            error = new RequestResponse(
-                "Invalid HybridLine answer format for the selected answer type");
-            return false;
-        }
-
         flag.NormalizedAnswerKey = normalizedKey;
         error = null;
         return true;
     }
 
-    private Task<bool> HasNormalizedAnswerConflict(int challengeId, string normalizedAnswerKey, Guid? currentFlagId,
-        bool isHybridLine, CancellationToken token)
+    private async Task<bool> HasNormalizedAnswerConflict(int challengeId, string normalizedAnswerKey,
+        Guid? currentFlagId, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(normalizedAnswerKey))
-            return Task.FromResult(false);
+            return false;
 
-        if (!isHybridLine)
-            return Task.FromResult(false);
-
-        return context.ChallengeFlags.AnyAsync(f =>
+        return await context.ChallengeFlags.AnyAsync(f =>
             f.ChallengeId == challengeId
             && f.NormalizedAnswerKey == normalizedAnswerKey
             && (!currentFlagId.HasValue || f.Id != currentFlagId.Value), token);
@@ -374,12 +405,8 @@ public class ChallengeFlagCreateModel
     public string? RawAnswer { get; set; }
     public bool IsVisible { get; set; } = true;
     public bool IsEnabled { get; set; } = true;
-    public string? FlawNo { get; set; }
-    public string? Repository { get; set; }
-    public string? Module { get; set; }
-    public string? FilePath { get; set; }
-    public string? Cwe { get; set; }
-    public int Score { get; set; } = 100;
+    public int Level { get; set; } = 1;
+    public Guid? TrackId { get; set; }
     public int SortOrder { get; set; }
 }
 
@@ -390,12 +417,8 @@ public class ChallengeFlagUpdateModel
     public string? RawAnswer { get; set; }
     public bool? IsVisible { get; set; }
     public bool? IsEnabled { get; set; }
-    public string? FlawNo { get; set; }
-    public string? Repository { get; set; }
-    public string? Module { get; set; }
-    public string? FilePath { get; set; }
-    public string? Cwe { get; set; }
-    public int? Score { get; set; }
+    public int? Level { get; set; }
+    public Guid? TrackId { get; set; }
     public int? SortOrder { get; set; }
 }
 

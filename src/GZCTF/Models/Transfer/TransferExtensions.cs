@@ -66,6 +66,87 @@ public static class TransferExtensions
         /// </summary>
         public TransferChallenge ToTransfer()
         {
+            // 检测是否有多级结构：Tracks 非空 或 LevelConfigs 包含 Level > 1
+            var hasMultiLevel = (challenge.Tracks?.Count ?? 0) > 0
+                || (challenge.LevelConfigs?.Any(c => c.Level > 1) ?? false);
+
+            FlagsSection flagsSection;
+            if (hasMultiLevel)
+            {
+                // 多级 → 写 MultiLevel，不写 Static
+                flagsSection = new FlagsSection
+                {
+                    Template = challenge.FlagTemplate,
+                    DisableBloodBonus = challenge.DisableBloodBonus,
+                    EnableTrafficCapture = challenge.EnableTrafficCapture,
+                    MultiLevel = new MultiLevelFlagsSection
+                    {
+                        Tracks = (challenge.Tracks ?? [])
+                            .Select(t => new TransferTrack
+                            {
+                                Id = t.Id,
+                                Title = t.Title,
+                                FlawNo = t.FlawNo,
+                                Repository = t.Repository,
+                                Module = t.Module,
+                                FilePath = t.FilePath,
+                                Category = t.Category,
+                                ReferenceUrl = t.ReferenceUrl,
+                                IsEnabled = t.IsEnabled,
+                                SortOrder = t.SortOrder
+                            }).ToList(),
+                        LevelConfigs = (challenge.LevelConfigs ?? [])
+                            .Select(c => new TransferLevelConfig
+                            {
+                                Level = c.Level,
+                                Title = c.Title,
+                                Score = c.Score,
+                                SubmissionLimit = c.SubmissionLimit,
+                                PenaltyScore = c.PenaltyScore,
+                                // D4: 完整包含 trap/ban 答案
+                                LockOnAnswers = c.LockOnAnswers ?? [],
+                                BanOnAnswers = c.BanOnAnswers ?? [],
+                                IsEnabled = c.IsEnabled,
+                                SortOrder = c.SortOrder
+                            }).ToList(),
+                        Flags = challenge.Flags
+                            .Where(f => string.IsNullOrWhiteSpace(challenge.FlagTemplate) ||
+                                        f.FlagValue != challenge.FlagTemplate)
+                            .Select(f => new TransferFlag
+                            {
+                                Id = f.Id,
+                                FlagValue = f.FlagValue,
+                                AnswerType = f.AnswerType,
+                                RawAnswer = f.RawAnswer,
+                                Level = f.Level,
+                                TrackId = f.TrackId,
+                                IsEnabled = f.IsEnabled,
+                                IsVisible = f.IsVisible,
+                                IsOccupied = f.IsOccupied,
+                                SortOrder = f.SortOrder,
+                                Attachment = f.Attachment?.ToTransfer()
+                            }).ToList()
+                    }
+                };
+            }
+            else
+            {
+                // 单级（传统） → 写 Static，不写 MultiLevel（向后兼容）
+                flagsSection = new FlagsSection
+                {
+                    Template = challenge.FlagTemplate,
+                    DisableBloodBonus = challenge.DisableBloodBonus,
+                    EnableTrafficCapture = challenge.EnableTrafficCapture,
+                    // For dynamic challenges with FlagTemplate, don't export the template flag to Static list
+                    // to avoid duplication during import
+                    Static = challenge.Flags
+                        .Where(f => string.IsNullOrWhiteSpace(challenge.FlagTemplate) ||
+                                    f.FlagValue != challenge.FlagTemplate)
+                        .Select(f => new StaticFlagSection { Value = f.FlagValue, Attachment = f.Attachment?.ToTransfer() })
+                        .ToList()
+                };
+            }
+
             var transfer = new TransferChallenge
             {
                 Id = challenge.Id,
@@ -81,19 +162,7 @@ public static class TransferExtensions
                     Difficulty = challenge.Difficulty
                 },
                 Limits = new LimitsSection { Submission = challenge.SubmissionLimit, Deadline = challenge.DeadlineUtc },
-                Flags = new FlagsSection
-                {
-                    Template = challenge.FlagTemplate,
-                    DisableBloodBonus = challenge.DisableBloodBonus,
-                    EnableTrafficCapture = challenge.EnableTrafficCapture,
-                    // For dynamic challenges with FlagTemplate, don't export the template flag to Static list
-                    // to avoid duplication during import
-                    Static = challenge.Flags
-                        .Where(f => string.IsNullOrWhiteSpace(challenge.FlagTemplate) ||
-                                    f.FlagValue != challenge.FlagTemplate)
-                        .Select(f => new StaticFlagSection { Value = f.FlagValue, Attachment = f.Attachment?.ToTransfer() })
-                        .ToList()
-                }
+                Flags = flagsSection
             };
 
             // Hints

@@ -48,6 +48,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<BigScreenEvent> BigScreenEvents { get; set; } = null!;
     public DbSet<CompetitionSetting> CompetitionSettings { get; set; } = null!;
     public DbSet<ZeroDayTicket> ZeroDayTickets { get; set; } = null!;
+    public DbSet<ChallengeTrack> ChallengeTracks { get; set; } = null!;
+    public DbSet<ChallengeLevelConfig> ChallengeLevelConfigs { get; set; } = null!;
+    public DbSet<ChallengeLockState> ChallengeLockStates { get; set; } = null!;
+    public DbSet<ChallengeTrackLevelBanState> ChallengeTrackLevelBanStates { get; set; } = null!;
+    public DbSet<ChallengeWrongCountState> ChallengeWrongCountStates { get; set; } = null!;
 
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
@@ -482,7 +487,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Property(e => e.IsEnabled)
                 .HasDefaultValue(true);
 
-            entity.HasIndex(e => new { e.ChallengeId, e.FlagValue }).IsUnique();
+            entity.HasIndex(e => new { e.ChallengeId, e.FlagValue });
             entity.HasIndex(e => new { e.ChallengeId, e.NormalizedAnswerKey });
 
             entity.HasOne(e => e.Challenge)
@@ -527,9 +532,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
 
             entity.HasIndex(e => new { e.ChallengeId, e.ParticipationId });
 
-            entity.HasIndex(e => new { e.ParticipationId, e.MatchedFlagId })
-                .IsUnique()
-                .HasFilter("\"ParticipationId\" IS NOT NULL AND \"MatchedFlagId\" IS NOT NULL AND \"ScoreChange\" > 0");
+            entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId, e.TrackId, e.Level })
+                .HasFilter("\"ParticipationId\" IS NOT NULL AND \"TrackId\" IS NOT NULL AND \"ScoreChange\" > 0");
 
             entity.ToTable(t => t.HasCheckConstraint(
                 "CK_SubmissionRecord_Penalty_NullFlag",
@@ -625,6 +629,54 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Property(e => e.Status)
                 .HasConversion<string>()
                 .HasMaxLength(20);
+        });
+
+        builder.Entity<ChallengeTrack>(entity =>
+        {
+            entity.HasIndex(e => new { e.ChallengeId, e.SortOrder });
+
+            entity.HasOne(e => e.Challenge)
+                .WithMany(e => e.Tracks)
+                .HasForeignKey(e => e.ChallengeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ChallengeLevelConfig>(entity =>
+        {
+            entity.HasIndex(e => new { e.ChallengeId, e.Level }).IsUnique();
+
+            entity.Property(e => e.LockOnAnswers)
+                .HasConversion(listConverter)
+                .Metadata.SetValueComparer(listComparer);
+
+            entity.Property(e => e.BanOnAnswers)
+                .HasConversion(listConverter)
+                .Metadata.SetValueComparer(listComparer);
+
+            entity.HasOne(e => e.Challenge)
+                .WithMany(e => e.LevelConfigs)
+                .HasForeignKey(e => e.ChallengeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ChallengeLockState>(entity =>
+        {
+            entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId, e.UnlocksAt });
+
+            entity.HasOne(e => e.Participation)
+                .WithMany()
+                .HasForeignKey(e => e.ParticipationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ChallengeTrackLevelBanState>(entity =>
+        {
+            entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId, e.TrackId, e.Level }).IsUnique();
+        });
+
+        builder.Entity<ChallengeWrongCountState>(entity =>
+        {
+            entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId, e.Level }).IsUnique();
         });
     }
 }

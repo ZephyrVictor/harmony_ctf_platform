@@ -38,21 +38,21 @@
     "already_solved": "This challenge has been solved",
     "line_range_placeholder": "Enter line number or range, e.g. 56 or 77-82",
     "line_range_label": "Vulnerable Line",
-    "hybrid_line_placeholder": "Enter a line, range, or multi-line set, e.g. 166 / 347-352 / 281,286",
-    "hybrid_line_label": "Subsystem Submission",
-    "all_flags_completed": "All visible flags in this subsystem are completed",
+    "hybrid_line_placeholder": "Enter line number, range, or exact answer",
+    "hybrid_line_label": "Vulnerable Line / Answer",
+    "all_flags_completed": "All flags have been solved",
     "visible_flags": "Visible Flags",
-    "visible_flags_empty": "No visible flags",
+    "visible_flags_empty": "No visible flags configured",
     "visible_flag_fallback": "Flag {{index}}",
     "answer_type": {
       "exact": "Exact",
-      "single_line": "Single line",
-      "line_range": "Range",
-      "multi_line": "Multi-line"
+      "single_line": "Single Line",
+      "line_range": "Line Range",
+      "multi_line": "Multi Line"
     },
     "flag_status": {
-      "completed": "Done",
-      "pending": "Open"
+      "completed": "Solved",
+      "pending": "Pending"
     },
     "attempts": {
       "count": "You've tried {{count}} times already!",
@@ -137,23 +137,7 @@
       "All is quiet, only the error prompt of the flag is here.",
       "The correct flag is still not obtained.",
       "The winds are bitter and cold, and the flag is still not on your hand."
-    ],
-    "hybrid_line_placeholder": "Enter line number, range, or exact answer",
-    "hybrid_line_label": "Vulnerable Line / Answer",
-    "visible_flags": "Visible Flags",
-    "visible_flags_empty": "No visible flags configured",
-    "visible_flag_fallback": "Flag {{index}}",
-    "all_flags_completed": "All flags have been solved",
-    "answer_type": {
-      "exact": "Exact",
-      "single_line": "Single Line",
-      "line_range": "Line Range",
-      "multi_line": "Multi Line"
-    },
-    "flag_status": {
-      "completed": "Solved",
-      "pending": "Pending"
-    }
+    ]
   },
   "file_type": {
     "local": "Self Hosted",
@@ -176,7 +160,11 @@
         "message": "Please contact the admin to confirm the submission: {{id}}",
         "title": "flag status unknown"
       },
-      "wrong": "flag wrong"
+      "wrong": "flag wrong",
+      "trap": "Trap answer triggered",
+      "banned": "This level is banned",
+      "duplicate": "Duplicate wrong submission, no penalty",
+      "multi_level_track_required": "Context not yet recovered, please refresh the page"
     },
     "instance": {
       "copied": {
@@ -223,5 +211,31 @@
       "desrc": "Shared containers, any flag can be submitted",
       "label": "Static Container"
     }
+  },
+  "trackList": {
+    "title": "Track List",
+    "progress": "Progress",
+    "enterTrack": "Enter Track"
+  },
+  "trackDetail": {
+    "level1": "Level 1: Vulnerability Location",
+    "level2": "Level 2: Vulnerability Type",
+    "level3": "Level 3: Vulnerability Verification",
+    "submit": "Submit",
+    "solved": "Solved",
+    "unsolved": "Unsolved",
+    "banned": "Banned",
+    "locked": "Locked",
+    "attemptsUsed": "Attempts Used",
+    "remainingAttempts": "Remaining Attempts",
+    "unlocksAt": "Unlocks At"
+  },
+  "level": {
+    "progress": "Progress",
+    "current": "Current",
+    "solved": "Solved",
+    "locked": "Locked",
+    "banned": "Banned",
+    "unlock_at": "Unlocks at {{time}}"
   }
 }

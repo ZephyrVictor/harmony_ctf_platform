@@ -160,7 +160,11 @@
         "message": "請聯繫管理員確認提交：{{id}}",
         "title": "flag 狀態未知"
       },
-      "wrong": "flag 錯誤"
+      "wrong": "flag 錯誤",
+      "trap": "陷阱答案已觸發",
+      "banned": "此關卡已封禁",
+      "duplicate": "重複錯誤提交，不扣分",
+      "multi_level_track_required": "上下文未恢復，請重新整理頁面"
     },
     "instance": {
       "copied": {
@@ -207,5 +211,13 @@
       "desrc": "共用容器，任意 flag 均可提交",
       "label": "靜態容器"
     }
+  },
+  "level": {
+    "progress": "進度",
+    "current": "當前",
+    "solved": "已解決",
+    "locked": "已鎖定",
+    "banned": "已封禁",
+    "unlock_at": "{{time}} 解鎖"
   }
 }

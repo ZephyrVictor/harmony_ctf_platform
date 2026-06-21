@@ -3,6 +3,7 @@ using GZCTF.Models.Request.Edit;
 using GZCTF.Models.Transfer;
 using GZCTF.Repositories.Interface;
 using GZCTF.Storage.Interface;
+using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Services.Transfer;
 
@@ -13,8 +14,11 @@ public class GameImportService(
     IGameRepository gameRepository,
     IGameChallengeRepository challengeRepository,
     IDivisionRepository divisionRepository,
+    IChallengeTrackRepository trackRepository,
+    IChallengeLevelConfigRepository levelConfigRepository,
     IBlobRepository blobRepository,
     IBlobStorage blobStorage,
+    AppDbContext dbContext,
     ILogger<GameImportService> logger)
 {
     /// <summary>
@@ -476,7 +480,10 @@ public class GameImportService(
     }
 
     /// <summary>
-    /// Import flags for a challenge
+    /// Import flags for a challenge.
+    /// 支持两种格式：
+    ///   1. MultiLevel（新格式）：完整保留 Track + LevelConfig + Flag 三层结构
+    ///   2. Static（老格式）：按 D3 警告 + 合成单 Track + L1 LevelConfig
     /// </summary>
     private async Task ImportFlagsAsync(
         GameChallenge challenge,
@@ -484,71 +491,219 @@ public class GameImportService(
         ImportContext context,
         CancellationToken ct)
     {
-        var flagModels = new List<FlagCreateModel>();
-
-        // Note: Template is already set in ImportChallengeAsync, don't add it as a static flag
-
-        // Import static flags
-        if (flags.Static is not null)
+        // 新格式优先
+        if (flags.MultiLevel is not null)
         {
-            foreach (var staticFlag in flags.Static)
-            {
-                // Import attachment if exists
-                if (staticFlag.Attachment is not null)
-                {
-                    switch (staticFlag.Attachment.Type)
-                    {
-                        case FileType.Local:
-                            if (string.IsNullOrWhiteSpace(staticFlag.Attachment.Hash))
-                                throw new InvalidOperationException("Local flag attachment missing file hash");
-
-                            // Import file to blob storage
-                            await ImportFileAsync(staticFlag.Attachment.Hash, context, ct,
-                                staticFlag.Attachment.FileName);
-
-                            flagModels.Add(new FlagCreateModel
-                            {
-                                Flag = staticFlag.Value,
-                                AttachmentType = FileType.Local,
-                                FileHash = staticFlag.Attachment.Hash
-                            });
-                            break;
-
-                        case FileType.Remote:
-                            if (string.IsNullOrWhiteSpace(staticFlag.Attachment.RemoteUrl))
-                                throw new InvalidOperationException("Remote flag attachment missing URL");
-
-                            flagModels.Add(new FlagCreateModel
-                            {
-                                Flag = staticFlag.Value,
-                                AttachmentType = FileType.Remote,
-                                RemoteUrl = staticFlag.Attachment.RemoteUrl
-                            });
-                            break;
-
-                        case FileType.None:
-                            flagModels.Add(new FlagCreateModel
-                            {
-                                Flag = staticFlag.Value,
-                                AttachmentType = FileType.None
-                            });
-                            break;
-
-                        default:
-                            throw new InvalidOperationException(
-                                $"Unsupported flag attachment type: {staticFlag.Attachment.Type}");
-                    }
-                }
-                else
-                {
-                    flagModels.Add(new FlagCreateModel { Flag = staticFlag.Value, AttachmentType = FileType.None });
-                }
-            }
+            await ImportMultiLevelFlagsAsync(challenge, flags.MultiLevel, context, ct);
+            return;
         }
 
-        if (flagModels.Count > 0)
+        // 老格式：Static 列表（D3 警告 + 合成）
+        if (flags.Static is null || flags.Static.Count == 0)
+            return;
+
+        logger.LogWarning(
+            "Transfer file uses legacy flag format for challenge {ChallengeId}, synthesizing single-track L1 structure",
+            challenge.Id);
+
+        await ImportLegacyStaticFlagsAsync(challenge, flags.Static, context, ct);
+    }
+
+    /// <summary>
+    /// 导入新格式多级 flag（Track + LevelConfig + Flag 三层）
+    /// </summary>
+    private async Task ImportMultiLevelFlagsAsync(
+        GameChallenge challenge,
+        MultiLevelFlagsSection multiLevel,
+        ImportContext context,
+        CancellationToken ct)
+    {
+        // 1. 创建 Tracks（保留原 ID）
+        var trackIdMap = new Dictionary<Guid, Guid>(); // 原 ID → 新 ID（此处保留原 ID）
+        foreach (var transferTrack in multiLevel.Tracks)
         {
-            await challengeRepository.AddFlags(challenge, flagModels.ToArray(), ct);
+            var track = new ChallengeTrack
+            {
+                Id = transferTrack.Id, // 保留原 ID 以便 Flag 关联
+                ChallengeId = challenge.Id,
+                Title = transferTrack.Title,
+                FlawNo = transferTrack.FlawNo,
+                Repository = transferTrack.Repository,
+                Module = transferTrack.Module,
+                FilePath = transferTrack.FilePath,
+                Category = transferTrack.Category,
+                ReferenceUrl = transferTrack.ReferenceUrl,
+                IsEnabled = transferTrack.IsEnabled,
+                SortOrder = transferTrack.SortOrder
+            };
+
+            await trackRepository.CreateTrack(track, ct);
+            trackIdMap[transferTrack.Id] = track.Id;
+        }
+
+        // 2. 创建 LevelConfigs
+        foreach (var transferLevel in multiLevel.LevelConfigs)
+        {
+            var levelConfig = new ChallengeLevelConfig
+            {
+                ChallengeId = challenge.Id,
+                Level = transferLevel.Level,
+                Title = transferLevel.Title,
+                Score = transferLevel.Score,
+                SubmissionLimit = transferLevel.SubmissionLimit,
+                PenaltyScore = transferLevel.PenaltyScore,
+                LockOnAnswers = transferLevel.LockOnAnswers ?? [],
+                BanOnAnswers = transferLevel.BanOnAnswers ?? [],
+                IsEnabled = transferLevel.IsEnabled,
+                SortOrder = transferLevel.SortOrder
+            };
+
+            await levelConfigRepository.CreateConfig(levelConfig, ct);
+        }
+
+        // 3. 创建 Flags（TrackId 指向新创建的 Track）
+        foreach (var transferFlag in multiLevel.Flags)
+        {
+            Attachment? attachment = null;
+            if (transferFlag.Attachment is not null)
+            {
+                attachment = await ImportFlagAttachmentAsync(transferFlag.Attachment, context, ct);
+            }
+
+            var flag = new ChallengeFlag
+            {
+                Id = transferFlag.Id,
+                FlagValue = transferFlag.FlagValue,
+                AnswerType = transferFlag.AnswerType,
+                RawAnswer = transferFlag.RawAnswer,
+                // 归一化答案键由 ChallengeFlagRepository 或 SaveAsync 时计算；
+                // 这里使用与 ExtController.CreateFlag 相同的简单赋值策略
+                NormalizedAnswerKey = transferFlag.RawAnswer,
+                Level = transferFlag.Level,
+                TrackId = transferFlag.TrackId,
+                IsEnabled = transferFlag.IsEnabled,
+                IsVisible = transferFlag.IsVisible,
+                IsOccupied = transferFlag.IsOccupied,
+                SortOrder = transferFlag.SortOrder,
+                ChallengeId = challenge.Id,
+                Attachment = attachment
+            };
+
+            challenge.Flags.Add(flag);
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// 导入老格式 Static flags（D3：警告 + 合成单 Track + L1 LevelConfig）
+    /// </summary>
+    private async Task ImportLegacyStaticFlagsAsync(
+        GameChallenge challenge,
+        List<StaticFlagSection> staticFlags,
+        ImportContext context,
+        CancellationToken ct)
+    {
+        // 为每个 static flag 创建独立 Track + L1 LevelConfig + Flag
+        var sortOrder = 0;
+        foreach (var staticFlag in staticFlags)
+        {
+            var trackId = Guid.NewGuid();
+            var track = new ChallengeTrack
+            {
+                Id = trackId,
+                ChallengeId = challenge.Id,
+                Title = $"Imported Track {sortOrder + 1}",
+                IsEnabled = true,
+                SortOrder = sortOrder
+            };
+            await trackRepository.CreateTrack(track, ct);
+
+            // 仅当该 challenge 还没有 L1 LevelConfig 时创建（多个 static flag 共享 L1 config）
+            var existingL1Config = await levelConfigRepository.GetConfig(challenge.Id, 1, ct);
+            if (existingL1Config is null)
+            {
+                var l1Config = new ChallengeLevelConfig
+                {
+                    ChallengeId = challenge.Id,
+                    Level = 1,
+                    Title = "Level 1",
+                    Score = challenge.OriginalScore,
+                    SubmissionLimit = 0, // 0 = 继承 Challenge.SubmissionLimit
+                    PenaltyScore = 0,
+                    IsEnabled = true,
+                    SortOrder = 0
+                };
+                await levelConfigRepository.CreateConfig(l1Config, ct);
+            }
+
+            // 创建 Flag
+            Attachment? attachment = null;
+            if (staticFlag.Attachment is not null)
+            {
+                attachment = await ImportFlagAttachmentAsync(staticFlag.Attachment, context, ct);
+            }
+
+            challenge.Flags.Add(new ChallengeFlag
+            {
+                FlagValue = staticFlag.Value,
+                AnswerType = ChallengeFlagAnswerType.Exact,
+                RawAnswer = staticFlag.Value,
+                NormalizedAnswerKey = staticFlag.Value,
+                Level = 1,
+                TrackId = trackId,
+                IsEnabled = true,
+                IsVisible = true,
+                IsOccupied = false,
+                SortOrder = sortOrder,
+                ChallengeId = challenge.Id,
+                Attachment = attachment
+            });
+
+            sortOrder++;
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// 导入 flag 附件（Local / Remote），返回 Attachment 实体
+    /// </summary>
+    private async Task<Attachment?> ImportFlagAttachmentAsync(
+        AttachmentSection attachmentSection,
+        ImportContext context,
+        CancellationToken ct)
+    {
+        switch (attachmentSection.Type)
+        {
+            case FileType.Local:
+                if (string.IsNullOrWhiteSpace(attachmentSection.Hash))
+                    throw new InvalidOperationException("Local flag attachment missing file hash");
+
+                await ImportFileAsync(attachmentSection.Hash, context, ct, attachmentSection.FileName);
+
+                var localFile = await blobRepository.GetBlobByHash(attachmentSection.Hash, ct);
+                return new Attachment
+                {
+                    Type = FileType.Local,
+                    LocalFile = localFile
+                };
+
+            case FileType.Remote:
+                if (string.IsNullOrWhiteSpace(attachmentSection.RemoteUrl))
+                    throw new InvalidOperationException("Remote flag attachment missing URL");
+
+                return new Attachment
+                {
+                    Type = FileType.Remote,
+                    RemoteUrl = attachmentSection.RemoteUrl
+                };
+
+            case FileType.None:
+                return null;
+
+            default:
+                throw new InvalidOperationException($"Unsupported flag attachment type: {attachmentSection.Type}");
         }
     }
 

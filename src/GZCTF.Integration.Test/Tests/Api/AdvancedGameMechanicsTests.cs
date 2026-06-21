@@ -91,7 +91,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 $"/api/Game/{game.Id}/Challenges/{challengeId}",
                 new FlagSubmitModel { Flag = $"flag{{wrong_{i}}}" });
             submitResponse.EnsureSuccessStatusCode();
-            var submissionId = await submitResponse.Content.ReadFromJsonAsync<int>();
+            var submissionId = (await submitResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
             Assert.True(submissionId > 0);
         }
 
@@ -740,7 +740,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
             new FlagSubmitModel { Flag = flag });
         submitResponse.EnsureSuccessStatusCode();
 
-        var submissionId = await submitResponse.Content.ReadFromJsonAsync<int>();
+        var submissionId = (await submitResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
         Assert.True(submissionId > 0);
 
         // Poll submission status until it's accepted or timeout

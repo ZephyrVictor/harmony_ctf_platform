@@ -243,10 +243,15 @@ public partial class ScoreboardItem
     public List<ChallengeItem> SolvedChallenges { get; set; } = [];
 
     /// <summary>
-    /// Number of solved challenges
+    /// Number of solved (Track, Level) pairs (D8)
     /// </summary>
+    /// <remarks>
+    /// D8: 改为统计该 participation 解出的 (TrackId, Level) pair 数量，
+    /// 不再用 FirstSolve 数。对单级 flag 题目等价于"已解题目数"；
+    /// 对多级 flag 题目反映真实进度（如 3 个 Level 中解出 2 个 = 2）。
+    /// </remarks>
     [Required]
-    public int SolvedCount => SolvedChallenges.Count;
+    public int SolvedCount { get; set; }
 
     /// <summary>
     /// Participant ID

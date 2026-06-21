@@ -90,12 +90,18 @@ internal static class ServicesExtension
             builder.Services.AddScoped<IBigScreenEventRepository, BigScreenEventRepository>();
             builder.Services.AddScoped<ICompetitionSettingRepository, CompetitionSettingRepository>();
             builder.Services.AddScoped<IZeroDayTicketRepository, ZeroDayTicketRepository>();
+            builder.Services.AddScoped<IChallengeTrackRepository, ChallengeTrackRepository>();
+            builder.Services.AddScoped<IChallengeLevelConfigRepository, ChallengeLevelConfigRepository>();
+            builder.Services.AddScoped<IChallengeLockStateRepository, ChallengeLockStateRepository>();
+            builder.Services.AddScoped<IChallengeTrackLevelBanStateRepository, ChallengeTrackLevelBanStateRepository>();
+            builder.Services.AddScoped<IChallengeWrongCountStateRepository, ChallengeWrongCountStateRepository>();
             builder.Services.AddScoped<ScoringService>();
             builder.Services.AddScoped<CompetitionSettingsService>();
 
             builder.Services.AddScoped<ExcelHelper>();
             builder.Services.AddScoped<GameExportService>();
             builder.Services.AddScoped<GameImportService>();
+            builder.Services.AddScoped<Services.Import.FlagImportService>();
 
             builder.Services.AddChannel<Submission>();
             builder.Services.AddChannel<CacheRequest>();

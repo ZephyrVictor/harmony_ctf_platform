@@ -1,4 +1,4 @@
-﻿using GZCTF.Models.Request.Shared;
+using GZCTF.Models.Request.Shared;
 
 namespace GZCTF.Models.Request.Game;
 
@@ -53,17 +53,17 @@ public class ChallengeDetailModel
     public int Limit { get; set; }
 
     /// <summary>
-    /// Flag matching mode
+    /// 临时全题锁时长（分钟），0 = 永久（只读，展示用）
     /// </summary>
-    public FlagMatchMode FlagMatchMode { get; set; } = FlagMatchMode.Exact;
+    public int LockDurationMinutes { get; set; }
 
     /// <summary>
-    /// Player-visible flag metadata for HybridLine subsystem challenges
+    /// Player-visible flag metadata (legacy HybridLine view; superseded by <see cref="Tracks"/>)
     /// </summary>
     public List<HybridLineFlagInfoModel> Flags { get; set; } = [];
 
     /// <summary>
-    /// Whether all enabled HybridLine flags have been solved
+    /// Whether all enabled flags have been solved
     /// </summary>
     public bool AllEnabledFlagsSolved { get; set; }
 
@@ -77,6 +77,21 @@ public class ChallengeDetailModel
     /// </summary>
     public DateTimeOffset? Deadline { get; set; }
 
+    /// <summary>
+    /// 多级 flag 状态：每个 Track 的进度
+    /// </summary>
+    public List<TrackStatusModel>? Tracks { get; set; }
+
+    /// <summary>
+    /// 全题锁状态
+    /// </summary>
+    public ChallengeLockStatusModel? ChallengeLock { get; set; }
+
+    /// <summary>
+    /// 当前可提交的最低 Level（前端引导用）
+    /// </summary>
+    public int CurrentLevel { get; set; } = 1;
+
     internal static ChallengeDetailModel FromInstance(GameInstance gameInstance, int attemptCount,
         ChallengeInfo? scoreboardChallenge = null, ISet<Guid>? solvedFlagIds = null) =>
         new()
@@ -88,17 +103,14 @@ public class ChallengeDetailModel
             Category = gameInstance.Challenge.Category,
             Title = gameInstance.Challenge.Title,
             Type = gameInstance.Challenge.Type,
-            FlagMatchMode = gameInstance.Challenge.FlagMatchMode,
-            Flags = gameInstance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine
-                ? gameInstance.Challenge.Flags
-                    .Where(f => f is { IsVisible: true, IsEnabled: true })
-                    .OrderBy(f => f.SortOrder)
-                    .Select(f => HybridLineFlagInfoModel.FromChallengeFlag(
-                        f, solvedFlagIds?.Contains(f.Id) ?? false))
-                    .ToList()
-                : [],
-            AllEnabledFlagsSolved = gameInstance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine
-                                    && gameInstance.Challenge.Flags.Any(f => f.IsEnabled)
+            LockDurationMinutes = gameInstance.Challenge.LockDurationMinutes,
+            Flags = gameInstance.Challenge.Flags
+                .Where(f => f is { IsVisible: true, IsEnabled: true })
+                .OrderBy(f => f.SortOrder)
+                .Select(f => HybridLineFlagInfoModel.FromChallengeFlag(
+                    f, solvedFlagIds?.Contains(f.Id) ?? false))
+                .ToList(),
+            AllEnabledFlagsSolved = gameInstance.Challenge.Flags.Any(f => f.IsEnabled)
                                     && gameInstance.Challenge.Flags
                                         .Where(f => f.IsEnabled)
                                         .All(f => solvedFlagIds?.Contains(f.Id) ?? false),
@@ -118,28 +130,56 @@ public class ChallengeDetailModel
 public class HybridLineFlagInfoModel
 {
     public Guid Id { get; set; }
-    public int Score { get; set; }
+    public int Level { get; set; }
+    public Guid TrackId { get; set; }
     public int SortOrder { get; set; }
     public ChallengeFlagAnswerType AnswerType { get; set; }
-    public string? FlawNo { get; set; }
-    public string? Repository { get; set; }
-    public string? Module { get; set; }
-    public string? FilePath { get; set; }
-    public string? Cwe { get; set; }
     public bool IsSolved { get; set; }
 
     internal static HybridLineFlagInfoModel FromChallengeFlag(ChallengeFlag flag, bool isSolved) =>
         new()
         {
             Id = flag.Id,
-            Score = flag.Score,
+            Level = flag.Level,
+            TrackId = flag.TrackId,
             SortOrder = flag.SortOrder,
             AnswerType = flag.AnswerType,
-            FlawNo = flag.FlawNo,
-            Repository = flag.Repository,
-            Module = flag.Module,
-            FilePath = flag.FilePath,
-            Cwe = flag.Cwe,
             IsSolved = isSolved
         };
+}
+
+/// <summary>
+/// 选手视图的 Track 状态
+/// </summary>
+public class TrackStatusModel
+{
+    public Guid TrackId { get; set; }
+    public string? Title { get; set; }
+    public bool IsEnabled { get; set; }
+    public List<TrackLevelStatusModel> Levels { get; set; } = [];
+}
+
+/// <summary>
+/// 选手视图的 Track × Level 状态
+/// </summary>
+public class TrackLevelStatusModel
+{
+    public int Level { get; set; }
+    public string? Title { get; set; }
+    /// <summary>Unsolved | Solved | Banned | Locked</summary>
+    public string Status { get; set; } = "Unsolved";
+    public DateTimeOffset? SolvedAt { get; set; }
+    public int AttemptsUsed { get; set; }
+    public int SubmissionLimit { get; set; }
+    public DateTimeOffset? UnlocksAt { get; set; }
+}
+
+/// <summary>
+/// 全题锁状态（选手视图）
+/// </summary>
+public class ChallengeLockStatusModel
+{
+    public bool IsLocked { get; set; }
+    public DateTimeOffset? UnlocksAt { get; set; }
+    public string? Reason { get; set; }
 }

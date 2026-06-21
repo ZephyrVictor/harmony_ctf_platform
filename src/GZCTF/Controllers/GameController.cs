@@ -55,7 +55,11 @@ public class GameController(
     IOptionsSnapshot<ContainerPolicy> containerPolicy,
     IStringLocalizer<Program> localizer,
     AppDbContext dbContext,
-    ScoringService scoringService) : ControllerBase
+    ScoringService scoringService,
+    IChallengeTrackRepository trackRepository,
+    IChallengeLevelConfigRepository levelConfigRepository,
+    IChallengeLockStateRepository lockStateRepository,
+    IChallengeTrackLevelBanStateRepository banStateRepository) : ControllerBase
 {
     const string PositiveFlagUniqueIndexName = "IX_SubmissionRecords_ParticipationId_MatchedFlagId";
 
@@ -950,13 +954,85 @@ public class GameController(
         var attempts = await submissionRepository.CountSubmissions(context.Participation!.Id, challengeId, token);
 
         ISet<Guid>? solvedFlagIds = null;
-        if (instance.Challenge.FlagMatchMode == FlagMatchMode.HybridLine)
+        solvedFlagIds = (await submissionRecordRepository.GetSolvedFlagIds(
+            challengeId, context.Participation!.Id, token)).ToHashSet();
+
+        var result = ChallengeDetailModel.FromInstance(instance, attempts, scoreboardChallenge, solvedFlagIds);
+
+        // 填充多级状态
+        var tracks = await trackRepository.GetTracks(challengeId, token);
+        var levelConfigs = await levelConfigRepository.GetConfigs(challengeId, token);
+        var bans = await banStateRepository.GetBans(context.Participation!.Id, challengeId, token);
+        var activeLock = await lockStateRepository.GetActiveLock(context.Participation!.Id, challengeId, token);
+        var solvedTrackLevels = await submissionRecordRepository.GetSolvedTrackLevels(challengeId, context.Participation!.Id, token);
+        var solvedSet = solvedTrackLevels.Select(t => (t.TrackId, t.Level)).ToHashSet();
+        // 拉取每个 (TrackId, Level) 的解决时间，用于填充 SolvedAt
+        var solvedTimeMap = solvedTrackLevels
+            .ToDictionary(t => (t.TrackId, t.Level), t => t.SolvedAt);
+
+        var trackStatuses = new List<TrackStatusModel>();
+        // 用于计算 CurrentLevel：取所有 track 中第一个未解决且未封禁的 level（最低）
+        int? lowestUnsolvedLevel = null;
+
+        foreach (var track in tracks.Where(t => t.IsEnabled))
         {
-            solvedFlagIds = (await submissionRecordRepository.GetSolvedFlagIds(
-                challengeId, context.Participation!.Id, token)).ToHashSet();
+            var trackStatus = new TrackStatusModel
+            {
+                TrackId = track.Id,
+                Title = track.Title,
+                IsEnabled = track.IsEnabled,
+                Levels = new List<TrackLevelStatusModel>()
+            };
+
+            foreach (var lc in levelConfigs.Where(c => c.IsEnabled).OrderBy(c => c.Level))
+            {
+                var isSolved = solvedSet.Contains((track.Id, lc.Level));
+                var isBanned = bans.Any(b => b.TrackId == track.Id && b.Level == lc.Level);
+                var prevSolved = lc.Level == 1 || solvedSet.Contains((track.Id, lc.Level - 1));
+
+                string status = activeLock is not null && !isSolved ? "Locked"
+                    : isSolved ? "Solved"
+                    : isBanned ? "Banned"
+                    : !prevSolved ? "Locked"
+                    : "Unsolved";
+
+                if (!isSolved && !isBanned && prevSolved &&
+                    (lowestUnsolvedLevel is null || lc.Level < lowestUnsolvedLevel.Value))
+                {
+                    lowestUnsolvedLevel = lc.Level;
+                }
+
+                var attemptsUsed = await submissionRecordRepository.CountSubmissionsByTrackLevel(
+                    challengeId, context.Participation!.Id, track.Id, lc.Level, token);
+
+                DateTimeOffset? solvedAt = isSolved && solvedTimeMap.TryGetValue((track.Id, lc.Level), out var t)
+                    ? t : null;
+
+                trackStatus.Levels.Add(new TrackLevelStatusModel
+                {
+                    Level = lc.Level,
+                    Title = lc.Title,
+                    Status = status,
+                    AttemptsUsed = attemptsUsed,
+                    SubmissionLimit = lc.SubmissionLimit > 0 ? lc.SubmissionLimit : instance.Challenge.SubmissionLimit,
+                    UnlocksAt = activeLock?.UnlocksAt,
+                    SolvedAt = solvedAt
+                });
+            }
+
+            trackStatuses.Add(trackStatus);
         }
 
-        return Ok(ChallengeDetailModel.FromInstance(instance, attempts, scoreboardChallenge, solvedFlagIds));
+        result.Tracks = trackStatuses;
+        result.ChallengeLock = new ChallengeLockStatusModel
+        {
+            IsLocked = activeLock is not null,
+            UnlocksAt = activeLock?.UnlocksAt,
+            Reason = activeLock?.TriggerReason
+        };
+        result.CurrentLevel = lowestUnsolvedLevel ?? 1;
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -975,7 +1051,7 @@ public class GameController(
     [RequireUser]
     [HttpPost("{id:int}/Challenges/{challengeId:int}")]
     [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Submit))]
-    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FlagSubmitResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Submit([FromRoute] int id, [FromRoute] int challengeId,
@@ -1032,7 +1108,8 @@ public class GameController(
             {
                 // Process submission through scoring service
                 scoreResult = await scoringService.ProcessSubmission(
-                    instance.Challenge, context.Participation!, answer, token);
+                    instance.Challenge, context.Participation!, answer,
+                    model.TrackId, model.Level, token);
             }
             catch (InvalidFlagSubmissionException ex)
             {
@@ -1083,7 +1160,14 @@ public class GameController(
                 // Flush scoreboard cache so the new SubmissionRecord is reflected
                 await cacheHelper.FlushScoreboardCache(context.Game!.Id, token);
 
-                return Ok(new { submission.Id, result.Message });
+                // D6: 响应携带 trackId + level，供前端 L2+ 提交使用
+                return Ok(new FlagSubmitResponse
+                {
+                    Id = submission.Id,
+                    Message = result.Message,
+                    TrackId = result.TrackId,
+                    Level = result.Level
+                });
             }
             catch (DbUpdateConcurrencyException) when (retry < maxRetries - 1)
             {
@@ -1097,17 +1181,23 @@ public class GameController(
                 logger.LogWarning(ex, "Treating duplicate positive flag submission as idempotent for challenge {ChallengeId}",
                     challengeId);
 
-                var existingSubmissionId = await dbContext.SubmissionRecords
+                var existingRecord = await dbContext.SubmissionRecords
                     .AsNoTracking()
                     .Where(r => r.MatchedFlagId == scoreResult!.MatchedFlagId
                                 && r.ScoreChange > 0
                                 && r.ParticipationId == context.Participation!.Id)
                     .OrderBy(r => r.CreatedAt)
-                    .Select(r => (int?)r.SubmissionId)
+                    .Select(r => new { r.SubmissionId, r.TrackId, r.Level })
                     .FirstOrDefaultAsync(token);
 
-                if (existingSubmissionId.HasValue)
-                    return Ok(new { Id = existingSubmissionId.Value, Message = "This flag has already been submitted" });
+                if (existingRecord is not null)
+                    return Ok(new FlagSubmitResponse
+                    {
+                        Id = existingRecord.SubmissionId,
+                        Message = "This flag has already been submitted",
+                        TrackId = existingRecord.TrackId,
+                        Level = existingRecord.Level
+                    });
 
                 logger.LogError(ex,
                     "Positive flag unique constraint violation found no existing submission for challenge {ChallengeId}",

@@ -187,9 +187,6 @@
         "type": {
           "description": "Setelah dibuat, tidak bisa diubah",
           "label": "Jenis"
-        },
-        "flag_match_mode": {
-          "hybrid_line": "Hybrid Line"
         }
       },
       "divisions": {
@@ -616,7 +613,10 @@
     "column": {
       "answer_type": "Answer Type",
       "metadata": "Metadata",
-      "status": "Status"
+      "status": "Status",
+      "level": "Level",
+      "track": "Track",
+      "track_optional": "Track ID (opsional, dibuat otomatis jika kosong)"
     },
     "answer_type": {
       "exact": "Exact",
@@ -628,13 +628,59 @@
     "hidden": "Hidden",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "mode_save_required": "The challenge flag match mode has not been saved. Save the challenge mode before editing flags.",
     "metadata": {
       "flaw_no": "Flaw No.",
       "repository": "Repository",
       "module": "Module",
       "file_path": "File Path",
       "cwe": "CWE"
-    }
+    },
+    "invalid_level": "Level harus minimal 1",
+    "total_count": "Jumlah"
+  },
+  "track": {
+    "title": "Track",
+    "list": "Daftar Track",
+    "create": "Buat Track",
+    "edit": "Edit Track",
+    "delete": "Hapus Track",
+    "title_label": "Judul",
+    "flawNo": "FlawNo",
+    "repository": "Repositori",
+    "module": "Modul",
+    "filePath": "Jalur File",
+    "category": "Kategori",
+    "referenceUrl": "URL Referensi"
+  },
+  "level": {
+    "title": "Konfigurasi Level",
+    "list": "Daftar Level",
+    "create": "Buat Level",
+    "edit": "Edit Level",
+    "delete": "Hapus Level",
+    "level": "Level",
+    "score": "Skor",
+    "submissionLimit": "Batas Pengiriman",
+    "penaltyScore": "Skor Penalti",
+    "lockOnAnswers": "Jawaban Kunci",
+    "banOnAnswers": "Jawaban Ban",
+    "levelTitle": "Judul Level"
+  },
+  "import": {
+    "title": "Impor Massal",
+    "upload": "Unggah File",
+    "preview": "Pratinjau",
+    "mapping": "Pemetaan Kolom",
+    "mode": "Mode Konflik",
+    "upsert": "Upsert",
+    "skip": "Lewati",
+    "fail": "Gagal",
+    "submit": "Mulai Impor",
+    "result": "Hasil Impor",
+    "totalRows": "Total Baris",
+    "imported": "Diimpor",
+    "updated": "Diperbarui",
+    "skipped": "Dilewati",
+    "failed": "Gagal"
   }
 }

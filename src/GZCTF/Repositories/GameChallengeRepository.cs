@@ -19,7 +19,8 @@ public class GameChallengeRepository(
             challenge.Flags.Add(new()
             {
                 FlagValue = model.Flag,
-                Score = model.Score,
+                Level = 1,
+                TrackId = Guid.NewGuid(),
                 SortOrder = model.SortOrder,
                 Challenge = challenge,
                 Attachment = attachment

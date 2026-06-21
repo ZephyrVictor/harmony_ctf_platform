@@ -160,7 +160,11 @@
         "message": "Vui lòng liên hệ với quản trị viên để xác nhận việc nộp: {{id}}",
         "title": "Trạng thái cờ không rõ"
       },
-      "wrong": "Cờ sai"
+      "wrong": "Cờ sai",
+      "trap": "Câu trả lời bẫy đã kích hoạt",
+      "banned": "Cấp độ này đã bị cấm",
+      "duplicate": "Trình bày sai trùng lặp, không phạt",
+      "multi_level_track_required": "Ngữ cảnh chưa khôi phục, vui lòng tải lại trang"
     },
     "instance": {
       "copied": {
@@ -207,5 +211,13 @@
       "desrc": "Shared containers, bất kỳ cờ nào cũng có thể được nộp",
       "label": "Container tĩnh"
     }
+  },
+  "level": {
+    "progress": "Tiến độ",
+    "current": "Hiện tại",
+    "solved": "Đã giải",
+    "locked": "Đã khóa",
+    "banned": "Bị cấm",
+    "unlock_at": "Mở khóa lúc {{time}}"
   }
 }
