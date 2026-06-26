@@ -17,7 +17,7 @@ import { useLocalStorage } from '@mantine/hooks'
 import { mdiFileUploadOutline, mdiFlagOutline, mdiPuzzle } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useParams } from 'react-router'
 import { ChallengeCard } from '@Components/ChallengeCard'
@@ -39,8 +39,24 @@ export const ChallengePanel: FC = () => {
 
   const { game } = useGame(numId)
 
+  // D8: 选手侧按 Repository 分组（替代 ChallengeCategory），无 Repository 时回退到原 Category 分组
+  const { groupedByRepo, hasRepo, repoKeys } = useMemo(() => {
+    const allFlat = Object.values(challenges ?? {}).flat()
+    const hasAnyRepo = allFlat.some((c) => c.repository)
+    if (!hasAnyRepo) {
+      return { groupedByRepo: null, hasRepo: false, repoKeys: [] as string[] }
+    }
+    const grouped: Record<string, ChallengeInfo[]> = {}
+    for (const chal of allFlat) {
+      const key = chal.repository ?? '(no repository)'
+      if (!grouped[key]) grouped[key] = []
+      grouped[key].push(chal)
+    }
+    return { groupedByRepo: grouped, hasRepo: true, repoKeys: Object.keys(grouped) }
+  }, [challenges])
+
   const categories = Object.keys(challenges ?? {})
-  const [activeTab, setActiveTab] = useState<ChallengeCategory | 'All'>('All')
+  const [activeTab, setActiveTab] = useState<string | ChallengeCategory | 'All'>('All')
   const [hideSolved, setHideSolved] = useLocalStorage({
     key: 'hide-solved',
     defaultValue: false,
@@ -51,7 +67,10 @@ export const ChallengePanel: FC = () => {
 
   const currentChallenges =
     challenges &&
-    (activeTab !== 'All' ? (challenges[activeTab] ?? []) : allChallenges).filter(
+    (activeTab !== 'All'
+      ? (hasRepo && groupedByRepo ? (groupedByRepo[activeTab] ?? []) : (challenges[activeTab as ChallengeCategory] ?? []))
+      : allChallenges
+    ).filter(
       (chal) =>
         !hideSolved || (teamInfo && teamInfo.rank?.solvedChallenges?.find((c) => c.id === chal.id)) === undefined
     )
@@ -173,7 +192,7 @@ export const ChallengePanel: FC = () => {
           orientation="vertical"
           variant="pills"
           value={activeTab}
-          onChange={(value) => setActiveTab(value as ChallengeCategory)}
+          onChange={(value) => setActiveTab(value as string | ChallengeCategory)}
           classNames={{
             root: classes.tabRoot,
             list: classes.tabList,
@@ -192,21 +211,34 @@ export const ChallengePanel: FC = () => {
                 </Text>
               </Group>
             </Tabs.Tab>
-            {categories.map((tab) => {
-              const data = challengeCategoryLabelMap.get(tab as ChallengeCategory)!
-              return (
-                <Tabs.Tab key={tab} value={tab} leftSection={<Icon path={data?.icon} size={1} />} color={data?.color}>
-                  <Group justify="space-between" wrap="nowrap" gap={2}>
-                    <Text fz="sm" fw="bold">
-                      {data?.name}
-                    </Text>
-                    <Text fz="sm" fw="bold">
-                      {challenges && challenges[tab].length}
-                    </Text>
-                  </Group>
-                </Tabs.Tab>
-              )
-            })}
+            {hasRepo && groupedByRepo
+              ? repoKeys.map((tab) => (
+                  <Tabs.Tab key={tab} value={tab}>
+                    <Group justify="space-between" wrap="nowrap" gap={2}>
+                      <Text fz="sm" fw="bold" lineClamp={1}>
+                        {tab}
+                      </Text>
+                      <Text fz="sm" fw="bold">
+                        {groupedByRepo[tab].length}
+                      </Text>
+                    </Group>
+                  </Tabs.Tab>
+                ))
+              : categories.map((tab) => {
+                  const data = challengeCategoryLabelMap.get(tab as ChallengeCategory)!
+                  return (
+                    <Tabs.Tab key={tab} value={tab} leftSection={<Icon path={data?.icon} size={1} />} color={data?.color}>
+                      <Group justify="space-between" wrap="nowrap" gap={2}>
+                        <Text fz="sm" fw="bold">
+                          {data?.name}
+                        </Text>
+                        <Text fz="sm" fw="bold">
+                          {challenges && challenges[tab].length}
+                        </Text>
+                      </Group>
+                    </Tabs.Tab>
+                  )
+                })}
           </Tabs.List>
         </Tabs>
       </Stack>

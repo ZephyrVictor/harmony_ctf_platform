@@ -20,6 +20,9 @@
     "writeup": {
       "upload": "Submit Writeup",
       "uploading": "Uploading..."
+    },
+    "zeroday": {
+      "submit": "Submit 0day Ticket"
     }
   },
   "content": {
@@ -138,6 +141,10 @@
       "title": "Writeup Management",
       "unsubmitted": "Not yet submitted",
       "unsubmitted_note": "Your team has not submitted yet"
+    },
+    "zeroday": {
+      "empty": "No 0day tickets yet",
+      "empty_hint": "Submit a 0day vulnerability you discovered during the competition"
     }
   },
   "event": {
@@ -211,6 +218,10 @@
     },
     "writeup": {
       "submitted": "Writeup was successfully submitted"
+    },
+    "zeroday": {
+      "description_required": "Description is required",
+      "submitted": "0day ticket submitted successfully"
     }
   },
   "participation": {

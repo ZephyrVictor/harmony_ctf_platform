@@ -92,6 +92,16 @@ public class ChallengeDetailModel
     /// </summary>
     public int CurrentLevel { get; set; } = 1;
 
+    /// <summary>
+    /// 代码仓库（作为比赛题目方向分组依据，如 "arkcompiler_ets_runtime"）
+    /// </summary>
+    public string? Repository { get; set; }
+
+    /// <summary>
+    /// 当前活跃 TrackId（最近一次有提交记录的 Track）
+    /// </summary>
+    public Guid? ActiveTrackId { get; set; }
+
     internal static ChallengeDetailModel FromInstance(GameInstance gameInstance, int attemptCount,
         ChallengeInfo? scoreboardChallenge = null, ISet<Guid>? solvedFlagIds = null) =>
         new()
@@ -104,6 +114,7 @@ public class ChallengeDetailModel
             Title = gameInstance.Challenge.Title,
             Type = gameInstance.Challenge.Type,
             LockDurationMinutes = gameInstance.Challenge.LockDurationMinutes,
+            Repository = gameInstance.Challenge.Repository,
             Flags = gameInstance.Challenge.Flags
                 .Where(f => f is { IsVisible: true, IsEnabled: true })
                 .OrderBy(f => f.SortOrder)
@@ -182,4 +193,8 @@ public class ChallengeLockStatusModel
     public bool IsLocked { get; set; }
     public DateTimeOffset? UnlocksAt { get; set; }
     public string? Reason { get; set; }
+    public string? TriggerAnswer { get; set; }
+    public Guid? BannedTrackId { get; set; }
+    public int? BannedLevel { get; set; }
+    public string? BanTriggerAnswer { get; set; }
 }

@@ -43,33 +43,32 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
     challenge?.type === ChallengeType.StaticContainer || challenge?.type === ChallengeType.DynamicContainer
   const isHybridLine = (challenge?.flags?.length ?? 0) > 0
 
-  // D6: 多级 flag 状态
+  // D6+D7+D8: 多级 flag 状态
   const isMultiLevel = (challenge?.tracks?.length ?? 0) > 0
   const currentLevel = challenge?.currentLevel ?? 1
   const [currentTrackId, setCurrentTrackId] = useState<string | undefined>(undefined)
 
-  // D6 fallback: 页面刷新后从 GetChallenge 推导 trackId
-  // 找"前置 Level 已解 + 当前 Level 未解"的 Track
+  // D8: 优先使用后端的 activeTrackId，回退到客户端推导
   useEffect(() => {
-    if (!isMultiLevel || !challenge?.tracks) return
-    if (currentTrackId) return // 已有 trackId，不重新推导
-    if (currentLevel <= 1) return // L1 不需要 trackId
-
-    const prevLevel = currentLevel - 1
-    const activeTrack = challenge.tracks.find(
-      (track) =>
-        track.isEnabled !== false &&
-        track.levels?.find((l) => l.level === prevLevel)?.status === 'Solved' &&
-        track.levels?.find((l) => l.level === currentLevel)?.status !== 'Solved'
-    )
-    if (activeTrack) {
-      setCurrentTrackId(activeTrack.trackId)
+    if (!isMultiLevel || !challenge) return
+    if (challenge.activeTrackId) {
+      // 服务端给出活跃 trackId，但只在客户端尚未缓存或缓存不一致时更新
+      if (currentTrackId !== challenge.activeTrackId) {
+        // 仅当当前 level > 1 且没有缓存 trackId 时才用服务端的，避免覆盖刚提交的 L1 响应
+        if (currentLevel > 1 && !currentTrackId) {
+          setCurrentTrackId(challenge.activeTrackId)
+        }
+      }
+      return
     }
+    // 无 activeTrackId：清空缓存
+    if (!currentTrackId) return
   }, [challenge, isMultiLevel, currentLevel, currentTrackId])
 
   const [disabled, setDisabled] = useState(false)
   const [submitId, setSubmitId] = useState(0)
   const [submitMessage, setSubmitMessage] = useState<string | undefined>(undefined)
+  const [lastIsTrackComplete, setLastIsTrackComplete] = useState(false)
   const [flag, setFlag] = useInputState('')
   const [solvedChallengeId, setSolvedChallengeId] = useState<number | null>(null)
 
@@ -192,9 +191,42 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       })
       const submitId = res.data.id
       const message = res.data.message ?? undefined
-      // D6: 缓存 L1 响应返回的 trackId 用于 L2+ 提交
+      // D6+D8: 缓存响应返回的 trackId（= activeTrackId）用于 L2+ 提交
       if (res.data.trackId) {
         setCurrentTrackId(res.data.trackId)
+      }
+      setLastIsTrackComplete(res.data.isTrackComplete === true)
+      // D8: 触发锁/封禁时显示详细提示
+      if (res.data.challengeLocked) {
+        showNotification({
+          color: 'red',
+          title: t('challenge.notification.flag.locked.title', { defaultValue: 'Challenge locked' }),
+          message: res.data.unlocksAt
+            ? `${t('challenge.notification.flag.locked.unlock_at', { defaultValue: 'Unlocks at' })}: ${new Date(res.data.unlocksAt).toLocaleString()}${res.data.triggerAnswer ? ` | ${res.data.triggerAnswer}` : ''}`
+            : t('challenge.notification.flag.locked.permanent', { defaultValue: 'Permanently locked' }),
+          icon: <Icon path={mdiClose} size={1} />,
+          autoClose: 10000,
+        })
+      }
+      if (res.data.bannedTrackId) {
+        showNotification({
+          color: 'red',
+          title: t('challenge.notification.flag.banned.title', { defaultValue: 'Vulnerability banned' }),
+          message: `${t('challenge.notification.flag.banned.level', { defaultValue: 'Level' })} L${res.data.bannedLevel ?? '-'} ${t('challenge.notification.flag.banned.banned', { defaultValue: 'banned' })}${res.data.triggerAnswer ? ` | ${res.data.triggerAnswer}` : ''}`,
+          icon: <Icon path={mdiClose} size={1} />,
+          autoClose: 10000,
+        })
+      }
+      // D8: 重复提交提示
+      if (message && message.toLowerCase().includes('already been submitted')) {
+        showNotification({
+          color: 'yellow',
+          title: t('challenge.notification.flag.duplicate.title', { defaultValue: 'Already solved' }),
+          message: t('challenge.notification.flag.duplicate.message', {
+            defaultValue: 'This level has already been solved. No additional points.',
+          }),
+          autoClose: 6000,
+        })
       }
       setSubmitId(submitId)
       setSubmitMessage(message)
@@ -272,8 +304,20 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         loading: false,
       })
       if (isHybridLine || isMultiLevel) {
-        // D6: 多级提交成功后 mutate 刷新 currentLevel，等玩家输入下一级
+        // D6+D8: 多级提交成功后 mutate 刷新 currentLevel + activeTrackId
         await mutate()
+        // D8: 检查是否完成了整个 track（L3 已解）
+        if (lastIsTrackComplete) {
+          showNotification({
+            color: 'green',
+            title: t('challenge.notification.flag.track_complete.title', { defaultValue: 'Vulnerability solved' }),
+            message: t('challenge.notification.flag.track_complete.message', {
+              defaultValue: 'You have solved all levels of this vulnerability!',
+            }),
+            icon: <Icon path={mdiCheck} size={1} />,
+            autoClose: 10000,
+          })
+        }
       } else {
         if (isDynamic && challenge.context?.instanceEntry) await requestDestroy()
         props.onClose()

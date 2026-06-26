@@ -126,12 +126,15 @@ public class ScoringService
         {
             // 所有匹配都不可计分（已解/已封禁/锁定）
             // 不扣分，不泄漏具体原因
+            // 但返回匹配到的 TrackId 以便前端知道该 flag 属于哪个 track（幂等场景）
+            var matchedTrackId = matchedFlags.FirstOrDefault()?.TrackId ?? trackId;
+            var matchedLevel = matchedFlags.FirstOrDefault()?.Level ?? level;
             return new ScoreResult
             {
                 Status = AnswerResult.FlagSubmitted,
                 ScoreChange = 0,
-                TrackId = trackId,
-                Level = level,
+                TrackId = matchedTrackId,
+                Level = matchedLevel,
                 Message = "Answer not acceptable at this time"
             };
         }

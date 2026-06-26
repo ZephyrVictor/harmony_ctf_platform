@@ -236,6 +236,20 @@
     "solved": "已解决",
     "locked": "已锁定",
     "banned": "已封禁",
-    "unlock_at": "{{time}} 解锁"
+    "unlock_at": "{{time}} 解锁",
+    "solved_count": "已解 {{count}} 个漏洞",
+    "submit_l1_to_start": "提交 L1 flag 开始攻击"
+  },
+  "lock": {
+    "title": "题目已锁定",
+    "unlock_at": "解锁时间",
+    "reason": "原因",
+    "trigger_answer": "触发答案"
+  },
+  "ban": {
+    "title": "漏洞已封禁",
+    "level_banned": "该漏洞 L{{level}}",
+    "banned": "已被永久封禁",
+    "trigger_answer": "触发答案"
   }
 }

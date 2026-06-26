@@ -33,6 +33,13 @@
       "test_container": {
         "create": "Create",
         "destroy": "Destroy"
+      },
+      "import": {
+        "select_file": "Select File",
+        "run": "Import"
+      },
+      "tracks": {
+        "add_level": "Add Level"
       }
     },
     "divisions": {
@@ -187,6 +194,9 @@
         "type": {
           "description": "Cannot be changed after creation",
           "label": "Type"
+        },
+        "tracks": {
+          "full_description": "Create a new vulnerability track with multi-level flags in one step."
         }
       },
       "divisions": {
@@ -333,6 +343,9 @@
           "title": "Ouch! No writeup yet"
         },
         "pdf_fallback": "Failed to load PDF"
+      },
+      "import": {
+        "help": "Upload an xlsx file to batch import flags. Tracks will be auto-created grouped by (Repository, Submodule)."
       }
     },
     "instances": {
@@ -343,6 +356,9 @@
     "markdown_inline_support": "Styling with inline Markdown is supported",
     "markdown_support": "Styling with Markdown is supported",
     "nothing_found": "Nothing found",
+    "zeroday": {
+      "empty": "No 0day tickets yet"
+    },
     "settings": {
       "account": {
         "allow_register": {
@@ -526,6 +542,15 @@
       },
       "participation": {
         "updated": "Team status has been updated"
+      },
+      "import": {
+        "repo_submod_required": "Repository and Submodule columns are required"
+      },
+      "challenges": {
+        "tracks": {
+          "flags_required": "At least one level with flag value is required",
+          "created_full": "Track and flags created successfully"
+        }
       }
     },
     "instances": {
@@ -547,6 +572,10 @@
       "deleted": "{{name}} has been deleted",
       "password_copied": "Password copied to clipboard",
       "updated": "User profile updated"
+    },
+    "zeroday": {
+      "comment_required": "Comment is required",
+      "reviewed": "Ticket reviewed successfully"
     }
   },
   "placeholder": {
@@ -699,7 +728,9 @@
       "notices": "Notices",
       "review": "Teams",
       "tickets": "Tickets",
-      "writeups": "Writeups"
+      "writeups": "Writeups",
+      "import_flags": "Import Flags",
+      "zeroday_tickets": "0day Tickets"
     },
     "instances": "Instances",
     "logs": "Logs",

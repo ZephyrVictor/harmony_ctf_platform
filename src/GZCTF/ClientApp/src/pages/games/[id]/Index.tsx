@@ -223,6 +223,11 @@ const GameDetail: FC = () => {
           {t('game.button.challenges')}
         </Button>
       )}
+      {status === ParticipationStatus.Accepted && started && (
+        <Button component={Link} to={`/games/${numId}/zeroday-tickets`} variant="light">
+          {t('game.button.zeroday_tickets', { defaultValue: '0day Tickets' })}
+        </Button>
+      )}
     </>
   )
 

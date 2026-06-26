@@ -164,8 +164,8 @@ namespace GZCTF.Migrations
 
                     b.Property<string>("FlagValue")
                         .IsRequired()
-                        .HasMaxLength(127)
-                        .HasColumnType("character varying(127)");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
@@ -186,15 +186,15 @@ namespace GZCTF.Migrations
                     b.Property<string>("NormalizedAnswerKey")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(143)
-                        .HasColumnType("character varying(143)")
+                        .HasMaxLength(528)
+                        .HasColumnType("character varying(528)")
                         .HasDefaultValue("");
 
                     b.Property<string>("RawAnswer")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(127)
-                        .HasColumnType("character varying(127)")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
                         .HasDefaultValue("");
 
                     b.Property<int>("SortOrder")
@@ -290,8 +290,8 @@ namespace GZCTF.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("TriggerAnswer")
-                        .HasMaxLength(127)
-                        .HasColumnType("character varying(127)");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<string>("TriggerReason")
                         .IsRequired()
@@ -412,8 +412,8 @@ namespace GZCTF.Migrations
 
                     b.Property<string>("BanAnswer")
                         .IsRequired()
-                        .HasMaxLength(127)
-                        .HasColumnType("character varying(127)");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<DateTimeOffset>("BannedAt")
                         .HasColumnType("timestamp with time zone");
@@ -973,6 +973,10 @@ namespace GZCTF.Migrations
                     b.Property<int>("OriginalScore")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Repository")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<int?>("StorageLimit")
                         .HasColumnType("integer");
 
@@ -1273,8 +1277,8 @@ namespace GZCTF.Migrations
 
                     b.Property<string>("Answer")
                         .IsRequired()
-                        .HasMaxLength(127)
-                        .HasColumnType("character varying(127)");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");

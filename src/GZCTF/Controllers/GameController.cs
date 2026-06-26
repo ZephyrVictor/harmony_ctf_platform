@@ -971,8 +971,29 @@ public class GameController(
             .ToDictionary(t => (t.TrackId, t.Level), t => t.SolvedAt);
 
         var trackStatuses = new List<TrackStatusModel>();
-        // 用于计算 CurrentLevel：取所有 track 中第一个未解决且未封禁的 level（最低）
-        int? lowestUnsolvedLevel = null;
+
+        // ActiveTrackId：选手在该题目下最近一次有提交记录的 TrackId
+        var activeTrackId = await submissionRecordRepository.GetLatestSubmissionTrackId(
+            challengeId, context.Participation!.Id, token);
+        result.ActiveTrackId = activeTrackId;
+
+        // 计算 CurrentLevel：基于 ActiveTrackId
+        // - ActiveTrackId == null → 1
+        // - 该 track 全解 → 1（准备开新漏洞）
+        // - 否则 → 该 track 下一个未解且未封禁的 level
+        int currentLevel = 1;
+        if (activeTrackId is not null)
+        {
+            var activeTrack = tracks.FirstOrDefault(t => t.Id == activeTrackId.Value);
+            if (activeTrack is not null)
+            {
+                var activeLevels = levelConfigs.Where(c => c.IsEnabled).OrderBy(c => c.Level).ToList();
+                var nextUnsolved = activeLevels.FirstOrDefault(lc =>
+                    !solvedSet.Contains((activeTrack.Id, lc.Level))
+                    && !bans.Any(b => b.TrackId == activeTrack.Id && b.Level == lc.Level));
+                currentLevel = nextUnsolved?.Level ?? 1;
+            }
+        }
 
         foreach (var track in tracks.Where(t => t.IsEnabled))
         {
@@ -996,12 +1017,6 @@ public class GameController(
                     : !prevSolved ? "Locked"
                     : "Unsolved";
 
-                if (!isSolved && !isBanned && prevSolved &&
-                    (lowestUnsolvedLevel is null || lc.Level < lowestUnsolvedLevel.Value))
-                {
-                    lowestUnsolvedLevel = lc.Level;
-                }
-
                 var attemptsUsed = await submissionRecordRepository.CountSubmissionsByTrackLevel(
                     challengeId, context.Participation!.Id, track.Id, lc.Level, token);
 
@@ -1024,13 +1039,19 @@ public class GameController(
         }
 
         result.Tracks = trackStatuses;
+        var activeBan = bans.FirstOrDefault(b => activeTrackId.HasValue && b.TrackId == activeTrackId.Value);
+
         result.ChallengeLock = new ChallengeLockStatusModel
         {
             IsLocked = activeLock is not null,
             UnlocksAt = activeLock?.UnlocksAt,
-            Reason = activeLock?.TriggerReason
+            Reason = activeLock?.TriggerReason,
+            TriggerAnswer = activeLock?.TriggerAnswer,
+            BannedTrackId = activeBan?.TrackId,
+            BannedLevel = activeBan?.Level,
+            BanTriggerAnswer = activeBan?.BanAnswer,
         };
-        result.CurrentLevel = lowestUnsolvedLevel ?? 1;
+        result.CurrentLevel = currentLevel;
 
         return Ok(result);
     }
@@ -1160,13 +1181,51 @@ public class GameController(
                 // Flush scoreboard cache so the new SubmissionRecord is reflected
                 await cacheHelper.FlushScoreboardCache(context.Game!.Id, token);
 
-                // D6: 响应携带 trackId + level，供前端 L2+ 提交使用
+                // D6+D7+D8: 响应携带多级 flag 状态信息
+                // SolvedCount：按 Track 计数（L1+L2+L3 全解才算 1 个）
+                var solvedTrackLevels = await submissionRecordRepository.GetSolvedTrackLevels(
+                    challengeId, context.Participation!.Id, token);
+                var solvedTrackIds = solvedTrackLevels.Select(t => t.TrackId).Distinct().ToHashSet();
+                var allLevels = (await levelConfigRepository.GetConfigs(challengeId, token))
+                    .Where(c => c.IsEnabled).Select(c => c.Level).Distinct().ToList();
+                var solvedCount = allLevels.Count > 0
+                    ? solvedTrackIds.Count(tid =>
+                        allLevels.All(lvl => solvedTrackLevels.Any(s => s.TrackId == tid && s.Level == lvl)))
+                    : 0;
+
+                // IsTrackComplete：当前 track 的最高 Level 是否已解
+                var isTrackComplete = false;
+                if (result.TrackId is not null && allLevels.Count > 0)
+                {
+                    var maxLevel = allLevels.Max();
+                    isTrackComplete = solvedTrackLevels.Any(s =>
+                        s.TrackId == result.TrackId.Value && s.Level == maxLevel);
+                }
+
+                // ActiveTrackId：当前活跃 TrackId（= TrackId 字段的显式别名）
+                var activeTrackId = result.TrackId;
+
+                // TriggerAnswer：触发锁/封禁的错误答案
+                string? triggerAnswer = null;
+                if (result.ChallengeLocked || result.BannedTrackId is not null)
+                {
+                    triggerAnswer = answer;
+                }
+
                 return Ok(new FlagSubmitResponse
                 {
                     Id = submission.Id,
                     Message = result.Message,
                     TrackId = result.TrackId,
-                    Level = result.Level
+                    Level = result.Level,
+                    SolvedCount = solvedCount,
+                    ActiveTrackId = activeTrackId,
+                    IsTrackComplete = isTrackComplete,
+                    ChallengeLocked = result.ChallengeLocked,
+                    UnlocksAt = result.UnlocksAt,
+                    BannedTrackId = result.BannedTrackId,
+                    BannedLevel = result.BannedLevel,
+                    TriggerAnswer = triggerAnswer
                 });
             }
             catch (DbUpdateConcurrencyException) when (retry < maxRetries - 1)
@@ -1191,13 +1250,36 @@ public class GameController(
                     .FirstOrDefaultAsync(token);
 
                 if (existingRecord is not null)
+                {
+                    // 重复提交：仍然计算 SolvedCount / IsTrackComplete / ActiveTrackId 供前端更新
+                    var dupSolvedTrackLevels = await submissionRecordRepository.GetSolvedTrackLevels(
+                        challengeId, context.Participation!.Id, token);
+                    var dupSolvedTrackIds = dupSolvedTrackLevels.Select(t => t.TrackId).Distinct().ToHashSet();
+                    var dupAllLevels = (await levelConfigRepository.GetConfigs(challengeId, token))
+                        .Where(c => c.IsEnabled).Select(c => c.Level).Distinct().ToList();
+                    var dupSolvedCount = dupAllLevels.Count > 0
+                        ? dupSolvedTrackIds.Count(tid =>
+                            dupAllLevels.All(lvl => dupSolvedTrackLevels.Any(s => s.TrackId == tid && s.Level == lvl)))
+                        : 0;
+                    var dupIsTrackComplete = false;
+                    if (existingRecord.TrackId is not null && dupAllLevels.Count > 0)
+                    {
+                        var dupMaxLevel = dupAllLevels.Max();
+                        dupIsTrackComplete = dupSolvedTrackLevels.Any(s =>
+                            s.TrackId == existingRecord.TrackId.Value && s.Level == dupMaxLevel);
+                    }
+
                     return Ok(new FlagSubmitResponse
                     {
                         Id = existingRecord.SubmissionId,
                         Message = "This flag has already been submitted",
                         TrackId = existingRecord.TrackId,
-                        Level = existingRecord.Level
+                        Level = existingRecord.Level,
+                        SolvedCount = dupSolvedCount,
+                        ActiveTrackId = existingRecord.TrackId,
+                        IsTrackComplete = dupIsTrackComplete
                     });
+                }
 
                 logger.LogError(ex,
                     "Positive flag unique constraint violation found no existing submission for challenge {ChallengeId}",

@@ -359,7 +359,8 @@ public class GameRepository(
                         Score = c.OriginalScore,
                         SolvedCount = 0,
                         DeadlineUtc = c.DeadlineUtc,
-                        DisableBloodBonus = c.DisableBloodBonus
+                        DisableBloodBonus = c.DisableBloodBonus,
+                        Repository = c.Repository
                     }
                 ))
                 .ToDictionaryAsync(c => c.Id, c => c, token);

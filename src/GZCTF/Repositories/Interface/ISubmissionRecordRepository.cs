@@ -18,6 +18,13 @@ public interface ISubmissionRecordRepository : IRepository
     /// total attempt count, not just wrong submissions.
     /// </summary>
     Task<int> CountSubmissionsByTrackLevel(int challengeId, int participationId, Guid trackId, int level, CancellationToken token = default);
+
+    /// <summary>
+    /// 获取选手在某题目下最近一次有提交记录的 TrackId（用于 ActiveTrackId）。
+    /// 若无任何提交，返回 null。
+    /// </summary>
+    Task<Guid?> GetLatestSubmissionTrackId(int challengeId, int participationId, CancellationToken token = default);
+
     Task<int> GetTotalScoreChange(int participationId, CancellationToken token = default);
     Task<int> GetGZCTFBaseScore(int participationId, int gameId, CancellationToken token = default);
 }

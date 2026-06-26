@@ -118,6 +118,26 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
                             || (r.Submission != null && r.Submission.ParticipationId == participationId)))
             .CountAsync(token);
 
+    /// <summary>
+    /// 获取选手在某题目下最近一次有提交记录的 TrackId（用于 ActiveTrackId）。
+    /// 若无任何提交，返回 null。
+    /// </summary>
+    public async Task<Guid?> GetLatestSubmissionTrackId(int challengeId, int participationId,
+        CancellationToken token = default)
+    {
+        var trackId = await Context.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.TrackId != null
+                        && (r.ChallengeId == challengeId
+                            || (r.Submission != null && r.Submission.ChallengeId == challengeId))
+                        && (r.ParticipationId == participationId
+                            || (r.Submission != null && r.Submission.ParticipationId == participationId)))
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => r.TrackId)
+            .FirstOrDefaultAsync(token);
+        return trackId;
+    }
+
     public Task<int> GetTotalScoreChange(int participationId, CancellationToken token = default)
         => Context.SubmissionRecords
             .Where(r => r.Submission != null && r.Submission.ParticipationId == participationId)

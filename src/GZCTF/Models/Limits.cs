@@ -3,9 +3,9 @@ namespace GZCTF.Models;
 public static class Limits
 {
     /// <summary>
-    /// Flag 最大长度
+    /// Flag 最大长度（增大到 512 以容纳数据集中可能存在的长 flag 值，如多行 commit 文本）
     /// </summary>
-    public const int MaxFlagLength = 127;
+    public const int MaxFlagLength = 512;
 
     /// <summary>
     /// Flag 模板最大长度, 为替换操作预留空间

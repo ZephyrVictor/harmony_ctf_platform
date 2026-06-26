@@ -33,6 +33,13 @@
       "test_container": {
         "create": "创建测试容器",
         "destroy": "销毁测试容器"
+      },
+      "import": {
+        "select_file": "选择文件",
+        "run": "开始导入"
+      },
+      "tracks": {
+        "add_level": "添加级别"
       }
     },
     "divisions": {
@@ -187,6 +194,9 @@
         "type": {
           "description": "创建后不可更改",
           "label": "题目类型"
+        },
+        "tracks": {
+          "full_description": "一步创建漏洞 Track 及多级 Flag。"
         }
       },
       "divisions": {
@@ -333,6 +343,9 @@
           "title": "Ouch! 还没有队伍提交 Writeup"
         },
         "pdf_fallback": "未能成功加载 PDF"
+      },
+      "import": {
+        "help": "上传 xlsx 文件批量导入 flag。系统将按（所属仓库、子模块）自动创建题目和漏洞。"
       }
     },
     "instances": {
@@ -343,6 +356,9 @@
     "markdown_inline_support": "支持 Inline Markdown 语法",
     "markdown_support": "支持 Markdown 语法",
     "nothing_found": "什么都没有找到",
+    "zeroday": {
+      "empty": "暂无 0day 工单"
+    },
     "settings": {
       "account": {
         "allow_register": {
@@ -526,6 +542,15 @@
       },
       "participation": {
         "updated": "队伍审核状态已更新"
+      },
+      "import": {
+        "repo_submod_required": "必须选择所属仓库和子模块列"
+      },
+      "challenges": {
+        "tracks": {
+          "flags_required": "至少需要一级 flag 值",
+          "created_full": "漏洞及 flag 创建成功"
+        }
       }
     },
     "instances": {
@@ -547,6 +572,10 @@
       "deleted": "{{name}} 已删除",
       "password_copied": "密码已复制到剪贴板",
       "updated": "用户信息已更新"
+    },
+    "zeroday": {
+      "comment_required": "审批备注不能为空",
+      "reviewed": "工单审批成功"
     }
   },
   "placeholder": {
@@ -699,7 +728,9 @@
       "notices": "比赛公告",
       "review": "队伍审核",
       "tickets": "工单审核",
-      "writeups": "Writeups"
+      "writeups": "Writeups",
+      "import_flags": "批量导入",
+      "zeroday_tickets": "0day 工单"
     },
     "instances": "实例管理",
     "logs": "系统日志",

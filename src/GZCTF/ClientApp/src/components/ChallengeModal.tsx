@@ -21,6 +21,7 @@ import duration from 'dayjs/plugin/duration'
 import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InstanceEntry } from '@Components/InstanceEntry'
+import { ChallengeLockNotice } from '@Components/ChallengeLockNotice'
 import { ContentPlaceholder, InlineMarkdown, Markdown } from '@Components/MarkdownRenderer'
 import { useLanguage } from '@Utils/I18n'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
@@ -39,27 +40,34 @@ dayjs.extend(duration)
 interface MultiLevelProgressProps {
   tracks: NonNullable<ChallengeDetailModel['tracks']>
   currentLevel?: number
+  activeTrackId?: string | null
+  solvedCount?: number
 }
 
-const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel }) => {
+const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel, activeTrackId, solvedCount }) => {
   const { t } = useTranslation()
 
-  // 取所有 track 的 level 集合（level 数跨 track 一致，因为 LevelConfig 是 per-challenge 共享的）
-  // 用第一个 track 的 levels 作为展示基准；status 取该 level 在所有 track 中的最佳状态
-  const firstTrackLevels = tracks[0]?.levels ?? []
+  // 计算已解漏洞数（L1+L2+L3 全解才算 1 个）
+  const fullySolvedTrackCount = useMemo(() => {
+    return tracks.filter((track) => {
+      const levels = track.levels ?? []
+      return levels.length > 0 && levels.every((l) => l.status === 'Solved')
+    }).length
+  }, [tracks])
 
-  const bestStatusForLevel = (level: number): string => {
-    let best: string = 'Unsolved'
-    for (const track of tracks) {
-      const levelInfo = track.levels?.find((l) => l.level === level)
-      if (!levelInfo) continue
-      const s = levelInfo.status ?? 'Unsolved'
-      if (s === 'Solved') return 'Solved'
-      if (s === 'Banned' && best === 'Unsolved') best = 'Banned'
-      if (s === 'Locked' && best === 'Unsolved') best = 'Locked'
+  const displaySolvedCount = solvedCount ?? fullySolvedTrackCount
+
+  // 取当前活跃 track 的 levels 作为展示基准
+  const activeTrack = useMemo(() => {
+    if (activeTrackId) {
+      const found = tracks.find((t) => t.trackId === activeTrackId)
+      if (found) return found
     }
-    return best
-  }
+    // 回退：若有任意 track，取第一个；否则空
+    return tracks[0]
+  }, [tracks, activeTrackId])
+
+  const activeLevels = activeTrack?.levels ?? []
 
   return (
     <Stack gap="xs" pt="sm">
@@ -67,46 +75,57 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel 
         <Text fw={700} size="sm">
           {t('challenge.level.progress')}
         </Text>
-        {currentLevel !== undefined && (
-          <Badge variant="light" color="indigo">
-            {t('challenge.level.current')}: L{currentLevel}
+        <Group gap="xs">
+          <Badge variant="light" color="teal">
+            {t('challenge.level.solved_count', { count: displaySolvedCount })}
           </Badge>
-        )}
+          {currentLevel !== undefined && (
+            <Badge variant="light" color="indigo">
+              {t('challenge.level.current')}: L{currentLevel}
+            </Badge>
+          )}
+        </Group>
       </Group>
-      <Group gap="xs" wrap="nowrap">
-        {firstTrackLevels.map((levelInfo, idx) => {
-          const level = levelInfo.level ?? idx + 1
-          const status = bestStatusForLevel(level)
-          const isCurrent = level === currentLevel
+      {activeLevels.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          {t('challenge.level.submit_l1_to_start')}
+        </Text>
+      ) : (
+        <Group gap="xs" wrap="nowrap">
+          {activeLevels.map((levelInfo, idx) => {
+            const level = levelInfo.level ?? idx + 1
+            const status = levelInfo.status ?? 'Unsolved'
+            const isCurrent = level === currentLevel
 
-          let color = 'gray'
-          let icon = ''
-          if (status === 'Solved') {
-            color = 'teal'
-            icon = ' ✓'
-          } else if (status === 'Banned') {
-            color = 'red'
-            icon = ' 🔴'
-          } else if (status === 'Locked') {
-            color = 'orange'
-            icon = ' ⏸'
-          } else if (isCurrent) {
-            color = 'blue'
-            icon = ` (${t('challenge.level.current')})`
-          } else {
-            icon = ' 🔒'
-          }
+            let color = 'gray'
+            let icon = ''
+            if (status === 'Solved') {
+              color = 'teal'
+              icon = ' ✓'
+            } else if (status === 'Banned') {
+              color = 'red'
+              icon = ' 🔴'
+            } else if (status === 'Locked') {
+              color = 'orange'
+              icon = ' ⏸'
+            } else if (isCurrent) {
+              color = 'blue'
+              icon = ` (${t('challenge.level.current')})`
+            } else {
+              icon = ' 🔒'
+            }
 
-          return (
-            <React.Fragment key={level}>
-              {idx > 0 && <Text size="sm" c="dimmed">→</Text>}
-              <Badge variant={isCurrent ? 'filled' : 'light'} color={color}>
-                L{level}{icon}
-              </Badge>
-            </React.Fragment>
-          )
-        })}
-      </Group>
+            return (
+              <React.Fragment key={level}>
+                {idx > 0 && <Text size="sm" c="dimmed">→</Text>}
+                <Badge variant={isCurrent ? 'filled' : 'light'} color={color}>
+                  L{level}{icon}
+                </Badge>
+              </React.Fragment>
+            )
+          })}
+        </Group>
+      )}
     </Stack>
   )
 }
@@ -284,7 +303,22 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
             </Stack>
           )}
           {isMultiLevel && challenge?.tracks && (
-            <MultiLevelProgress tracks={challenge.tracks} currentLevel={challenge.currentLevel} />
+            <MultiLevelProgress
+              tracks={challenge.tracks}
+              currentLevel={challenge.currentLevel}
+              activeTrackId={challenge.activeTrackId}
+            />
+          )}
+          {isMultiLevel && (challenge?.challengeLock?.isLocked || challenge?.challengeLock?.bannedTrackId) && (
+            <ChallengeLockNotice
+              isLocked={challenge.challengeLock.isLocked}
+              unlocksAt={challenge.challengeLock.unlocksAt}
+              reason={challenge.challengeLock.reason}
+              triggerAnswer={challenge.challengeLock.isLocked ? challenge.challengeLock.triggerAnswer : undefined}
+              bannedTrackId={challenge.challengeLock.bannedTrackId}
+              bannedLevel={challenge.challengeLock.bannedLevel}
+              banTriggerAnswer={challenge.challengeLock.banTriggerAnswer}
+            />
           )}
           {isHybridLine && (
             <Stack gap="xs" className={classes.flagList}>

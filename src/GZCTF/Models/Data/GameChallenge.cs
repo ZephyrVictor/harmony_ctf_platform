@@ -36,6 +36,12 @@ public class GameChallenge : Challenge
     public double Difficulty { get; set; } = 5;
 
     /// <summary>
+    /// 代码仓库（作为比赛题目方向分组依据，如 "arkcompiler_ets_runtime"）
+    /// </summary>
+    [MaxLength(128)]
+    public string? Repository { get; set; }
+
+    /// <summary>
     /// Current score of the challenge
     /// </summary>
     [NotMapped]
@@ -72,6 +78,7 @@ public class GameChallenge : Challenge
         OriginalScore = model.OriginalScore ?? OriginalScore;
         MinScoreRate = model.MinScoreRate ?? MinScoreRate;
         Difficulty = model.Difficulty ?? Difficulty;
+        Repository = model.Repository ?? Repository;
         FileName = model.FileName ?? FileName;
         DisableBloodBonus = model.DisableBloodBonus ?? DisableBloodBonus;
         SubmissionLimit = model.SubmissionLimit ?? SubmissionLimit;

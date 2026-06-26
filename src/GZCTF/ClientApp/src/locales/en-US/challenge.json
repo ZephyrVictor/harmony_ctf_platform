@@ -236,6 +236,20 @@
     "solved": "Solved",
     "locked": "Locked",
     "banned": "Banned",
-    "unlock_at": "Unlocks at {{time}}"
+    "unlock_at": "Unlocks at {{time}}",
+    "solved_count": "Solved {{count}} vulnerabilities",
+    "submit_l1_to_start": "Submit L1 flag to start"
+  },
+  "lock": {
+    "title": "Challenge locked",
+    "unlock_at": "Unlocks at",
+    "reason": "Reason",
+    "trigger_answer": "Trigger answer"
+  },
+  "ban": {
+    "title": "Vulnerability banned",
+    "level_banned": "Level L{{level}}",
+    "banned": "has been permanently banned",
+    "trigger_answer": "Trigger answer"
   }
 }

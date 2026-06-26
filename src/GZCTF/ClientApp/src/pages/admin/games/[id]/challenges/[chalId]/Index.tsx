@@ -10,6 +10,7 @@ import {
   Slider,
   Stack,
   Switch,
+  Tabs,
   Text,
   Textarea,
   TextInput,
@@ -251,6 +252,30 @@ const GameChallengeEdit: FC = () => {
             </Button>
             <Button
               disabled={disabled}
+              component={Link}
+              variant="light"
+              to={`/admin/games/${numId}/challenges/${numCId}/tracks`}
+            >
+              {t('admin.button.challenges.tracks', { defaultValue: 'Tracks' })}
+            </Button>
+            <Button
+              disabled={disabled}
+              component={Link}
+              variant="light"
+              to={`/admin/games/${numId}/challenges/${numCId}/levels`}
+            >
+              {t('admin.button.challenges.levels', { defaultValue: 'Levels' })}
+            </Button>
+            <Button
+              disabled={disabled}
+              component={Link}
+              variant="light"
+              to={`/admin/games/${numId}/challenges/${numCId}/import`}
+            >
+              {t('admin.button.challenges.import', { defaultValue: 'Import' })}
+            </Button>
+            <Button
+              disabled={disabled}
               leftSection={<Icon path={mdiContentSaveOutline} size={1} />}
               onClick={() =>
                 onUpdate({
@@ -364,6 +389,15 @@ const GameChallengeEdit: FC = () => {
                 onChange={(e) => {
                   setDeadline(e ? dayjs(e) : null)
                 }}
+              />
+              <TextInput
+                label={t('admin.content.games.challenges.repository', { defaultValue: 'Repository' })}
+                description={t('admin.content.games.challenges.repository_description', {
+                  defaultValue: 'Code repo for grouping (e.g. arkcompiler_ets_runtime)',
+                })}
+                disabled={disabled}
+                value={challengeInfo.repository ?? ''}
+                onChange={(e) => setChallengeInfo({ ...challengeInfo, repository: e.target.value })}
               />
             </Stack>
           </Grid.Col>

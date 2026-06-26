@@ -160,6 +160,12 @@ public class ChallengeEditDetailModel
     [Required]
     public double Difficulty { get; set; } = 3;
 
+    /// <summary>
+    /// 代码仓库（作为比赛题目方向分组依据）
+    /// </summary>
+    [MaxLength(128)]
+    public string? Repository { get; set; }
+
     internal static ChallengeEditDetailModel FromChallenge(GameChallenge chal) =>
         new()
         {
@@ -182,6 +188,7 @@ public class ChallengeEditDetailModel
             OriginalScore = chal.OriginalScore,
             MinScoreRate = chal.MinScoreRate,
             Difficulty = chal.Difficulty,
+            Repository = chal.Repository,
             FileName = chal.FileName,
             Attachment = chal.Attachment,
             SubmissionLimit = chal.SubmissionLimit,

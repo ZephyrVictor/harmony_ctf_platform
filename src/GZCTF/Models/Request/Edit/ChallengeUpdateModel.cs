@@ -128,6 +128,12 @@ public class ChallengeUpdateModel
     public double? Difficulty { get; set; }
 
     /// <summary>
+    /// 代码仓库（作为比赛题目方向分组依据）
+    /// </summary>
+    [MaxLength(128)]
+    public string? Repository { get; set; }
+
+    /// <summary>
     /// Check if hints are updated
     /// </summary>
     /// <param name="originalHash">Original hash</param>

@@ -20,6 +20,9 @@
     "writeup": {
       "upload": "上传 Writeup",
       "uploading": "正在上传"
+    },
+    "zeroday": {
+      "submit": "提交 0day 工单"
     }
   },
   "content": {
@@ -138,6 +141,10 @@
       "title": "管理 Writeup",
       "unsubmitted": "尚未提交",
       "unsubmitted_note": "你的队伍尚未提交 Writeup"
+    },
+    "zeroday": {
+      "empty": "暂无 0day 工单",
+      "empty_hint": "提交你在比赛中发现的 0day 漏洞"
     }
   },
   "event": {
@@ -211,6 +218,10 @@
     },
     "writeup": {
       "submitted": "Writeup 已成功提交"
+    },
+    "zeroday": {
+      "description_required": "描述不能为空",
+      "submitted": "0day 工单提交成功"
     }
   },
   "participation": {

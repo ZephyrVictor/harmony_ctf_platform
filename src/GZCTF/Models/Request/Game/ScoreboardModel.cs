@@ -370,6 +370,11 @@ public partial class ChallengeInfo
     [NotMapped]
     [MemoryPackIgnore]
     public bool DisableBloodBonus { get; set; }
+
+    /// <summary>
+    /// 代码仓库（作为比赛题目方向分组依据，如 "arkcompiler_ets_runtime"）
+    /// </summary>
+    public string? Repository { get; set; }
 }
 
 [MemoryPackable]
