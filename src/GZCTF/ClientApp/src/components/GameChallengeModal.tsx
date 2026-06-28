@@ -71,6 +71,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
   const [lastIsTrackComplete, setLastIsTrackComplete] = useState(false)
   const [flag, setFlag] = useInputState('')
   const [solvedChallengeId, setSolvedChallengeId] = useState<number | null>(null)
+  const [startNewTrack, setStartNewTrack] = useState(false)
 
   const isLimitReached = (challenge?.limit && (challenge.attempts ?? 0) >= challenge.limit) || false
   // D6: currentLevel > 1 但 currentTrackId 尚未恢复时，禁用提交
@@ -181,8 +182,9 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
 
     try {
       // D6: L1 不传 trackId；L2+ 用缓存的 trackId
-      const submitLevel = isMultiLevel ? currentLevel : 1
-      const submitTrackId = isMultiLevel && currentLevel > 1 ? currentTrackId : undefined
+      // Bug #4 fix: startNewTrack overrides to L1 submission (no trackId) so player can start a new vulnerability chain
+      const submitLevel = isMultiLevel ? (startNewTrack ? 1 : currentLevel) : 1
+      const submitTrackId = isMultiLevel && submitLevel > 1 ? currentTrackId : undefined
 
       const res = await api.game.gameSubmit(gameId, challengeId, {
         flag: await encryptApiData(t, flag, config.apiPublicKey),
@@ -195,6 +197,8 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       if (res.data.trackId) {
         setCurrentTrackId(res.data.trackId)
       }
+      // Bug #4: reset startNewTrack after submission (server's currentLevel will be correct after mutate)
+      setStartNewTrack(false)
       setLastIsTrackComplete(res.data.isTrackComplete === true)
       // D8: 触发锁/封禁时显示详细提示
       if (res.data.challengeLocked) {
@@ -265,6 +269,12 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
           setDisabled(false)
           setFlag('')
           checkDataFlag(submitId, res.data)
+          clearInterval(polling)
+        } else {
+          // Issue #6: FlagSubmitted (duplicate) is also a final state — re-enable input
+          // and stop polling so the user can retry on another track/level.
+          setDisabled(false)
+          setFlag('')
           clearInterval(polling)
         }
       } catch (err) {
@@ -370,6 +380,24 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       onExtend={onExtend}
       gameEnded={gameEnded}
       practiceMode={practiceMode}
+      onSelectTrack={(trackId) => {
+        // Issue #5: allow user to switch active track for L2+ submission
+        setCurrentTrackId(trackId)
+      }}
+      startNewTrackActive={startNewTrack}
+      onStartNewTrack={() => {
+        // Bug #4: toggle "start new track" mode. When enabling, clear the cached
+        // trackId so the next submission is treated as L1 of a new chain.
+        // When disabling, also clear the cached trackId — the useEffect will
+        // restore it from challenge.activeTrackId on the next render.
+        if (startNewTrack) {
+          setStartNewTrack(false)
+          setCurrentTrackId(undefined)
+        } else {
+          setCurrentTrackId(undefined)
+          setStartNewTrack(true)
+        }
+      }}
     />
   )
 }

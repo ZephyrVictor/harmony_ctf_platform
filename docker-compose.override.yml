@@ -1,0 +1,4 @@
+services:
+  gzctf:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development

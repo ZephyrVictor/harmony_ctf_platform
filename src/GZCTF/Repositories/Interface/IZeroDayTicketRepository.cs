@@ -9,7 +9,7 @@ public interface IZeroDayTicketRepository : IRepository
     Task<ZeroDayTicket[]> GetAllTickets(ZeroDayTicketStatus? status = null, int? gameId = null, int count = 100,
         int skip = 0, CancellationToken token = default);
     Task<ZeroDayTicket> ApproveTicket(Guid ticketId, int bonusScore, string? comment, Guid reviewerId,
-        CancellationToken token = default);
+        int? reviewChallengeId = null, CancellationToken token = default);
     Task<ZeroDayTicket> RejectTicket(Guid ticketId, string reason, Guid reviewerId,
         CancellationToken token = default);
 }

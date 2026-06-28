@@ -1658,19 +1658,46 @@ namespace GZCTF.Migrations
                     b.Property<int>("BonusScore")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CWE")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<int?>("ChallengeId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CommitHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedTrackId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<int>("GameId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("LineNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Module")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PoC")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<string>("ReviewComment")
                         .HasMaxLength(500)
@@ -1681,6 +1708,9 @@ namespace GZCTF.Migrations
 
                     b.Property<Guid?>("ReviewerId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Status")
                         .IsRequired()

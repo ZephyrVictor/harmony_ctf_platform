@@ -36,7 +36,14 @@ public class ZeroDayTicketController(IZeroDayTicketRepository ticketRepository) 
             Description = model.Description,
             GameId = model.GameId,
             ChallengeId = model.ChallengeId,
-            UserId = Guid.Parse(userId)
+            UserId = Guid.Parse(userId),
+            Severity = model.Severity,
+            Module = model.Module,
+            FilePath = model.FilePath,
+            LineNumber = model.LineNumber,
+            CommitHash = model.CommitHash,
+            CWE = model.CWE,
+            PoC = model.PoC
         };
 
         ticket = await ticketRepository.CreateTicket(ticket, token);
@@ -127,7 +134,8 @@ public class ZeroDayTicketController(IZeroDayTicketRepository ticketRepository) 
             return BadRequest(new RequestResponse("Only pending tickets can be approved"));
 
         ticket = await ticketRepository.ApproveTicket(
-            ticketId, model.BonusScore, model.Comment, Guid.Parse(reviewerId), token);
+            ticketId, model.BonusScore, model.Comment, Guid.Parse(reviewerId),
+            model.ChallengeId, token);
 
         return Ok(ToDto(ticket));
     }
@@ -178,7 +186,15 @@ public class ZeroDayTicketController(IZeroDayTicketRepository ticketRepository) 
         UserName = ticket.User?.UserName,
         ReviewerName = ticket.Reviewer?.UserName,
         GameTitle = ticket.Game?.Title,
-        ChallengeTitle = ticket.Challenge?.Title
+        ChallengeTitle = ticket.Challenge?.Title,
+        Severity = ticket.Severity,
+        Module = ticket.Module,
+        FilePath = ticket.FilePath,
+        LineNumber = ticket.LineNumber,
+        CommitHash = ticket.CommitHash,
+        CWE = ticket.CWE,
+        PoC = ticket.PoC,
+        CreatedTrackId = ticket.CreatedTrackId
     };
 }
 
@@ -188,12 +204,53 @@ public class ZeroDayTicketCreateModel
     public string Description { get; set; } = string.Empty;
     public int GameId { get; set; }
     public int? ChallengeId { get; set; }
+
+    /// <summary>
+    /// 严重度（Critical/High/Medium/Low/None）— 决定加分梯度参考
+    /// </summary>
+    public ZeroDaySeverity Severity { get; set; } = ZeroDaySeverity.None;
+
+    /// <summary>
+    /// 模块/子模块路径
+    /// </summary>
+    public string? Module { get; set; }
+
+    /// <summary>
+    /// 文件路径（L1 主键）
+    /// </summary>
+    public string? FilePath { get; set; }
+
+    /// <summary>
+    /// 行号或范围（"c:1060", "c:550-559", "c:281、c:286"）
+    /// </summary>
+    public string? LineNumber { get; set; }
+
+    /// <summary>
+    /// 修复 commit hash
+    /// </summary>
+    public string? CommitHash { get; set; }
+
+    /// <summary>
+    /// CWE（多个用 "; " 分隔）
+    /// </summary>
+    public string? CWE { get; set; }
+
+    /// <summary>
+    /// PoC / 佐证
+    /// </summary>
+    public string? PoC { get; set; }
 }
 
 public class ZeroDayTicketReviewModel
 {
     public int BonusScore { get; set; }
     public string? Comment { get; set; }
+
+    /// <summary>
+    /// Admin-selected ChallengeId for the ticket (used when ticket has no ChallengeId).
+    /// If provided, the ticket's ChallengeId is updated and bonus is added to the team's score.
+    /// </summary>
+    public int? ChallengeId { get; set; }
 }
 
 public class ZeroDayTicketDto
@@ -212,4 +269,12 @@ public class ZeroDayTicketDto
     public string? ReviewerName { get; set; }
     public string? GameTitle { get; set; }
     public string? ChallengeTitle { get; set; }
+    public ZeroDaySeverity Severity { get; set; }
+    public string? Module { get; set; }
+    public string? FilePath { get; set; }
+    public string? LineNumber { get; set; }
+    public string? CommitHash { get; set; }
+    public string? CWE { get; set; }
+    public string? PoC { get; set; }
+    public Guid? CreatedTrackId { get; set; }
 }

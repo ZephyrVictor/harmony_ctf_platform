@@ -70,6 +70,17 @@ public class ScoringService
         int level,
         CancellationToken token = default)
     {
+        // 0. R11: 已取消参赛资格的队伍禁止提交
+        if (participation.Status == ParticipationStatus.Suspended)
+        {
+            return new ScoreResult
+            {
+                Status = AnswerResult.WrongAnswer,
+                ScoreChange = 0,
+                Message = "Team disqualified (3 freeze strikes per R11)"
+            };
+        }
+
         // 1. 过期锁清理 + 计数重置
         var expiredLocks = await _lockStateRepo.GetExpiredLocks(participation.Id, challenge.Id, token);
         if (expiredLocks.Count > 0)
@@ -129,6 +140,7 @@ public class ScoringService
             // 但返回匹配到的 TrackId 以便前端知道该 flag 属于哪个 track（幂等场景）
             var matchedTrackId = matchedFlags.FirstOrDefault()?.TrackId ?? trackId;
             var matchedLevel = matchedFlags.FirstOrDefault()?.Level ?? level;
+
             return new ScoreResult
             {
                 Status = AnswerResult.FlagSubmitted,
@@ -162,7 +174,7 @@ public class ScoringService
                 if (!prevSolved) continue;
             }
 
-            // 已解检查
+            // 已解检查（本队）— 同队重复不得分
             var alreadySolved = await _recordRepo.HasCorrectSubmission(
                 challenge.Id, participation.Id, flag.TrackId, flag.Level, token);
             if (alreadySolved) continue;
@@ -309,7 +321,9 @@ public class ScoringService
             }
         }
 
-        // 5. WrongCount 累加 + SubmissionLimit 检查（重复提交不累加）
+        // 5. WrongCount 累加 + SubmissionLimit 检查
+        // 规则 R4: 防爆破维度 = per file path (Track)，跨所有 Level 累计错误提交数
+        // 重复提交不累加（已 dedup）
         int wrongCount = 0;
         if (!duplicate)
         {
@@ -322,22 +336,46 @@ public class ScoringService
                     ? levelConfig.SubmissionLimit
                     : challenge.SubmissionLimit;
 
-                if (limit > 0 && wrongCount >= limit)
+                if (limit > 0)
                 {
-                    triggerChallengeLock = true;
-                    lockReason = "SubmissionLimitExceeded";
+                    int effectiveWrongCount;
+                    if (trackId is not null)
+                    {
+                        // per-track 跨 level 累计（含本次 +1）
+                        var historicalTrackWrong = await _context.SubmissionRecords
+                            .AsNoTracking()
+                            .CountAsync(r => r.ParticipationId == participation.Id
+                                          && r.ChallengeId == challenge.Id
+                                          && r.TrackId == trackId
+                                          && r.IsPenalty, token);
+                        effectiveWrongCount = historicalTrackWrong + 1;
+                    }
+                    else
+                    {
+                        // 无 Track 题目退化为 per-level 计数
+                        effectiveWrongCount = wrongCount;
+                    }
+
+                    if (effectiveWrongCount >= limit)
+                    {
+                        triggerChallengeLock = true;
+                        lockReason = "SubmissionLimitExceeded";
+                    }
                 }
             }
         }
 
         // 6. 创建全题锁
+        // 规则 R10: 防爆破冻结"当日"提交窗口。LockDurationMinutes=0 时使用 24h 默认（避免无限锁）。
+        // 管理员可通过 challenge.LockDurationMinutes 显式配置（含 0 表示使用默认 24h）。
         DateTimeOffset? unlocksAt = null;
         if (triggerChallengeLock)
         {
-            var lockMinutes = challenge.LockDurationMinutes;
-            unlocksAt = lockMinutes > 0
-                ? DateTimeOffset.UtcNow.AddMinutes(lockMinutes)
-                : DateTimeOffset.MaxValue;
+            const int defaultLockMinutes = 24 * 60;
+            var lockMinutes = challenge.LockDurationMinutes > 0
+                ? challenge.LockDurationMinutes
+                : defaultLockMinutes;
+            unlocksAt = DateTimeOffset.UtcNow.AddMinutes(lockMinutes);
 
             await _lockStateRepo.CreateLock(new ChallengeLockState
             {
@@ -350,6 +388,23 @@ public class ScoringService
                 LockedAt = DateTimeOffset.UtcNow,
                 UnlocksAt = unlocksAt.Value
             }, token);
+
+            // R11: 3-strike disqualification — 累计 3 次冻结自动取消参赛资格
+            var freezeCount = await _context.SubmissionRecords
+                .AsNoTracking()
+                .CountAsync(r => r.ParticipationId == participation.Id
+                              && r.SubmissionType == "Trap", token);
+            // 包含本次（即将创建的 Trap 记录）+1
+            if (freezeCount + 1 >= 3)
+            {
+                var part = await _context.Participations
+                    .FirstOrDefaultAsync(p => p.Id == participation.Id, token);
+                if (part is not null && part.Status != ParticipationStatus.Suspended)
+                {
+                    part.Status = ParticipationStatus.Suspended;
+                    await _context.SaveChangesAsync(token);
+                }
+            }
         }
 
         // 7. 返回

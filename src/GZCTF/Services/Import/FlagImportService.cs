@@ -226,13 +226,15 @@ public class FlagImportService(
                     var levelConfig = await levelConfigRepo.GetConfig(challengeId, lc.Level, token);
                     if (levelConfig is null)
                     {
+                        // 规则 R4: 默认 SubmissionLimit=5 (防爆破)
+                        var effectiveSubmissionLimit = lc.SubmissionLimit > 0 ? lc.SubmissionLimit : 5;
                         await levelConfigRepo.CreateConfig(new ChallengeLevelConfig
                         {
                             ChallengeId = challengeId,
                             Level = lc.Level,
                             Title = lc.LevelTitle,
                             Score = lc.Score,
-                            SubmissionLimit = lc.SubmissionLimit,
+                            SubmissionLimit = effectiveSubmissionLimit,
                             PenaltyScore = lc.PenaltyScore,
                             LockOnAnswers = lc.LockOnAnswers,
                             BanOnAnswers = lc.BanOnAnswers,
@@ -490,13 +492,15 @@ public class FlagImportService(
                 var levelConfig = await levelConfigRepo.GetConfig(challengeId, lc.Level, token);
                 if (levelConfig is null)
                 {
+                    // 规则 R4: 默认 SubmissionLimit=5 (防爆破)
+                    var effectiveSubmissionLimit = lc.SubmissionLimit > 0 ? lc.SubmissionLimit : 5;
                     await levelConfigRepo.CreateConfig(new ChallengeLevelConfig
                     {
                         ChallengeId = challengeId,
                         Level = lc.Level,
                         Title = lc.LevelTitle,
                         Score = lc.Score,
-                        SubmissionLimit = lc.SubmissionLimit,
+                        SubmissionLimit = effectiveSubmissionLimit,
                         PenaltyScore = lc.PenaltyScore,
                         LockOnAnswers = lc.LockOnAnswers,
                         BanOnAnswers = lc.BanOnAnswers,

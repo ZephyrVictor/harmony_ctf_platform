@@ -24,12 +24,14 @@ import { WithChallengeEdit } from '@Components/admin/WithChallengeEdit'
 import { showErrorMsg } from '@Utils/Shared'
 import api, {
   ChallengeFlagAnswerType,
-  FlagImportColumnMapping,
   FlagImportFilePreview,
   FlagImportResult,
+} from '@Api'
+import {
+  FlagImportColumnMapping,
   ImportMode,
   LevelColumnMapping,
-} from '@Api'
+} from '@Utils/ManualApiTypes'
 
 const AdminImport: FC = () => {
   const { id, chalId } = useParams()
@@ -63,7 +65,7 @@ const AdminImport: FC = () => {
     setDisabled(true)
     try {
       const mapping = buildMapping()
-      const res = await api.flagImport.flagImportPreview(numCId, {
+      const res = await api.flagImport.flagImportPreviewChallenge(numCId, {
         file: f,
         mapping: JSON.stringify(mapping),
       })
@@ -119,7 +121,7 @@ const AdminImport: FC = () => {
     if (!file) return
     setDisabled(true)
     try {
-      const res = await api.flagImport.flagImportImport(numCId, {
+      const res = await api.flagImport.flagImportImportChallenge(numCId, {
         file,
         mapping: JSON.stringify(buildMapping()),
         mode: ImportMode.Upsert,

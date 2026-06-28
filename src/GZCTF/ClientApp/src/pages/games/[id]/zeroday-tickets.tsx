@@ -6,6 +6,7 @@ import {
   Group,
   Modal,
   ScrollArea,
+  Select,
   Stack,
   Text,
   Textarea,
@@ -22,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { WithNavBar } from '@Components/WithNavbar'
 import { showErrorMsg } from '@Utils/Shared'
-import api, { ZeroDayTicketDto, ZeroDayTicketStatus } from '@Api'
+import api, { ZeroDayTicketDto, ZeroDayTicketStatus, ZeroDaySeverity } from '@Api'
 
 const statusColor: Record<ZeroDayTicketStatus, string> = {
   [ZeroDayTicketStatus.Pending]: 'yellow',
@@ -47,6 +48,13 @@ const ZeroDayTicketSubmitModal: FC<{
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [challengeId, setChallengeId] = useState<number | undefined>(undefined)
+  const [severity, setSeverity] = useState<ZeroDaySeverity>(ZeroDaySeverity.None)
+  const [mod, setMod] = useState('')
+  const [filePath, setFilePath] = useState('')
+  const [lineNumber, setLineNumber] = useState('')
+  const [commitHash, setCommitHash] = useState('')
+  const [cwe, setCwe] = useState('')
+  const [poc, setPoc] = useState('')
 
   const onSubmit = async () => {
     if (!description.trim()) {
@@ -65,6 +73,13 @@ const ZeroDayTicketSubmitModal: FC<{
         description,
         gameId,
         challengeId: challengeId || undefined,
+        severity,
+        module: mod || undefined,
+        filePath: filePath || undefined,
+        lineNumber: lineNumber || undefined,
+        commitHash: commitHash || undefined,
+        cwe: cwe || undefined,
+        poC: poc || undefined,
       })
       showNotification({
         color: 'teal',
@@ -74,6 +89,13 @@ const ZeroDayTicketSubmitModal: FC<{
       setTitle('')
       setDescription('')
       setChallengeId(undefined)
+      setSeverity(ZeroDaySeverity.None)
+      setMod('')
+      setFilePath('')
+      setLineNumber('')
+      setCommitHash('')
+      setCwe('')
+      setPoc('')
       onSubmitted()
       onClose()
     } catch (e) {
@@ -103,6 +125,50 @@ const ZeroDayTicketSubmitModal: FC<{
           label="ChallengeId (optional - if tied to a specific challenge)"
           value={challengeId}
           onChange={(v) => setChallengeId(typeof v === 'number' ? v : undefined)}
+        />
+        <Select
+          label="Severity (bonus tier: Critical N×100, High N×60, Medium N×30, Low N×10)"
+          value={severity}
+          onChange={(v) => setSeverity((v as ZeroDaySeverity) ?? ZeroDaySeverity.None)}
+          data={[
+            { value: ZeroDaySeverity.None, label: 'None' },
+            { value: ZeroDaySeverity.Low, label: 'Low' },
+            { value: ZeroDaySeverity.Medium, label: 'Medium' },
+            { value: ZeroDaySeverity.High, label: 'High' },
+            { value: ZeroDaySeverity.Critical, label: 'Critical' },
+          ]}
+        />
+        <TextInput
+          label="Module (e.g. ecmascript/base)"
+          value={mod}
+          onChange={(e) => setMod(e.target.value)}
+        />
+        <TextInput
+          label="FilePath (L1 flag key, e.g. ecmascript/base/foo.cpp)"
+          value={filePath}
+          onChange={(e) => setFilePath(e.target.value)}
+        />
+        <TextInput
+          label="LineNumber (e.g. c:1060, c:550-559, c:281、c:286)"
+          value={lineNumber}
+          onChange={(e) => setLineNumber(e.target.value)}
+        />
+        <TextInput
+          label="CommitHash (40-char hex, fix commit)"
+          value={commitHash}
+          onChange={(e) => setCommitHash(e.target.value)}
+        />
+        <TextInput
+          label="CWE (e.g. CWE-787, or 'CWE-125; CWE-787' for multiple)"
+          value={cwe}
+          onChange={(e) => setCwe(e.target.value)}
+        />
+        <Textarea
+          label="PoC / evidence (optional)"
+          value={poc}
+          autosize
+          minRows={2}
+          onChange={(e) => setPoc(e.target.value)}
         />
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>

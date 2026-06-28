@@ -22,12 +22,14 @@ import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { showErrorMsg } from '@Utils/Shared'
 import api, {
   ChallengeFlagAnswerType,
-  FlagImportColumnMapping,
   FlagImportFilePreview,
   FlagImportResult,
+} from '@Api'
+import {
+  FlagImportColumnMapping,
   ImportMode,
   LevelColumnMapping,
-} from '@Api'
+} from '@Utils/ManualApiTypes'
 
 const AdminImportFlags: FC = () => {
   const { id } = useParams()

@@ -41,12 +41,16 @@ const ReviewModal: FC<{
   onClose: () => void
   ticket: ZeroDayTicketDto | null
   action: 'approve' | 'reject'
+  gameId: number
   onReviewed: () => void
-}> = ({ opened, onClose, ticket, action, onReviewed }) => {
+}> = ({ opened, onClose, ticket, action, gameId, onReviewed }) => {
   const { t } = useTranslation()
   const [disabled, setDisabled] = useState(false)
   const [bonusScore, setBonusScore] = useState(0)
   const [comment, setComment] = useState('')
+  const [challengeId, setChallengeId] = useState<number | null>(null)
+
+  const { data: challenges } = api.edit.useEditGetGameChallenges(gameId)
 
   const onSubmit = async () => {
     if (!ticket?.id) return
@@ -62,7 +66,11 @@ const ReviewModal: FC<{
     setDisabled(true)
     try {
       if (action === 'approve') {
-        await api.zeroDayTicket.zeroDayTicketApprove(ticket.id, { bonusScore, comment })
+        await api.zeroDayTicket.zeroDayTicketApprove(ticket.id, {
+          bonusScore,
+          comment,
+          challengeId: ticket.challengeId ? undefined : (challengeId ?? undefined),
+        })
       } else {
         await api.zeroDayTicket.zeroDayTicketReject(ticket.id, { bonusScore, comment })
       }
@@ -80,6 +88,8 @@ const ReviewModal: FC<{
     }
   }
 
+  const challengeOptions = (challenges ?? []).map((c) => ({ value: String(c.id ?? ''), label: c.title }))
+
   return (
     <Modal
       opened={opened}
@@ -92,9 +102,25 @@ const ReviewModal: FC<{
           <Stack gap={4}>
             <Text fw={700}>{ticket.title || '(no title)'}</Text>
             <Text size="sm" c="dimmed">
-              by {ticket.userName ?? '-'}
+              by {ticket.userName ?? '-'} | Challenge: {ticket.challengeTitle ?? '-'}
             </Text>
             <Text size="sm">{ticket.description}</Text>
+          </Stack>
+        )}
+        {action === 'approve' && ticket && !ticket.challengeId && (
+          <Stack gap={4}>
+            <Text size="sm" c="orange">
+              This ticket has no ChallengeId. Select a challenge to award bonus to the team.
+              If no challenge is selected, bonus will not be added to the team score.
+            </Text>
+            <Select
+              label="Challenge (optional, required for bonus)"
+              value={challengeId ? String(challengeId) : null}
+              onChange={(v) => setChallengeId(v ? parseInt(v) : null)}
+              data={challengeOptions}
+              searchable
+              placeholder="Select a challenge"
+            />
           </Stack>
         )}
         <NumberInput
@@ -235,6 +261,7 @@ const AdminZeroDayTickets: FC = () => {
         onClose={() => setReviewOpened(false)}
         ticket={reviewTicket}
         action={reviewAction}
+        gameId={numId}
         onReviewed={() => mutate()}
       />
     </WithGameEditTab>

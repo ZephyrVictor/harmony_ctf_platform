@@ -10,6 +10,14 @@
  * ---------------------------------------------------------------
  */
 
+export enum ZeroDaySeverity {
+  None = "None",
+  Low = "Low",
+  Medium = "Medium",
+  High = "High",
+  Critical = "Critical",
+}
+
 export enum ZeroDayTicketStatus {
   Pending = "Pending",
   Approved = "Approved",
@@ -77,12 +85,6 @@ export enum AnswerResult {
 }
 
 /** Per-flag answer type for hybrid line matching */
-export enum ImportMode {
-  Upsert = 'Upsert',
-  Skip = 'Skip',
-  Fail = 'Fail',
-}
-
 export enum ChallengeFlagAnswerType {
   Exact = "Exact",
   SingleLine = "SingleLine",
@@ -1247,7 +1249,10 @@ export interface ChallengeEditDetailModel {
    * @format double
    */
   difficulty: number;
-  /** 代码仓库（作为比赛题目方向分组依据） */
+  /**
+   * 代码仓库（作为比赛题目方向分组依据）
+   * @maxLength 128
+   */
   repository?: string | null;
 }
 
@@ -1343,6 +1348,8 @@ export interface ChallengeInfoModel {
    * @format uint64
    */
   deadlineUtc?: number | null;
+  /** Repository (for competition direction grouping) */
+  repository?: string | null;
 }
 
 /** Challenge update information (Edit) */
@@ -1437,7 +1444,10 @@ export interface ChallengeUpdateModel {
    * @format double
    */
   difficulty?: number | null;
-  /** 代码仓库（作为比赛题目方向分组依据） */
+  /**
+   * 代码仓库（作为比赛题目方向分组依据）
+   * @maxLength 128
+   */
   repository?: string | null;
 }
 
@@ -1456,7 +1466,7 @@ export interface FlagCreateModel {
   /**
    * Flag text
    * @minLength 1
-   * @maxLength 127
+   * @maxLength 512
    */
   flag: string;
   /**
@@ -1483,19 +1493,19 @@ export interface ChallengeFlag {
   /**
    * Flag value（匹配用）
    * @minLength 1
-   * @maxLength 127
+   * @maxLength 512
    */
   flagValue: string;
   /** Per-flag 答案类型，决定匹配算法 */
   answerType?: ChallengeFlagAnswerType;
   /**
    * 原始答案文本（归一化前）
-   * @maxLength 127
+   * @maxLength 512
    */
   rawAnswer?: string;
   /**
    * 归一化后的匹配键
-   * @maxLength 143
+   * @maxLength 528
    */
   normalizedAnswerKey?: string;
   /** 是否参与匹配 */
@@ -1558,6 +1568,11 @@ export type GameChallenge = Challenge & {
    */
   difficulty: number;
   /**
+   * 代码仓库（作为比赛题目方向分组依据，如 "arkcompiler_ets_runtime"）
+   * @maxLength 128
+   */
+  repository?: string | null;
+  /**
    * Current score of the challenge
    * @format int32
    */
@@ -1572,6 +1587,10 @@ export type GameChallenge = Challenge & {
   divisionConfigs?: DivisionChallengeConfig[];
   /** First solves recorded for this challenge. */
   firstSolves?: FirstSolve[] | null;
+  /** 多级 flag Track 列表（每个 Track 对应一个漏洞实例） */
+  tracks?: ChallengeTrack[];
+  /** 多级 flag LevelConfig 列表（所有 Track 共享） */
+  levelConfigs?: ChallengeLevelConfig[];
   /**
    * Game ID
    * @format int32
@@ -1584,7 +1603,7 @@ export type GameChallenge = Challenge & {
 export interface Submission {
   /**
    * Submitted answer string
-   * @maxLength 127
+   * @maxLength 512
    */
   answer?: string;
   /** Status of the submitted answer */
@@ -2150,10 +2169,6 @@ export interface Challenge {
   testContainer?: Container | null;
   /** List of flags for the challenge */
   flags?: ChallengeFlag[];
-  /** 多级 flag Track 列表（每个 Track 对应一个漏洞实例） */
-  tracks?: ChallengeTrack[];
-  /** 多级 flag LevelConfig 列表（所有 Track 共享） */
-  levelConfigs?: ChallengeLevelConfig[];
 }
 
 /** 漏洞实例 track（数据集一行 = 一个 Track） */
@@ -2412,9 +2427,9 @@ export interface FlagImportFilePreview {
   sampleRows?: Record<string, string>[];
   /** 试解析出的 Track 预览（需要传入 mapping 才会填充） */
   tracks?: FlagImportTrackPreview[];
-  /** 数据集中出现的所有仓库名 */
+  /** 数据集中出现的所有仓库名（供前端显示"将创建 N 个新题目方向"） */
   repositories?: string[];
-  /** 数据集中出现的所有子模块名 */
+  /** 数据集中出现的所有子模块名（供前端显示"将创建 N 个新题目"） */
   submodules?: string[];
 }
 
@@ -2451,9 +2466,15 @@ export interface FlagImportResult {
   /** @format int32 */
   failed?: number;
   errors?: FlagImportError[];
-  /** 自动建题目模式下，创建的 GameChallenge 数量 */
+  /**
+   * 自动建题目模式下，创建的 GameChallenge 数量
+   * @format int32
+   */
   createdChallenges?: number;
-  /** 自动建题目模式下，复用的已存在 GameChallenge 数量 */
+  /**
+   * 自动建题目模式下，复用的已存在 GameChallenge 数量
+   * @format int32
+   */
   reusedChallenges?: number;
 }
 
@@ -2795,10 +2816,10 @@ export interface ChallengeInfo {
   deadline?: number | null;
   /** Bloods for the challenge */
   bloods: Blood[];
-  /** 代码仓库（作为比赛题目方向分组依据） */
-  repository?: string | null;
   /** Whether to disable blood bonus */
   disableBloodBonus: boolean;
+  /** 代码仓库（作为比赛题目方向分组依据，如 "arkcompiler_ets_runtime"） */
+  repository?: string | null;
 }
 
 export interface Blood {
@@ -3067,7 +3088,10 @@ export interface ChallengeDetailModel {
   currentLevel?: number;
   /** 代码仓库（作为比赛题目方向分组依据，如 "arkcompiler_ets_runtime"） */
   repository?: string | null;
-  /** 当前活跃 TrackId（最近一次有提交记录的 Track） */
+  /**
+   * 当前活跃 TrackId（最近一次有提交记录的 Track）
+   * @format guid
+   */
   activeTrackId?: string | null;
 }
 
@@ -3135,7 +3159,9 @@ export interface ChallengeLockStatusModel {
   unlocksAt?: number | null;
   reason?: string | null;
   triggerAnswer?: string | null;
+  /** @format guid */
   bannedTrackId?: string | null;
+  /** @format int32 */
   bannedLevel?: number | null;
   banTriggerAnswer?: string | null;
 }
@@ -3159,19 +3185,34 @@ export interface FlagSubmitResponse {
    * @format int32
    */
   level?: number | null;
-  /** 当前题目下已解漏洞数（按 Track 计数，L1+L2+L3 全解才算 1 个） */
+  /**
+   * 当前题目下已解漏洞数（按 Track 计数，L1+L2+L3 全解才算 1 个）
+   * @format int32
+   */
   solvedCount?: number | null;
-  /** 当前活跃 TrackId（= TrackId 字段的显式别名，供前端刷新后恢复） */
+  /**
+   * 当前活跃 TrackId（= TrackId 字段的显式别名，供前端刷新后恢复）
+   * @format guid
+   */
   activeTrackId?: string | null;
   /** 该 Track 的最高 Level 是否已解（提示选手"该漏洞已完整解决"） */
   isTrackComplete?: boolean | null;
   /** 是否触发临时全题锁 */
   challengeLocked?: boolean;
-  /** 全题锁解锁时间 */
-  unlocksAt?: string | null;
-  /** 触发封禁的 TrackId */
+  /**
+   * 全题锁解锁时间
+   * @format uint64
+   */
+  unlocksAt?: number | null;
+  /**
+   * 触发封禁的 TrackId
+   * @format guid
+   */
   bannedTrackId?: string | null;
-  /** 触发封禁的 Level */
+  /**
+   * 触发封禁的 Level
+   * @format int32
+   */
   bannedLevel?: number | null;
   /** 触发锁/封禁的错误答案（用于详细提示） */
   triggerAnswer?: string | null;
@@ -3483,6 +3524,45 @@ export interface TrackCreateModel {
   sortOrder?: number | null;
 }
 
+export interface TrackFullCreateResult {
+  /** 漏洞实例 track（数据集一行 = 一个 Track） */
+  track?: ChallengeTrack;
+  flags?: ChallengeFlag[];
+}
+
+export interface TrackFullCreateModel {
+  track?: TrackCreateModel | null;
+  levels?: TrackFullLevelModel[];
+}
+
+export interface TrackFullLevelModel {
+  /**
+   * @format int32
+   * @min 1
+   * @max 2147483647
+   */
+  level?: number;
+  /**
+   * @minLength 1
+   * @maxLength 512
+   */
+  flagValue: string;
+  /** Per-flag answer type for hybrid line matching */
+  answerType?: ChallengeFlagAnswerType;
+  /**
+   * 该级别分值（默认 L1=5 / L2=4 / L3=1，其余 = 0）
+   * @format int32
+   */
+  score?: number;
+  /** @format int32 */
+  submissionLimit?: number;
+  /** @format int32 */
+  penaltyScore?: number;
+  lockOnAnswers?: string[];
+  banOnAnswers?: string[];
+  levelTitle?: string | null;
+}
+
 export interface TrackUpdateModel {
   /** @maxLength 200 */
   title?: string | null;
@@ -3507,72 +3587,6 @@ export interface TrackUpdateModel {
   sortOrder?: number | null;
 }
 
-export interface TrackFullCreateModel {
-  track?: TrackCreateModel | null;
-  levels: TrackFullLevelModel[];
-}
-
-export interface TrackFullLevelModel {
-  /**
-   * @format int32
-   * @min 1
-   */
-  level: number;
-  /** @maxLength 127 */
-  flagValue: string;
-  answerType?: ChallengeFlagAnswerType;
-  /** 该级别分值（默认 L1=5 / L2=4 / L3=1，其余 = 0） */
-  /** @format int32 */
-  score?: number;
-  /** @format int32 */
-  submissionLimit?: number;
-  /** @format int32 */
-  penaltyScore?: number;
-  lockOnAnswers?: string[];
-  banOnAnswers?: string[];
-  levelTitle?: string | null;
-}
-
-export interface TrackFullCreateResult {
-  track?: ChallengeTrack;
-  flags?: ChallengeFlag[];
-}
-
-export interface FlagImportColumnMapping {
-  trackTitleColumn?: string | null;
-  trackFlawNoColumn?: string | null;
-  trackRepositoryColumn?: string | null;
-  trackModuleColumn?: string | null;
-  trackFilePathColumn?: string | null;
-  trackCategoryColumn?: string | null;
-  trackReferenceUrlColumn?: string | null;
-  /** 子模块列（对应 GameChallenge.Title，自动建题目用） */
-  submoduleColumn?: string | null;
-  /** 仓库列（对应 GameChallenge.Repository，自动建题目用） */
-  repositoryColumn?: string | null;
-  /** FilePath | FlawNo | Title */
-  matchBy?: string;
-  levelColumns?: LevelColumnMapping[];
-}
-
-export interface LevelColumnMapping {
-  /** @format int32 */
-  level: number;
-  columnName: string;
-  /** 额外列，与 ColumnName 用 ":" 拼接成最终 flag 值 */
-  extraColumns?: string[];
-  answerType?: ChallengeFlagAnswerType;
-  /** @format int32 */
-  score?: number;
-  /** @format int32 */
-  submissionLimit?: number;
-  /** @format int32 */
-  penaltyScore?: number;
-  lockOnAnswers?: string[];
-  banOnAnswers?: string[];
-  levelTitle?: string | null;
-}
-
 export interface ZeroDayTicketDto {
   /** @format guid */
   id?: string;
@@ -3594,6 +3608,15 @@ export interface ZeroDayTicketDto {
   reviewerName?: string | null;
   gameTitle?: string | null;
   challengeTitle?: string | null;
+  severity?: ZeroDaySeverity;
+  module?: string | null;
+  filePath?: string | null;
+  lineNumber?: string | null;
+  commitHash?: string | null;
+  cwe?: string | null;
+  poC?: string | null;
+  /** @format guid */
+  createdTrackId?: string | null;
 }
 
 export interface ZeroDayTicketCreateModel {
@@ -3603,12 +3626,28 @@ export interface ZeroDayTicketCreateModel {
   gameId?: number;
   /** @format int32 */
   challengeId?: number | null;
+  /** 严重度（Critical/High/Medium/Low/None）— 决定加分梯度参考 */
+  severity?: ZeroDaySeverity;
+  /** 模块/子模块路径 */
+  module?: string | null;
+  /** 文件路径（L1 主键） */
+  filePath?: string | null;
+  /** 行号或范围（"c:1060", "c:550-559", "c:281、c:286"） */
+  lineNumber?: string | null;
+  /** 修复 commit hash */
+  commitHash?: string | null;
+  /** CWE（多个用 "; " 分隔） */
+  cwe?: string | null;
+  /** PoC / 佐证 */
+  poC?: string | null;
 }
 
 export interface ZeroDayTicketReviewModel {
   /** @format int32 */
   bonusScore?: number;
   comment?: string | null;
+  /** Admin-selected ChallengeId (used when ticket has no ChallengeId, so bonus can be awarded) */
+  challengeId?: number | null;
 }
 
 import { apiLanguage } from "@Utils/I18n";
@@ -6477,10 +6516,11 @@ export class Api<
      * No description
      *
      * @tags FlagImport
-     * @name FlagImportImport
+     * @name FlagImportImportChallenge
+     * @summary 单题目导入 flags
      * @request POST:/api/ext/challenges/{challengeId}/flags/import
      */
-    flagImportImport: (
+    flagImportImportChallenge: (
       challengeId: number,
       data: {
         /** @format binary */
@@ -6503,10 +6543,38 @@ export class Api<
      * No description
      *
      * @tags FlagImport
-     * @name FlagImportPreview
+     * @name FlagImportImportGame
+     * @summary 游戏级导入：按 (仓库, 子模块) 自动创建 GameChallenge 并导入 flags
+     * @request POST:/api/ext/games/{gameId}/flags/import
+     */
+    flagImportImportGame: (
+      gameId: number,
+      data: {
+        /** @format binary */
+        file?: File | null;
+        mapping?: string | null;
+        mode?: string | null;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<FlagImportResult, RequestResponse>({
+        path: `/api/ext/games/${gameId}/flags/import`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags FlagImport
+     * @name FlagImportPreviewChallenge
+     * @summary 预览单题目导入（不传 mapping 仅返回列名+样本行；传 mapping 试解析 Track 预览）
      * @request POST:/api/ext/challenges/{challengeId}/flags/import/preview
      */
-    flagImportPreview: (
+    flagImportPreviewChallenge: (
       challengeId: number,
       data: {
         /** @format binary */
@@ -6525,10 +6593,11 @@ export class Api<
       }),
 
     /**
-     * 游戏级预览：按 (仓库, 子模块) 自动建题目的预览
+     * No description
      *
      * @tags FlagImport
      * @name FlagImportPreviewGame
+     * @summary 游戏级预览：按 (仓库, 子模块) 自动建题目的预览
      * @request POST:/api/ext/games/{gameId}/flags/import/preview
      */
     flagImportPreviewGame: (
@@ -6542,32 +6611,6 @@ export class Api<
     ) =>
       this.request<FlagImportFilePreview, RequestResponse>({
         path: `/api/ext/games/${gameId}/flags/import/preview`,
-        method: "POST",
-        body: data,
-        type: ContentType.FormData,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * 游戏级导入：按 (仓库, 子模块) 自动创建 GameChallenge 并导入 flags
-     *
-     * @tags FlagImport
-     * @name FlagImportImportGame
-     * @request POST:/api/ext/games/{gameId}/flags/import
-     */
-    flagImportImportGame: (
-      gameId: number,
-      data: {
-        /** @format binary */
-        file?: File | null;
-        mapping?: string | null;
-        mode?: string | null;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<FlagImportResult, RequestResponse>({
-        path: `/api/ext/games/${gameId}/flags/import`,
         method: "POST",
         body: data,
         type: ContentType.FormData,
@@ -9062,10 +9105,11 @@ export class Api<
       }),
 
     /**
-     * 一次调用创建 Track + 多级 Flag（便捷接口）
+     * No description
      *
      * @tags Track
      * @name TrackCreateTrackFull
+     * @summary 一次调用创建 Track + 多级 Flag（便捷接口，供管理员在比赛进行中动态添加漏洞）
      * @request POST:/api/ext/challenges/{challengeId}/tracks/full
      */
     trackCreateTrackFull: (

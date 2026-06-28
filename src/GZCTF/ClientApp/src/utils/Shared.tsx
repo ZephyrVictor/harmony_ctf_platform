@@ -625,10 +625,18 @@ export const tryGetErrorMsg = (err: any, t: (key: string) => string): string => 
     return typeof err === 'string' ? err : null
   }
 
+  const tryExtractExceptionMessage = (s: string): string | null => {
+    if (typeof s !== 'string') return null
+    const firstLine = s.split('\n')[0].trim()
+    const colonIdx = firstLine.indexOf(':')
+    return colonIdx >= 0 ? firstLine.slice(colonIdx + 1).trim() : firstLine
+  }
+
   return (
     tryGetErrorString(err) ||
     tryGetErrorString(err.title) ||
     tryGetErrorString(err.response?.data?.title) ||
+    tryExtractExceptionMessage(err.response?.data) ||
     tryGetErrorString(err.message) ||
     tryGetErrorString(err.cause) ||
     t('common.error.unknown')

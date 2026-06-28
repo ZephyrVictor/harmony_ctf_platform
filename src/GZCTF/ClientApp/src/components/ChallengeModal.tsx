@@ -42,9 +42,12 @@ interface MultiLevelProgressProps {
   currentLevel?: number
   activeTrackId?: string | null
   solvedCount?: number
+  onSelectTrack?: (trackId: string) => void
+  startNewTrackActive?: boolean
+  onStartNewTrack?: () => void
 }
 
-const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel, activeTrackId, solvedCount }) => {
+const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel, activeTrackId, solvedCount, onSelectTrack, startNewTrackActive, onStartNewTrack }) => {
   const { t } = useTranslation()
 
   // 计算已解漏洞数（L1+L2+L3 全解才算 1 个）
@@ -68,6 +71,7 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
   }, [tracks, activeTrackId])
 
   const activeLevels = activeTrack?.levels ?? []
+  const hasMultipleTracks = tracks.length > 1
 
   return (
     <Stack gap="xs" pt="sm">
@@ -86,6 +90,48 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
           )}
         </Group>
       </Group>
+      {hasMultipleTracks && (
+        <Stack gap={4}>
+          <Text size="xs" c="dimmed">
+            {t('challenge.level.select_track', { defaultValue: 'Select vulnerability track' })}
+          </Text>
+          <Group gap="xs" wrap="wrap">
+            {tracks.map((track, idx) => {
+              const trackId = track.trackId ?? ''
+              const isActive = activeTrackId ? track.trackId === activeTrackId : idx === 0
+              const trackLevels = track.levels ?? []
+              const allSolved = trackLevels.length > 0 && trackLevels.every((l) => l.status === 'Solved')
+              const label = track.title || `Track ${idx + 1}`
+              return (
+                <Badge
+                  key={trackId || idx}
+                  variant={isActive ? 'filled' : 'light'}
+                  color={allSolved ? 'teal' : isActive ? 'blue' : 'gray'}
+                  style={{ cursor: onSelectTrack ? 'pointer' : 'default' }}
+                  onClick={() => onSelectTrack?.(trackId)}
+                >
+                  {label}{allSolved ? ' ✓' : ''}
+                </Badge>
+              )
+            })}
+            {onStartNewTrack && (
+              <Badge
+                variant={startNewTrackActive ? 'filled' : 'light'}
+                color={startNewTrackActive ? 'green' : 'gray'}
+                style={{ cursor: 'pointer' }}
+                onClick={onStartNewTrack}
+              >
+                {startNewTrackActive ? '✓ Starting new' : '+ New vulnerability'}
+              </Badge>
+            )}
+          </Group>
+          {startNewTrackActive && (
+            <Text size="xs" c="green">
+              Next submission will be treated as L1 of a new vulnerability chain.
+            </Text>
+          )}
+        </Stack>
+      )}
       {activeLevels.length === 0 ? (
         <Text size="sm" c="dimmed">
           {t('challenge.level.submit_l1_to_start')}
@@ -193,6 +239,9 @@ export interface ChallengeModalProps extends ModalProps {
   onDestroy: () => void
   onSubmitFlag: () => void
   onDownload?: () => void
+  onSelectTrack?: (trackId: string) => void
+  startNewTrackActive?: boolean
+  onStartNewTrack?: () => void
 }
 
 export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
@@ -211,6 +260,9 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
     onDestroy,
     onDownload,
     onSubmitFlag,
+    onSelectTrack,
+    startNewTrackActive,
+    onStartNewTrack,
     ...modalProps
   } = props
   const { t } = useTranslation()
@@ -307,6 +359,9 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
               tracks={challenge.tracks}
               currentLevel={challenge.currentLevel}
               activeTrackId={challenge.activeTrackId}
+              onSelectTrack={onSelectTrack}
+              startNewTrackActive={startNewTrackActive}
+              onStartNewTrack={onStartNewTrack}
             />
           )}
           {isMultiLevel && (challenge?.challengeLock?.isLocked || challenge?.challengeLock?.bannedTrackId) && (
