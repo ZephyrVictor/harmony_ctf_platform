@@ -67,6 +67,9 @@ public class FlagImportService(
                             combinedValue = $"{combinedValue}:{extraVal.Trim()}";
                         }
                     }
+
+                    // Normalize: lowercase line-number prefixes (C: → c:) and collapse double colons (:: → :)
+                    combinedValue = combinedValue.Replace("C:", "c:").Replace("::", ":");
                     trackPreview.Levels.Add(new FlagImportLevelPreview
                     {
                         Level = lc.Level,
@@ -202,6 +205,9 @@ public class FlagImportService(
                             flagValue = $"{flagValue}:{extraVal.Trim()}";
                         }
                     }
+
+                    // Normalize: lowercase line-number prefixes (C: → c:) and collapse double colons (:: → :)
+                    flagValue = flagValue.Replace("C:", "c:").Replace("::", ":");
 
                     // 注：按计划"数据集严格按原样导入"，不做 dup 校验。
                     // 重复 L1/L2/L3 值会创建多个 Track，PickFirstValidMatch 匹配第一个，其余不可达——这是数据问题不是平台问题。
@@ -469,6 +475,9 @@ public class FlagImportService(
                         flagValue = $"{flagValue}:{extraVal.Trim()}";
                     }
                 }
+
+                // Normalize: lowercase line-number prefixes (C: → c:) and collapse double colons (:: → :)
+                flagValue = flagValue.Replace("C:", "c:").Replace("::", ":");
                 // 注：按计划"数据集严格按原样导入"，不做 dup 校验。
 
                 var flag = new ChallengeFlag
