@@ -71,7 +71,7 @@ public partial class UserInfo : IdentityUser<Guid>
 
     [NotMapped]
     [MemoryPackIgnore]
-    public string? AvatarUrl => AvatarHash is null ? null : $"/assets/{AvatarHash}/avatar";
+    public string? AvatarUrl => AvatarHash is null ? null : PathHelper.PrefixUrl($"/assets/{AvatarHash}/avatar");
 
     /// <summary>
     /// Update user's last visit time and IP address via HTTP request

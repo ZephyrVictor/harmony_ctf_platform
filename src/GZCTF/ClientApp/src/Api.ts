@@ -9539,7 +9539,7 @@ export class Api<
   };
 }
 
-const api = new Api();
+const api = new Api({ baseURL: import.meta.env.BASE_URL.replace(/\/$/, '') });
 export default api;
 
 export const fetcher = async (

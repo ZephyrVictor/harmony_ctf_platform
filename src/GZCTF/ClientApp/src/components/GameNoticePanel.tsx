@@ -102,7 +102,7 @@ export const GameNoticePanel: FC = () => {
   useEffect(() => {
     if (id) {
       const connection = new signalR.HubConnectionBuilder()
-        .withUrl(`/hub/user?game=${numId}`)
+        .withUrl(`${import.meta.env.BASE_URL}hub/user?game=${numId}`)
         .withHubProtocol(new signalR.JsonHubProtocol())
         .withAutomaticReconnect()
         .configureLogging(signalR.LogLevel.None)

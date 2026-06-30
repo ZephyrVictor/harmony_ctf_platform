@@ -1,0 +1,88 @@
+# Online (production) deployment — isolated from the test compose stack.
+#
+# Differences vs docker-compose.yml:
+#   - Project name: `online` (containers/volumes/networks prefixed with `online_`)
+#   - App port: 0.0.0.0:38080 -> 8080  (fronted by an external nginx on another host)
+#   - DB port: NOT exposed to the host
+#   - Uses .env.online for secrets (gitignored)
+#
+# Usage:
+#   cp .env.online.example .env.online   # then edit secrets
+#   docker compose -f docker-compose.online.yml --env-file .env.online up -d
+#   docker compose -f docker-compose.online.yml --env-file .env.online logs -f
+
+name: online
+
+services:
+  gzctf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+    container_name: online_gzctf
+    ports:
+      - "0.0.0.0:38080:8080"
+    volumes:
+      - appdata:/app/files
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - PathBase=${PATH_BASE:-}
+      - ConnectionStrings__Database=Host=db;Port=5432;Database=gzctf;Username=gzctf;Password=${DB_PASSWORD:?DB_PASSWORD is required in .env.online}
+      - XorKey=${XOR_KEY:?XOR_KEY is required in .env.online}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required in .env.online}
+      - TZ=Asia/Shanghai
+      # Trust the reverse-proxy chain so X-Forwarded-Proto/For are honored.
+      # The section name is "ForwardedOptions" (matches nameof(ForwardedOptions) in ServicesExtension.cs).
+      # NOTE: .NET 10 reordered the ForwardedHeaders enum values (XForwardedProto is now 4, not 2),
+      # so we use the string form to be unambiguous.
+      # 101.6.22.82 = our nginx (direct connection); 101.6.22.102 = front-end LB that terminates SSL.
+      - "ForwardedOptions__ForwardedHeaders=XForwardedFor,XForwardedProto"
+      - ForwardedOptions__KnownProxies__0=101.6.22.82
+      - ForwardedOptions__KnownProxies__1=101.6.22.102
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - online_net
+
+  db:
+    image: postgres:17-alpine
+    container_name: online_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=gzctf
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required in .env.online}
+      - POSTGRES_DB=gzctf
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gzctf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - online_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: online_redis
+    restart: unless-stopped
+    networks:
+      - online_net
+
+volumes:
+  pgdata:
+    name: online_pgdata
+  appdata:
+    name: online_appdata
+
+networks:
+  online_net:
+    name: online_net

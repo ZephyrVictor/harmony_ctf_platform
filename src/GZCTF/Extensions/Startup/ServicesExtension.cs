@@ -47,14 +47,33 @@ internal static class ServicesExtension
 
             var forwardedOptions =
                 builder.Configuration.GetSection(nameof(ForwardedOptions)).Get<ForwardedOptions>();
-            if (forwardedOptions is null)
-                builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                // Default: process X-Forwarded-For and X-Forwarded-Proto
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+                if (forwardedOptions is not null)
                 {
-                    options.ForwardedHeaders =
-                        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                });
-            else
-                builder.Services.Configure<ForwardedHeadersOptions>(forwardedOptions.ToForwardedHeadersOptions);
+                    // Apply configured KnownProxies / KnownNetworks / ForwardedHeaders from config.
+                    forwardedOptions.ToForwardedHeadersOptions(options);
+                    // ToForwardedHeadersOptions copies ForwardedHeaders from the bound config object,
+                    // which is None by default if the user only set KnownProxies. Restore the default
+                    // so the middleware actually runs.
+                    if (options.ForwardedHeaders == ForwardedHeaders.None)
+                        options.ForwardedHeaders =
+                            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                }
+
+                // Kestrel on a dual-stack IPv6 socket reports IPv4 clients as IPv4-mapped IPv6
+                // (e.g. ::ffff:101.6.22.82). IPAddress.Equals checks AddressFamily, so the IPv4
+                // entry alone won't match. Add the mapped-v6 form for every IPv4 KnownProxy.
+                foreach (var ip in options.KnownProxies
+                             .Where(p => p.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                             .Select(p => p.MapToIPv6())
+                             .ToList())
+                    options.KnownProxies.Add(ip);
+            });
         }
 
         internal void AddCustomServices()

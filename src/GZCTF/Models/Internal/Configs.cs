@@ -282,7 +282,7 @@ public class GlobalConfig
     public string? FaviconHash { get; set; }
 
     [JsonIgnore]
-    public string? LogoUrl => string.IsNullOrEmpty(LogoHash) ? null : $"/assets/{LogoHash}/logo";
+    public string? LogoUrl => string.IsNullOrEmpty(LogoHash) ? null : PathHelper.PrefixUrl($"/assets/{LogoHash}/logo");
 
     /// <summary>
     /// Platform name, used for email and homepage rendering

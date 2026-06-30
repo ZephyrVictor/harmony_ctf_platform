@@ -184,7 +184,7 @@ const Events: FC = () => {
   useEffect(() => {
     if (game?.end && new Date() < new Date(game.end)) {
       const connection = new signalR.HubConnectionBuilder()
-        .withUrl(`/hub/monitor?game=${numId}`)
+        .withUrl(`${import.meta.env.BASE_URL}hub/monitor?game=${numId}`)
         .withHubProtocol(new signalR.JsonHubProtocol())
         .withAutomaticReconnect()
         .configureLogging(signalR.LogLevel.None)

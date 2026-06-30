@@ -1,4 +1,4 @@
-const BASE = '/api/ext'
+const BASE = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/ext`
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {

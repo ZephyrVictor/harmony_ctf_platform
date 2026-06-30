@@ -82,7 +82,7 @@ const Logs: FC = () => {
 
   useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl('/hub/admin')
+      .withUrl(`${import.meta.env.BASE_URL}hub/admin`)
       .withHubProtocol(new signalR.JsonHubProtocol())
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.None)

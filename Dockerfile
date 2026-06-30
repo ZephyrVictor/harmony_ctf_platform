@@ -14,6 +14,11 @@ RUN dotnet restore src/GZCTF/GZCTF.csproj
 # Copy source
 COPY . .
 
+# Optional sub-path base for the SPA (e.g. /harmonyctf/).
+# Must match the PathBase configured on the backend at runtime.
+ARG VITE_BASE_PATH=/
+ENV VITE_BASE_PATH=$VITE_BASE_PATH
+
 # Build and publish
 RUN dotnet publish src/GZCTF/GZCTF.csproj -c Release -o /app --no-restore
 
