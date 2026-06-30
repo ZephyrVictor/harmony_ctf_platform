@@ -154,7 +154,7 @@ public partial class Game
     [MemoryPackIgnore]
     public string TeamHashSalt => $"GZCTF@{PrivateKey}@PK".ToSHA256String();
 
-    internal static string? GetPosterUrl(string? hash) => hash is null ? null : $"/assets/{hash}/poster";
+    internal static string? GetPosterUrl(string? hash) => hash is null ? null : PathHelper.PrefixUrl($"/assets/{hash}/poster");
 
     internal void GenerateKeyPair(byte[]? xorKey)
     {

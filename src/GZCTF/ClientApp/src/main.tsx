@@ -16,7 +16,7 @@ i18n
     resourcesToBackend(async (lang: string, _: string) => {
       const file = manifest[lang.toLowerCase()]
       if (!file) return {}
-      const response = await fetch(`/static/${file}`)
+      const response = await fetch(`${import.meta.env.BASE_URL}static/${file}`)
       return response.json()
     })
   )
@@ -33,7 +33,7 @@ i18n
 const app = ReactDOM.createRoot(document.getElementById('root')!)
 
 app.render(
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <LanguageProvider>
       <App />
     </LanguageProvider>

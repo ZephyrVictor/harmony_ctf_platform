@@ -52,5 +52,5 @@ public class LocalFile
     /// <summary>
     /// URL for fetching the file
     /// </summary>
-    public string Url(string? filename = null) => $"/assets/{Hash}/{filename ?? Name}";
+    public string Url(string? filename = null) => PathHelper.PrefixUrl($"/assets/{Hash}/{filename ?? Name}");
 }

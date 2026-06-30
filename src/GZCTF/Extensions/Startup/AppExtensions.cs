@@ -51,6 +51,12 @@ internal static class AppExtensions
 
         internal void UseMiddlewares()
         {
+            var pathBase = app.Configuration["PathBase"];
+            if (!string.IsNullOrEmpty(pathBase))
+            {
+                app.UsePathBase(pathBase);
+            }
+
             app.UseRequestLocalization();
 
             app.UseResponseCaching();

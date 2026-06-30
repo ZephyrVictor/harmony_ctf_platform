@@ -176,6 +176,8 @@ BundleArtifacts/
 # but keep track of directories ending in .cache
 !*.[Cc]ache/
 
+docs/memo
+
 # Others
 ClientBin/
 ~$*
@@ -261,3 +263,8 @@ _Pvt_Extensions
 
 # Node package lock files (npm)
 **/package-lock.json
+
+# Online (production) env files — keep secrets out of git
+.env.online
+.env.*.online
+

@@ -15,6 +15,33 @@ internal static class PathHelper
     internal static readonly string Uploads = GetDir(DirType.Uploads);
     internal static readonly string Capture = GetDir(DirType.Capture);
 
+    /// <summary>
+    /// URL path prefix for sub-path deployment (e.g. "/harmonyctf").
+    /// Set from the "PathBase" config at startup. Empty/null for root deployment.
+    /// </summary>
+    internal static string? UrlPrefix { get; private set; }
+
+    /// <summary>
+    /// Initialize UrlPrefix from configuration. Call once at startup.
+    /// </summary>
+    internal static void InitializeUrlPrefix(IConfiguration configuration)
+    {
+        UrlPrefix = string.IsNullOrWhiteSpace(configuration["PathBase"])
+            ? null
+            : configuration["PathBase"]!.TrimEnd('/');
+    }
+
+    /// <summary>
+    /// Prepend the configured UrlPrefix to a path that starts with "/".
+    /// For root deployment (UrlPrefix is null/empty), returns the path unchanged.
+    /// </summary>
+    internal static string PrefixUrl(string path)
+    {
+        if (string.IsNullOrEmpty(UrlPrefix))
+            return path;
+        return $"{UrlPrefix}{path}";
+    }
+
     internal static bool AllowBaseCreate(IHostEnvironment environment)
     {
         if (environment.IsDevelopment())

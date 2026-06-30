@@ -5,6 +5,7 @@ import {
   Card,
   FileButton,
   Group,
+  MultiSelect,
   ScrollArea,
   Select,
   Stack,
@@ -15,7 +16,7 @@ import {
 import { showNotification } from '@mantine/notifications'
 import { mdiCheck, mdiFileUploadOutline, mdiDatabaseImportOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
-import { FC, useState } from 'react'
+import { FC, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
@@ -56,53 +57,91 @@ const AdminImportFlags: FC = () => {
     { level: 3, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 1 },
   ])
 
+  const doPreview = useCallback(
+    async (f: File, m: FlagImportColumnMapping) => {
+      setDisabled(true)
+      try {
+        const res = await api.flagImport.flagImportPreviewGame(numId, {
+          file: f,
+          mapping: JSON.stringify(m),
+        })
+        setPreview(res.data)
+        return res.data
+      } catch (e) {
+        showErrorMsg(e, t)
+        return null
+      } finally {
+        setDisabled(false)
+      }
+    },
+    [numId, t]
+  )
+
+  const autoDetect = useCallback(
+    (data: FlagImportFilePreview) => {
+      if (!data.columnNames) return
+      const cols = data.columnNames
+      const find = (pred: (s: string) => boolean) => cols.find(pred)
+      setRepoCol((v) => v ?? find((c) => c.includes('仓库') || c.toLowerCase().includes('repo')) ?? null)
+      setSubmodCol((v) => v ?? find((c) => c.includes('子模块') || c.toLowerCase().includes('submod')) ?? null)
+      setTrackTitleCol((v) => v ?? find((c) => c.includes('title')) ?? null)
+      setTrackFlawNoCol((v) => v ?? find((c) => c.toLowerCase().includes('flaw')) ?? null)
+      setTrackFilePathCol(
+        (v) => v ?? find((c) => c.includes('文件') || c.toLowerCase().includes('file')) ?? null
+      )
+      setTrackCategoryCol(
+        (v) => v ?? find((c) => c.includes('类别') || c.toLowerCase().includes('categ')) ?? null
+      )
+      setTrackRefUrlCol(
+        (v) => v ?? find((c) => c.includes('PR') || c.includes('参考') || c.toLowerCase().includes('ref')) ?? null
+      )
+      setTrackModuleCol((v) => v ?? find((c) => c.includes('模块') || c.toLowerCase().includes('module')) ?? null)
+      setLevelCols((ls) =>
+        ls.map((l, i) => {
+          if (l.columnName) return l
+          const col =
+            i === 0
+              ? find((c) => c.includes('文件') || c.toLowerCase().includes('file'))
+              : i === 1
+                ? find((c) => c.includes('commit'))
+                : find((c) => c.includes('修复研判') || c.toLowerCase().includes('revised')) ??
+                  find((c) => c.toLowerCase().includes('cwe'))
+          // Auto-detect extra columns for Level 1 (e.g. line number)
+          const extraCols =
+            i === 0
+              ? cols.filter((c) => c.includes('行数') || c.toLowerCase().includes('line'))
+              : []
+          return { ...l, columnName: col ?? '', extraColumns: extraCols.length > 0 ? extraCols : l.extraColumns }
+        })
+      )
+    },
+    []
+  )
+
+  const initialDetectDone = useRef(false)
+
   const onFileSelected = async (f: File | null) => {
     if (!f) return
     setFile(f)
     setPreview(null)
     setResult(null)
-    setDisabled(true)
-    try {
-      const mapping = buildMapping()
-      const res = await api.flagImport.flagImportPreviewGame(numId, {
-        file: f,
-        mapping: JSON.stringify(mapping),
-      })
-      setPreview(res.data)
-      if (res.data.columnNames) {
-        const cols = res.data.columnNames
-        const find = (pred: (s: string) => boolean) => cols.find(pred)
-        setRepoCol((v) => v ?? find((c) => c.includes('仓库') || c.toLowerCase().includes('repo')) ?? null)
-        setSubmodCol((v) => v ?? find((c) => c.includes('子模块') || c.toLowerCase().includes('submod')) ?? null)
-        setTrackTitleCol((v) => v ?? find((c) => c.includes('title')) ?? null)
-        setTrackFlawNoCol((v) => v ?? find((c) => c.toLowerCase().includes('flaw')) ?? null)
-        setTrackFilePathCol(
-          (v) => v ?? find((c) => c.includes('文件') || c.toLowerCase().includes('file')) ?? null
-        )
-        setTrackCategoryCol(
-          (v) => v ?? find((c) => c.includes('类别') || c.toLowerCase().includes('categ')) ?? null
-        )
-        setTrackRefUrlCol((v) => v ?? find((c) => c.includes('参考') || c.toLowerCase().includes('ref')) ?? null)
-        setTrackModuleCol((v) => v ?? find((c) => c.includes('模块') || c.toLowerCase().includes('module')) ?? null)
-        setLevelCols((ls) =>
-          ls.map((l, i) => {
-            if (l.columnName) return l
-            const col =
-              i === 0
-                ? find((c) => c.includes('文件') || c.toLowerCase().includes('file'))
-                : i === 1
-                  ? find((c) => c.includes('commit'))
-                  : find((c) => c.toLowerCase().includes('cwe'))
-            return { ...l, columnName: col ?? '' }
-          })
-        )
-      }
-    } catch (e) {
-      showErrorMsg(e, t)
-    } finally {
-      setDisabled(false)
+    initialDetectDone.current = false
+    const res = await doPreview(f, buildMapping())
+    if (res) {
+      autoDetect(res)
+      initialDetectDone.current = true
     }
   }
+
+  // Re-preview when mapping fields change (after initial auto-detection)
+  useEffect(() => {
+    if (!file || !initialDetectDone.current) return
+    const timer = setTimeout(() => {
+      doPreview(file, buildMapping())
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repoCol, submodCol, trackTitleCol, trackFlawNoCol, trackFilePathCol, trackCategoryCol, trackRefUrlCol, trackModuleCol, matchBy, levelCols])
 
   const buildMapping = (): FlagImportColumnMapping => ({
     trackTitleColumn: trackTitleCol ?? undefined,
@@ -225,6 +264,9 @@ const AdminImportFlags: FC = () => {
               <Title order={6} mt="sm">
                 Level columns
               </Title>
+              <Text size="xs" c="dimmed">
+                Extra columns are concatenated to the main column with ":" separator. E.g. Column="文件路径" + Extra=["代码行数"] → "path.cpp:c:856-864"
+              </Text>
               {levelCols.map((lc, idx) => (
                 <Group key={idx} grow align="flex-end">
                   <NumberInput
@@ -239,6 +281,14 @@ const AdminImportFlags: FC = () => {
                     value={lc.columnName}
                     onChange={(v) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, columnName: v ?? '' } : l)))}
                     data={columnOptions}
+                  />
+                  <MultiSelect
+                    label="Extra columns"
+                    placeholder="Concat with ':'"
+                    value={lc.extraColumns ?? []}
+                    onChange={(v) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, extraColumns: v } : l)))}
+                    data={columnOptions}
+                    clearable
                   />
                   <Select
                     label="AnswerType"

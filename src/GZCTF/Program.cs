@@ -32,6 +32,7 @@ Banner();
 var builder = WebApplication.CreateBuilder(args);
 
 await PathHelper.EnsureDirsAsync(builder.Environment);
+PathHelper.InitializeUrlPrefix(builder.Configuration);
 
 builder.ConfigureWebHost();
 builder.ConfigureDatabase();

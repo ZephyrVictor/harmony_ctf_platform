@@ -24,7 +24,10 @@ export default defineConfig(({ mode }) => {
 
   console.log(`Using backend URL: ${TARGET}`)
 
+  const BASE = env.VITE_BASE_PATH || '/'
+
   return {
+    base: BASE,
     server: {
       port: 63000,
       proxy: {
@@ -72,6 +75,20 @@ export default defineConfig(({ mode }) => {
       i18nVirtualManifest(),
       fetchContributors(),
       optimizeCssModules(),
+      {
+        // Prepend the configured base path to absolute hrefs in index.html
+        // (Vite handles <script>/<link rel=stylesheet> automatically, but not <link rel=icon> / <meta>).
+        name: 'html-base-prefix',
+        transformIndexHtml: {
+          order: 'pre',
+          handler(html: string) {
+            if (BASE === '/') return html
+            return html
+              .replace(/href="\/favicon\.webp"/g, `href="${BASE}favicon.webp"`)
+              .replace(/content="\/favicon\.webp"/g, `content="${BASE}favicon.webp"`)
+          },
+        },
+      },
     ],
   }
 })

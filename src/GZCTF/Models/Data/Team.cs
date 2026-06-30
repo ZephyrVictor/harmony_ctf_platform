@@ -47,7 +47,7 @@ public class Team
     public string InviteCode => $"{Name}:{Id}:{InviteToken}";
 
     [NotMapped]
-    public string? AvatarUrl => AvatarHash is null ? null : $"/assets/{AvatarHash}/avatar";
+    public string? AvatarUrl => AvatarHash is null ? null : PathHelper.PrefixUrl($"/assets/{AvatarHash}/avatar");
 
     public void UpdateInviteToken() => InviteToken = Guid.NewGuid().ToString("N");
 

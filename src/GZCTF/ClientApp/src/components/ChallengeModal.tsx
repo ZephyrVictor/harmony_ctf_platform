@@ -434,7 +434,8 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   const withAttachment = !!challenge?.context?.url || onDownload
 
   const link = challenge?.context?.url
-  const local = link && link.startsWith('/assets')
+  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '')
+  const local = link && (link.startsWith('/assets') || (baseUrl !== '' && link.startsWith(`${baseUrl}/assets`)))
 
   const attachment = withAttachment && (
     <Group gap="xs" justify="flex-start" align="center" wrap="nowrap">

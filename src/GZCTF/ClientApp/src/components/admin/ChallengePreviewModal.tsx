@@ -27,7 +27,7 @@ export const ChallengePreviewModal: FC<ChallengePreviewModalProps> = (props) => 
   const [context, setContext] = useState<FakeContext>({
     closeTime: null,
     instanceEntry: null,
-    url: '/assets/attachment.zip',
+    url: `${import.meta.env.BASE_URL}assets/attachment.zip`,
   })
 
   const { t } = useTranslation()
