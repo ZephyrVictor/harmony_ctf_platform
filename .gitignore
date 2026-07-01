@@ -266,3 +266,6 @@ _Pvt_Extensions
 .env.online
 .env.*.online
 
+# pgBackRest config contains the cipher pass (same as DB_PASSWORD)
+pgbackrest/pgbackrest.conf
+

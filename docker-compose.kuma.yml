@@ -1,0 +1,37 @@
+# Uptime Kuma — monitoring for the GZCTF online stack.
+#
+# Run from the same directory as docker-compose.online.yml:
+#   docker compose -f docker-compose.kuma.yml up -d
+#
+# Networks:
+#   - online_net: shared with online_gzctf/online_db/online_redis so kuma can
+#     probe them by container name (no host port exposure needed).
+#     Outbound internet (for the public HTTPS monitor) also flows through this
+#     network via the docker bridge gateway.
+#
+# Data volume: /data/gzctf-backup/uptime-kuma (mounted to /app/data in the
+# container). Owned by root; kuma runs as root inside the container.
+#
+# Access: http://localhost:3001 (bound to 127.0.0.1 — host-only by design,
+# locked down via iptables DOCKER-USER).
+#
+# Admin credentials: /home/ncoai/.secrets/uptime-kuma-admin.txt
+
+name: kuma
+
+services:
+  uptime_kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime_kuma
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - /data/gzctf-backup/uptime-kuma:/app/data
+    networks:
+      - online_net
+
+networks:
+  online_net:
+    name: online_net
+    external: true

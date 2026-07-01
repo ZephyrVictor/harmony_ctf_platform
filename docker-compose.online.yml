@@ -3,7 +3,7 @@
 # Differences vs docker-compose.yml:
 #   - Project name: `online` (containers/volumes/networks prefixed with `online_`)
 #   - App port: 0.0.0.0:38080 -> 8080  (fronted by an external nginx on another host)
-#   - DB port: NOT exposed to the host
+#   - DB port: 0.0.0.0:5433 -> 5432  (restricted by iptables DOCKER-USER to fjw25 only, for streaming replication)
 #   - Uses .env.online for secrets (gitignored)
 #
 # Usage:
@@ -54,8 +54,15 @@ services:
   db:
     image: postgres:17-alpine
     container_name: online_db
+    ports:
+      - "0.0.0.0:5433:5432"
+    entrypoint: ["/usr/local/bin/pgbackrest-entrypoint.sh"]
+    command: ["postgres"]
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - pgbackrest-repo:/var/lib/pgbackrest
+      - ./pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+      - ./pgbackrest/entrypoint.sh:/usr/local/bin/pgbackrest-entrypoint.sh:ro
     environment:
       - POSTGRES_USER=gzctf
       - POSTGRES_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required in .env.online}
@@ -74,6 +81,11 @@ services:
     image: redis:7-alpine
     container_name: online_redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - online_net
 
@@ -82,6 +94,9 @@ volumes:
     name: online_pgdata
   appdata:
     name: online_appdata
+  pgbackrest-repo:
+    name: online_pgbackrest
+    external: true
 
 networks:
   online_net:
