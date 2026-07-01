@@ -737,7 +737,11 @@
       "tickets": "工单审核",
       "writeups": "Writeups",
       "import_flags": "批量导入",
-      "zeroday_tickets": "0day 工单"
+      "zeroday_tickets": "0day 工单",
+      "score_adjustment": "分数管理",
+      "score_ledger": "调分记录",
+      "zeroday_bonus_ledger": "0day 加分记录",
+      "bans": "封禁管理"
     },
     "instances": "实例管理",
     "logs": "系统日志",
@@ -790,5 +794,50 @@
     "updated": "更新",
     "skipped": "跳过",
     "failed": "失败"
+  },
+  "score": {
+    "search_placeholder": "队名 / 成员 / Token 搜索",
+    "search": "搜索",
+    "team_name": "队伍",
+    "members": "成员",
+    "token": "Token",
+    "actions": "操作",
+    "adjust": "调整分数",
+    "zero_day_bonus": "0day 加分",
+    "adjust_title": "调整分数",
+    "zero_day_bonus_title": "0day 加分",
+    "delta": "分值变化",
+    "reason": "理由",
+    "severity": "级别",
+    "cve_id": "CVE 编号 / 附加信息",
+    "submit": "提交",
+    "team": "队伍",
+    "no_results": "请搜索队伍",
+    "adjust_success": "调分成功",
+    "error_delta_zero": "分值不能为 0",
+    "error_reason_required": "理由不能为空",
+    "zero_day_reason_placeholder": "如：0day 奖励 - CVE-2024-XXXX - Critical"
+  },
+  "score_ledger": {
+    "filter_category": "类别过滤",
+    "all": "全部",
+    "manual": "手动调分",
+    "zero_day": "0day 加分",
+    "time": "时间",
+    "team": "队伍",
+    "delta": "分值",
+    "reason": "理由",
+    "category": "类别",
+    "related": "附加信息",
+    "empty": "暂无调分记录"
+  },
+  "zeroday_bonus": {
+    "total_score": "累计 0day 加分",
+    "critical": "Critical 数",
+    "high": "High 数",
+    "medium": "Medium 数",
+    "low": "Low 数",
+    "cve_severity": "CVE / 级别",
+    "empty": "暂无 0day 加分记录"
   }
 }

@@ -3,9 +3,12 @@ import {
   mdiAccountGroupOutline,
   mdiBugCheckOutline,
   mdiBullhornOutline,
+  mdiCashMultiple,
+  mdiClipboardListOutline,
   mdiDatabaseImportOutline,
   mdiFileDocumentCheckOutline,
   mdiFlagOutline,
+  mdiGavel,
   mdiKeyboardBackspace,
   mdiTagOutline,
   mdiTextBoxOutline,
@@ -50,6 +53,10 @@ export const WithGameEditTab: FC<GameEditTabProps> = ({
     { icon: mdiTicketOutline, title: t('admin.tab.games.tickets'), path: 'tickets' },
     // 0day 工单审批暂时关闭（iter2），后端代码保留。将来恢复时取消注释。
     // { icon: mdiBugCheckOutline, title: t('admin.tab.games.zeroday_tickets', { defaultValue: '0day Tickets' }), path: 'ZeroDayTickets' },
+    { icon: mdiCashMultiple, title: t('admin.tab.games.score_adjustment', { defaultValue: '分数管理' }), path: 'ScoreAdjustment' },
+    { icon: mdiClipboardListOutline, title: t('admin.tab.games.score_ledger', { defaultValue: '调分记录' }), path: 'ScoreLedger' },
+    { icon: mdiBugCheckOutline, title: t('admin.tab.games.zeroday_bonus_ledger', { defaultValue: '0day 加分记录' }), path: 'ZeroDayBonusLedger' },
+    { icon: mdiGavel, title: t('admin.tab.games.bans', { defaultValue: '封禁管理' }), path: 'Bans' },
     { icon: mdiFileDocumentCheckOutline, title: t('admin.tab.games.writeups'), path: 'writeups' },
   ]
 

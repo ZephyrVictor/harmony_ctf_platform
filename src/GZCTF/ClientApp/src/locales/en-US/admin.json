@@ -737,7 +737,11 @@
       "tickets": "Tickets",
       "writeups": "Writeups",
       "import_flags": "Import Flags",
-      "zeroday_tickets": "0day Tickets"
+      "zeroday_tickets": "0day Tickets",
+      "score_adjustment": "Score Management",
+      "score_ledger": "Score Ledger",
+      "zeroday_bonus_ledger": "0day Bonus Ledger",
+      "bans": "Ban Management"
     },
     "instances": "Instances",
     "logs": "Logs",
@@ -790,5 +794,50 @@
     "updated": "Updated",
     "skipped": "Skipped",
     "failed": "Failed"
+  },
+  "score": {
+    "search_placeholder": "Team name / member / token search",
+    "search": "Search",
+    "team_name": "Team",
+    "members": "Members",
+    "token": "Token",
+    "actions": "Actions",
+    "adjust": "Adjust Score",
+    "zero_day_bonus": "0day Bonus",
+    "adjust_title": "Adjust Score",
+    "zero_day_bonus_title": "0day Bonus",
+    "delta": "Delta",
+    "reason": "Reason",
+    "severity": "Severity",
+    "cve_id": "CVE ID / Related Info",
+    "submit": "Submit",
+    "team": "Team",
+    "no_results": "Search for a team",
+    "adjust_success": "Score adjusted",
+    "error_delta_zero": "Delta cannot be zero",
+    "error_reason_required": "Reason is required",
+    "zero_day_reason_placeholder": "e.g. 0day bonus - CVE-2024-XXXX - Critical"
+  },
+  "score_ledger": {
+    "filter_category": "Category Filter",
+    "all": "All",
+    "manual": "Manual",
+    "zero_day": "0day Bonus",
+    "time": "Time",
+    "team": "Team",
+    "delta": "Delta",
+    "reason": "Reason",
+    "category": "Category",
+    "related": "Related Info",
+    "empty": "No score adjustments"
+  },
+  "zeroday_bonus": {
+    "total_score": "Total 0day Bonus",
+    "critical": "Critical Count",
+    "high": "High Count",
+    "medium": "Medium Count",
+    "low": "Low Count",
+    "cve_severity": "CVE / Severity",
+    "empty": "No 0day bonus records"
   }
 }

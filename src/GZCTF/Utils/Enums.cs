@@ -180,7 +180,17 @@ public enum NoticeType : byte
     /// <summary>
     /// New challenge released
     /// </summary>
-    NewChallenge = 5
+    NewChallenge = 5,
+
+    /// <summary>
+    /// 限流告警（admin-only，player-facing 接口不返回）
+    /// </summary>
+    RateLimitAlert = 100,
+
+    /// <summary>
+    /// 调分通报（全员可见，内容如"队伍 X 因 Y 加/减 Z 分"）
+    /// </summary>
+    ScoreAdjustment = 101
 }
 
 /// <summary>

@@ -48,6 +48,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<BigScreenEvent> BigScreenEvents { get; set; } = null!;
     public DbSet<CompetitionSetting> CompetitionSettings { get; set; } = null!;
     public DbSet<ZeroDayTicket> ZeroDayTickets { get; set; } = null!;
+    public DbSet<ScoreAdjustment> ScoreAdjustments { get; set; } = null!;
     public DbSet<ChallengeTrack> ChallengeTracks { get; set; } = null!;
     public DbSet<ChallengeLevelConfig> ChallengeLevelConfigs { get; set; } = null!;
     public DbSet<ChallengeLockState> ChallengeLockStates { get; set; } = null!;
@@ -627,6 +628,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+        });
+
+        builder.Entity<ScoreAdjustment>(entity =>
+        {
+            entity.HasOne(e => e.Game)
+                .WithMany()
+                .HasForeignKey(e => e.GameId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Team)
+                .WithMany()
+                .HasForeignKey(e => e.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Operator)
+                .WithMany()
+                .HasForeignKey(e => e.OperatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.GameId, e.TeamId });
+            entity.HasIndex(e => new { e.GameId, e.Category });
+
+            entity.Property(e => e.Category)
                 .HasConversion<string>()
                 .HasMaxLength(20);
         });

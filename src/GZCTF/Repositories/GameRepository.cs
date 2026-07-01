@@ -631,6 +631,23 @@ public class GameRepository(
                 item.LastSubmissionTime = rec.SubmitTimeUtc;
         }
 
+        // 5.7. 应用 ScoreAdjustment（手动调分 + 0day 加分）
+        // items 当前以 ParticipantId 为键，每个 item.Id 是 TeamId
+        var adjustmentsByTeam = await Context.ScoreAdjustments
+            .AsNoTracking()
+            .Where(a => a.GameId == game.Id)
+            .GroupBy(a => a.TeamId)
+            .Select(g => new { TeamId = g.Key, Total = g.Sum(a => a.Delta) })
+            .ToDictionaryAsync(g => g.TeamId, g => g.Total, token);
+
+        foreach (var item in items.Values)
+        {
+            if (adjustmentsByTeam.TryGetValue(item.Id, out var delta))
+            {
+                item.Score += delta;
+            }
+        }
+
         // group actually-scored FirstSolve and SubmissionRecord events for timeline generation
         var timelineByTeam = scoredTimelineEvents
             .GroupBy(r => r.ParticipationId)
