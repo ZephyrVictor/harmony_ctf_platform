@@ -108,6 +108,16 @@ public class GameInfoModel
     [JsonPropertyName("bloodBonus")]
     public long BloodBonusValue { get; set; } = BloodBonus.DefaultValue;
 
+    /// <summary>
+    /// 0day 提交说明 markdown 文案
+    /// </summary>
+    public string ZeroDayInfoMarkdown { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 0day 加分基础倍数
+    /// </summary>
+    public int ZeroDayBaseScore { get; set; } = 1;
+
     internal static GameInfoModel FromGame(Data.Game game) =>
         new()
         {
@@ -128,6 +138,8 @@ public class GameInfoModel
             WriteupDeadline = game.WriteupDeadline,
             WriteupNote = game.WriteupNote,
             WriteupRequired = game.WriteupRequired,
-            BloodBonusValue = game.BloodBonus.Val
+            BloodBonusValue = game.BloodBonus.Val,
+            ZeroDayInfoMarkdown = game.ZeroDayInfoMarkdown,
+            ZeroDayBaseScore = game.ZeroDayBaseScore
         };
 }

@@ -275,6 +275,7 @@
   "tab": {
     "challenge": "比赛题目",
     "submissions": "提交记录",
+    "zeroday_info": "0day 提交",
     "monitor": {
       "cheatinfo": "作弊信息",
       "events": "事件监控",
@@ -283,6 +284,12 @@
       "traffic": "流量捕获"
     },
     "scoreboard": "积分总榜"
+  },
+  "zeroday_info": {
+    "title": "0day 漏洞提交说明",
+    "empty": "管理员未配置 0day 提交说明",
+    "platform_label": "提交平台",
+    "open_platform": "前往 Bugbounty 平台"
   },
   "tag": {
     "hidden": "比赛已隐藏",

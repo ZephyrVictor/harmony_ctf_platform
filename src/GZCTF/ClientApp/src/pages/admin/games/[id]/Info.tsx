@@ -432,6 +432,39 @@ const GameInfoEdit: FC = () => {
           </Input.Wrapper>
         </Grid.Col>
       </Grid>
+      <SimpleGrid cols={2} spacing="md">
+        <Textarea
+          label={
+            <Group gap="sm">
+              <Text size="sm">{t('admin.content.games.info.zeroday_info_markdown')}</Text>
+              <Text size="xs" c="dimmed">
+                {t('admin.content.markdown_support')}
+              </Text>
+            </Group>
+          }
+          description={t('admin.content.games.info.zeroday_info_markdown_desc')}
+          value={game?.zeroDayInfoMarkdown}
+          w="100%"
+          autosize
+          disabled={disabled}
+          minRows={8}
+          maxRows={20}
+          onChange={(e) => game && setGame({ ...game, zeroDayInfoMarkdown: e.target.value })}
+        />
+        <Stack gap="sm">
+          <NumberInput
+            label={t('admin.content.games.info.zeroday_base_score.label')}
+            description={t('admin.content.games.info.zeroday_base_score.desc')}
+            disabled={disabled}
+            min={1}
+            value={game?.zeroDayBaseScore ?? 1}
+            onChange={(e) => game && setGame({ ...game, zeroDayBaseScore: getInputNumber(e) })}
+          />
+          <Text size="xs" c="dimmed">
+            {t('admin.content.games.info.zeroday_base_score.hint')}
+          </Text>
+        </Stack>
+      </SimpleGrid>
     </WithGameEditTab>
   )
 }

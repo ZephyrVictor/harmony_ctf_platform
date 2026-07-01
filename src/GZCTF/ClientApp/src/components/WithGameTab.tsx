@@ -1,6 +1,6 @@
 import { Card, LoadingOverlay, Stack, Text, Title } from '@mantine/core'
 import { showNotification } from '@mantine/notifications'
-import { mdiChartLine, mdiExclamationThick, mdiFlagOutline, mdiMonitorEye, mdiTicketAccount } from '@mdi/js'
+import { mdiBugCheck, mdiChartLine, mdiExclamationThick, mdiFlagOutline, mdiMonitorEye, mdiTicketAccount } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
@@ -84,6 +84,14 @@ export const WithGameTab: FC<React.PropsWithChildren> = ({ children }) => {
       title: t('game.tab.submissions'),
       path: 'submissions',
       link: 'submissions',
+      requireJoin: true,
+      requireRole: Role.User,
+    },
+    {
+      icon: mdiBugCheck,
+      title: t('game.tab.zeroday_info'),
+      path: 'zeroday-info',
+      link: 'zeroday-info',
       requireJoin: true,
       requireRole: Role.User,
     },

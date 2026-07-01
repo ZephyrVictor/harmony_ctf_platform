@@ -65,6 +65,17 @@ public partial class Game
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
+    /// 0day 提交说明 markdown 文案（管理员可编辑，前端 ZeroDayInfo tab 渲染）
+    /// </summary>
+    [MaxLength(8192)]
+    public string ZeroDayInfoMarkdown { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 0day 加分基础倍数（Critical = base×100, High = base×60, Medium = base×30, Low = base×10）
+    /// </summary>
+    public int ZeroDayBaseScore { get; set; } = 1;
+
+    /// <summary>
     /// Teams can join without review
     /// </summary>
     public bool AcceptWithoutReview { get; set; }
@@ -201,6 +212,8 @@ public partial class Game
         WriteupRequired = model.WriteupRequired;
         WriteupDeadline = model.WriteupDeadline;
         BloodBonus = BloodBonus.FromValue(model.BloodBonusValue);
+        ZeroDayInfoMarkdown = model.ZeroDayInfoMarkdown;
+        ZeroDayBaseScore = model.ZeroDayBaseScore;
 
         return this;
     }

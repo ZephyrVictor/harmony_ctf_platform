@@ -313,6 +313,13 @@
         "writeup_required": {
           "description": "Enable writeup submission",
           "label": "Writeup Required"
+        },
+        "zeroday_info_markdown": "0day Submission Info (Markdown)",
+        "zeroday_info_markdown_desc": "Displayed in the in-game 0day Submission tab. Supports placeholders {{teamToken}}, {{teamName}}, {{bugbounty_url}}",
+        "zeroday_base_score": {
+          "label": "0day Bonus Base Score",
+          "desc": "0day bonus = base × severity multiplier (Critical×100 / High×60 / Medium×30 / Low×10)",
+          "hint": "e.g. base=1: Critical gives 100 pts; base=2: Critical gives 200 pts"
         }
       },
       "notices": {

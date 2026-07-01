@@ -793,7 +793,9 @@ public class GameController(
             Challenges = challenges,
             ChallengeCount = challenges.Count,
             WriteupRequired = context.Game!.WriteupRequired,
-            WriteupDeadline = context.Game!.WriteupDeadline
+            WriteupDeadline = context.Game!.WriteupDeadline,
+            ZeroDayInfoMarkdown = context.Game!.ZeroDayInfoMarkdown,
+            ZeroDayBaseScore = context.Game!.ZeroDayBaseScore
         });
     }
 

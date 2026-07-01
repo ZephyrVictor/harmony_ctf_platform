@@ -38,4 +38,14 @@ public class GameDetailModel
     /// </summary>
     [Required]
     public DateTimeOffset WriteupDeadline { get; set; } = DateTimeOffset.FromUnixTimeSeconds(0);
+
+    /// <summary>
+    /// 0day 提交说明 markdown 文案（ZeroDayInfo tab 渲染用）
+    /// </summary>
+    public string ZeroDayInfoMarkdown { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 0day 加分基础倍数
+    /// </summary>
+    public int ZeroDayBaseScore { get; set; } = 1;
 }

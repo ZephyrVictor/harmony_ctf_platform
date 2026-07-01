@@ -1025,6 +1025,10 @@ export interface GameInfoModel {
    * @format int64
    */
   bloodBonus?: number;
+  /** 0day 提交说明 markdown 文案 */
+  zeroDayInfoMarkdown?: string;
+  /** 0day 加分基础倍数 */
+  zeroDayBaseScore?: number;
 }
 
 /** List response */
@@ -2985,6 +2989,10 @@ export interface GameDetailModel {
    * @format uint64
    */
   writeupDeadline: number;
+  /** 0day 提交说明 markdown 文案 */
+  zeroDayInfoMarkdown?: string;
+  /** 0day 加分基础倍数 */
+  zeroDayBaseScore?: number;
 }
 
 /** Participation for review (Admin) */

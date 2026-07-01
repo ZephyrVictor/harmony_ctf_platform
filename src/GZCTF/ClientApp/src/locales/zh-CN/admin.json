@@ -313,6 +313,13 @@
         "writeup_required": {
           "description": "是否启用比赛的 Writeup 提交功能",
           "label": "需要 Writeup"
+        },
+        "zeroday_info_markdown": "0day 提交说明（Markdown）",
+        "zeroday_info_markdown_desc": "显示在比赛中 0day 提交 tab 的文案，支持占位符 {{teamToken}}、{{teamName}}、{{bugbounty_url}}",
+        "zeroday_base_score": {
+          "label": "0day 加分基础倍数",
+          "desc": "0day 奖励 = 基础倍数 × 级别系数（Critical×100 / High×60 / Medium×30 / Low×10）",
+          "hint": "例如 base=1：Critical 加 100 分；base=2：Critical 加 200 分"
         }
       },
       "notices": {

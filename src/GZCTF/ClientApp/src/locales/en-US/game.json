@@ -275,6 +275,7 @@
   "tab": {
     "challenge": "Challenges",
     "submissions": "Submissions",
+    "zeroday_info": "0day Submission",
     "monitor": {
       "cheatinfo": "Cheats",
       "events": "Events",
@@ -283,6 +284,12 @@
       "traffic": "Traffics"
     },
     "scoreboard": "Scoreboard"
+  },
+  "zeroday_info": {
+    "title": "0day Vulnerability Submission Guide",
+    "empty": "Admin has not configured 0day submission info",
+    "platform_label": "Submission Platform",
+    "open_platform": "Go to Bugbounty Platform"
   },
   "tag": {
     "hidden": "Hidden",
