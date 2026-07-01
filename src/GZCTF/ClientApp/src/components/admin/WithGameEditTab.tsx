@@ -48,7 +48,8 @@ export const WithGameEditTab: FC<GameEditTabProps> = ({
     { icon: mdiTagOutline, title: t('admin.tab.games.divisions'), path: 'divisions' },
     { icon: mdiAccountGroupOutline, title: t('admin.tab.games.review'), path: 'review' },
     { icon: mdiTicketOutline, title: t('admin.tab.games.tickets'), path: 'tickets' },
-    { icon: mdiBugCheckOutline, title: t('admin.tab.games.zeroday_tickets', { defaultValue: '0day Tickets' }), path: 'ZeroDayTickets' },
+    // 0day 工单审批暂时关闭（iter2），后端代码保留。将来恢复时取消注释。
+    // { icon: mdiBugCheckOutline, title: t('admin.tab.games.zeroday_tickets', { defaultValue: '0day Tickets' }), path: 'ZeroDayTickets' },
     { icon: mdiFileDocumentCheckOutline, title: t('admin.tab.games.writeups'), path: 'writeups' },
   ]
 

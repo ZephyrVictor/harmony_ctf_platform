@@ -174,14 +174,16 @@ const Submissions: FC = () => {
                                   <TicketAttachmentSummary attachments={ticket.attachments} />
                                 </Stack>
                             ) : r.isPenalty ? (
-                              <Button
-                                size="xs"
-                                variant="light"
-                                  leftSection={<Icon path={mdiTicketAccount} size={0.7} />}
-                                  onClick={() => openTicket(r)}
-                              >
-                                {t('game.button.create_ticket')}
-                              </Button>
+                              // 申诉功能暂时关闭（iter2），改用 0day 工单流程。代码保留便于恢复。
+                              // <Button
+                              //   size="xs"
+                              //   variant="light"
+                              //     leftSection={<Icon path={mdiTicketAccount} size={0.7} />}
+                              //     onClick={() => openTicket(r)}
+                              // >
+                              //   {t('game.button.create_ticket')}
+                              // </Button>
+                              null
                             ) : null}
                             </Table.Td>
                           </Table.Tr>
