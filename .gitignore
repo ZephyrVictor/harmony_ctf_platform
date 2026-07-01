@@ -271,3 +271,7 @@ _Pvt_Extensions
 # pgBackRest config contains the cipher pass (same as DB_PASSWORD)
 pgbackrest/pgbackrest.conf
 
+
+# iter2 test artifacts
+gzctf-gameflow-report.md
+trace-shots/
