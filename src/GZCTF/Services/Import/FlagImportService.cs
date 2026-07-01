@@ -633,6 +633,7 @@ public class FlagImportService(
 
     /// <summary>
     /// 计算 L1 flag 值（含 ExtraColumns 拼接），用于 "L1" MatchBy。
+    /// 必须与存 flag 时的归一化保持一致（C:→c:, ::→:），否则重复导入时查不到已有 track。
     /// </summary>
     private static string? ComputeL1FlagValue(Dictionary<string, string> row, FlagImportColumnMapping mapping)
     {
@@ -651,6 +652,8 @@ public class FlagImportService(
                 val = $"{val}:{extraVal.Trim()}";
             }
         }
+        // 与 ImportFlagsAsync/ImportSingleRowAsync 存 flag 时的归一化保持一致
+        val = val.Replace("C:", "c:").Replace("::", ":");
         return val;
     }
 }

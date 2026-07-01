@@ -23,9 +23,9 @@ public class FlagImportColumnMapping
     public string? RepositoryColumn { get; set; }
 
     /// <summary>
-    /// FilePath | FlawNo | Title
+    /// FilePath | FlawNo | Title | L1 (推荐 L1：用 L1 flag 值去重，能区分同文件不同行的漏洞)
     /// </summary>
-    public string MatchBy { get; set; } = "FilePath";
+    public string MatchBy { get; set; } = "L1";
 
     public List<LevelColumnMapping> LevelColumns { get; set; } = [];
 }

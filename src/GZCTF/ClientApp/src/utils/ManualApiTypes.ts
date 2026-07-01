@@ -52,7 +52,7 @@ export interface FlagImportColumnMapping {
   submoduleColumn?: string | null
   /** 仓库列(对应 GameChallenge.Repository,自动建题目用) */
   repositoryColumn?: string | null
-  /** FilePath | FlawNo | Title */
+  /** FilePath | FlawNo | Title | L1 (推荐 L1：用 L1 flag 值去重，能区分同文件不同行的漏洞) */
   matchBy?: string
   levelColumns?: LevelColumnMapping[]
 }

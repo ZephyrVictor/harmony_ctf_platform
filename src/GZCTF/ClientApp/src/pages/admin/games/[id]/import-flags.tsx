@@ -41,7 +41,7 @@ const AdminImportFlags: FC = () => {
   const [result, setResult] = useState<FlagImportResult | null>(null)
   const [disabled, setDisabled] = useState(false)
 
-  const [matchBy, setMatchBy] = useState<string>('FilePath')
+  const [matchBy, setMatchBy] = useState<string>('L1')
   const [repoCol, setRepoCol] = useState<string | null>(null)
   const [submodCol, setSubmodCol] = useState<string | null>(null)
   const [trackTitleCol, setTrackTitleCol] = useState<string | null>(null)
@@ -52,9 +52,9 @@ const AdminImportFlags: FC = () => {
   const [trackModuleCol, setTrackModuleCol] = useState<string | null>(null)
 
   const [levelCols, setLevelCols] = useState<LevelColumnMapping[]>([
-    { level: 1, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 5 },
-    { level: 2, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 4 },
-    { level: 3, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 1 },
+    { level: 1, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 5, penaltyScore: 0 },
+    { level: 2, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 4, penaltyScore: 0 },
+    { level: 3, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 1, penaltyScore: 0 },
   ])
 
   const doPreview = useCallback(
@@ -249,8 +249,26 @@ const AdminImportFlags: FC = () => {
               <Group grow>
                 <Select label="Repository column (required)" value={repoCol} onChange={setRepoCol} data={columnOptions} />
                 <Select label="Submodule column (required)" value={submodCol} onChange={setSubmodCol} data={columnOptions} />
-                <Select label="MatchBy" value={matchBy} onChange={(v) => setMatchBy(v ?? 'FilePath')} data={['FilePath', 'FlawNo', 'Title']} />
               </Group>
+              <Stack gap="xs">
+                <Select
+                  label={t('admin.import.matchBy.label')}
+                  description={t('admin.import.matchBy.description')}
+                  value={matchBy}
+                  onChange={(v) => setMatchBy(v ?? 'L1')}
+                  data={[
+                    { value: 'L1', label: t('admin.import.matchBy.L1.label') },
+                    { value: 'FilePath', label: t('admin.import.matchBy.FilePath.label') },
+                    { value: 'FlawNo', label: t('admin.import.matchBy.FlawNo.label') },
+                    { value: 'Title', label: t('admin.import.matchBy.Title.label') },
+                  ]}
+                />
+                {matchBy && (
+                  <Text size="xs" c="dimmed">
+                    {t(`admin.import.matchBy.${matchBy}.description`)}
+                  </Text>
+                )}
+              </Stack>
               <Group grow>
                 <Select label="Title column" value={trackTitleCol} onChange={setTrackTitleCol} data={columnOptions} clearable />
                 <Select label="FlawNo column" value={trackFlawNoCol} onChange={setTrackFlawNoCol} data={columnOptions} clearable />
@@ -305,6 +323,14 @@ const AdminImportFlags: FC = () => {
                     value={lc.score ?? 0}
                     onChange={(v) =>
                       setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, score: typeof v === 'number' ? v : 0 } : l)))
+                    }
+                  />
+                  <NumberInput
+                    label={t('admin.import.penaltyScore.label', { defaultValue: 'Penalty Score' })}
+                    description={t('admin.import.penaltyScore.description', { defaultValue: 'Wrong answer deduction (0 = no penalty)' })}
+                    value={lc.penaltyScore ?? 0}
+                    onChange={(v) =>
+                      setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, penaltyScore: typeof v === 'number' ? v : 0 } : l)))
                     }
                   />
                 </Group>

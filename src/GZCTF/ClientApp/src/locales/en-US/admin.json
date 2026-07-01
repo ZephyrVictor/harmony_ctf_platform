@@ -804,7 +804,31 @@
     "imported": "Imported",
     "updated": "Updated",
     "skipped": "Skipped",
-    "failed": "Failed"
+    "failed": "Failed",
+    "matchBy": {
+      "label": "Dedup Key",
+      "description": "How to determine if a row matches an existing track during import",
+      "L1": {
+        "label": "L1 flag value (recommended)",
+        "description": "Dedup by L1 flag value (file_path:line_number). Vulnerabilities in the same file but different lines are correctly split into separate tracks"
+      },
+      "FilePath": {
+        "label": "File path",
+        "description": "Dedup by file path. Multiple vulnerabilities in the same file are merged into one track (not recommended, loses vulns)"
+      },
+      "FlawNo": {
+        "label": "Flaw number",
+        "description": "Dedup by FlawNo column. Requires the dataset to have a FlawNo column"
+      },
+      "Title": {
+        "label": "Vulnerability title",
+        "description": "Dedup by Title column. Multiple vulnerabilities with the same title are merged (not recommended)"
+      }
+    },
+    "penaltyScore": {
+      "label": "Penalty Score",
+      "description": "Wrong answer deduction (0 = no penalty)"
+    }
   },
   "score": {
     "search_placeholder": "Team name / member / token search",
