@@ -8,7 +8,7 @@ import { Markdown } from '@Components/MarkdownRenderer'
 import { WithGameTab } from '@Components/WithGameTab'
 import { WithNavBar } from '@Components/WithNavbar'
 import { useGame } from '@Hooks/useGame'
-import { Api } from '@Api'
+import api from '@Api'
 
 const BUGBOUNTY_URL = 'https://bugbounty.openharmony.cn/bugbounty/leak'
 
@@ -19,7 +19,7 @@ const ZeroDayInfo: FC = () => {
   const { game } = useGame(numId)
 
   // 获取队伍信息 + 0day 文案 —— 通过 game detail API（含 zeroDayInfoMarkdown + teamToken）
-  const { data: detail } = Api.Game.useGameChallengesWithTeamInfo(numId, {
+  const { data: detail } = api.game.useGameChallengesWithTeamInfo(numId, {
     revalidateOnFocus: false,
   })
 

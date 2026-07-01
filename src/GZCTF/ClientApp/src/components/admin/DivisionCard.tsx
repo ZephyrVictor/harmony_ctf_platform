@@ -27,7 +27,7 @@ export const DivisionCard: FC<DivisionCardProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const overrides = (division.challengeConfigs ?? []).toSorted((a, b) => {
+  const overrides = [...(division.challengeConfigs ?? [])].sort((a, b) => {
     const left = challengeTitleMap.get(a.challengeId) ?? `#${a.challengeId}`
     const right = challengeTitleMap.get(b.challengeId) ?? `#${b.challengeId}`
     return left.localeCompare(right)

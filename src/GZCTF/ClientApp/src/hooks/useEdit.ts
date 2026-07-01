@@ -15,7 +15,7 @@ export const useEditChallenges = (numId: number) => {
 
   useEffect(() => {
     if (data) {
-      setSortedChallenges(data.toSorted((a, b) => ((a.category ?? '') > (b.category ?? '') ? -1 : 1)))
+      setSortedChallenges([...data].sort((a, b) => ((a.category ?? '') > (b.category ?? '') ? -1 : 1)))
     }
   }, [data])
 

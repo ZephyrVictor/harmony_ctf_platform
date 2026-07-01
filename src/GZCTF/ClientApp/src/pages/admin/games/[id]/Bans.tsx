@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
-import { Api } from '@Api'
+import api from '@Api'
 import {
   createBan, deleteBan, listAlertNotices, listBans,
   AlertNotice, BanStateDto,
@@ -59,13 +59,13 @@ const Bans: FC = () => {
   // 加载题目列表（用于手动封禁弹窗的下拉）
   const loadChallenges = useCallback(async () => {
     try {
-      const res = await Api.Game.gameChallengesWithTeamInfo(gameId)
+      const res = await api.game.gameChallengesWithTeamInfo(gameId)
       // 从 challenges 里提取题目列表
       const allChals: { value: string; label: string }[] = []
       const challengesMap = res.data?.challenges
       if (challengesMap) {
         Object.entries(challengesMap).forEach(([category, chals]) => {
-          chals.forEach((c: any) => {
+          (chals as any[]).forEach((c: any) => {
             allChals.push({ value: String(c.id), label: `${c.title} (${category})` })
           })
         })

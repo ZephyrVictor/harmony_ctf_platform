@@ -418,14 +418,24 @@ namespace GZCTF.Migrations
                     b.Property<DateTimeOffset>("BannedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("BannedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsManual")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
                     b.Property<int>("ParticipationId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<Guid>("TrackId")
                         .HasColumnType("uuid");
@@ -890,6 +900,14 @@ namespace GZCTF.Migrations
                     b.Property<bool>("WriteupRequired")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("ZeroDayBaseScore")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ZeroDayInfoMarkdown")
+                        .IsRequired()
+                        .HasMaxLength(8192)
+                        .HasColumnType("character varying(8192)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Games");
@@ -1265,6 +1283,60 @@ namespace GZCTF.Migrations
                     b.HasIndex("AuthorId");
 
                     b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ScoreAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Delta")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GameId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OperatorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("RelatedInfo")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("TeamId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("GameId");
+
+                    b.HasIndex("OperatorId");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("GameId", "Category");
+
+                    b.HasIndex("GameId", "TeamId");
+
+                    b.ToTable("ScoreAdjustments");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.Submission", b =>
@@ -2305,6 +2377,33 @@ namespace GZCTF.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Author");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ScoreAdjustment", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.Game", "Game")
+                        .WithMany()
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.UserInfo", "Operator")
+                        .WithMany()
+                        .HasForeignKey("OperatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Game");
+
+                    b.Navigation("Operator");
+
+                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.Submission", b =>

@@ -51,7 +51,7 @@ const GameDivisionManagement: FC = () => {
   }, [challenges, t])
 
   const sortedDivisions = useMemo(
-    () => (divisions ? divisions.toSorted((a, b) => a.name.localeCompare(b.name)) : []),
+    () => (divisions ? [...divisions].sort((a, b) => a.name.localeCompare(b.name)) : []),
     [divisions]
   )
 

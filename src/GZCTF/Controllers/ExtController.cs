@@ -3,6 +3,7 @@ using System.Text.Json;
 using GZCTF.Middlewares;
 using GZCTF.Models;
 using GZCTF.Models.Request;
+using GZCTF.Models.Request.Edit;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using GZCTF.Services.Scoring;

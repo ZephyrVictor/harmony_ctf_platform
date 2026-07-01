@@ -172,14 +172,14 @@ public class ScoreAdjustmentController(AppDbContext context, CacheHelper cacheHe
             .Where(t => teamIds.Contains(t.Id))
             .Where(t =>
                 EF.Functions.ILike(t.Name, $"%{keyword}%") ||
-                EF.Functions.ILike(t.TeamToken, $"%{keyword}%") ||
+                EF.Functions.ILike(t.InviteToken, $"%{keyword}%") ||
                 t.Members!.Any(m =>
                     EF.Functions.ILike(m.UserName!, $"%{keyword}%")))
             .Select(t => new TeamSearchResultDto
             {
                 TeamId = t.Id,
                 TeamName = t.Name,
-                TeamToken = t.TeamToken,
+                TeamToken = t.InviteToken,
                 Members = t.Members!.Select(m => m.UserName!).ToArray()
             })
             .Take(20)
