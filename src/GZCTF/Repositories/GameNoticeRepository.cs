@@ -38,11 +38,23 @@ public class GameNoticeRepository(
         => cacheHelper.GetOrCreateAsync(logger, CacheKey.GameNotice(gameId), async entry =>
         {
             entry.SlidingExpiration = TimeSpan.FromMinutes(30);
-            var notices = await Context.GameNotices.Where(e => e.GameId == gameId)
+            // player-facing：排除 admin-only 类型（RateLimitAlert）
+            var notices = await Context.GameNotices
+                .Where(e => e.GameId == gameId && e.Type != NoticeType.RateLimitAlert)
                 .OrderByDescending(e => e.Type == NoticeType.Normal ? DateTimeOffset.UtcNow : e.PublishTimeUtc)
                 .Take(300).ToArrayAsync(token);
             return new DataWithModifiedTime<GameNotice[]>(notices, DateTimeOffset.UtcNow);
         }, token: token);
+
+    /// <summary>
+    /// 获取告警类通知（admin-only，含 RateLimitAlert）
+    /// </summary>
+    public Task<GameNotice[]> GetAlertNotices(int gameId, CancellationToken token = default) =>
+        Context.GameNotices
+            .Where(n => n.GameId == gameId && n.Type == NoticeType.RateLimitAlert)
+            .OrderByDescending(n => n.PublishTimeUtc)
+            .Take(200)
+            .ToArrayAsync(token);
 
     public async Task RemoveNotice(GameNotice notice, CancellationToken token = default)
     {

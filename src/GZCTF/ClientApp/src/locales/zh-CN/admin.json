@@ -839,5 +839,30 @@
     "low": "Low 数",
     "cve_severity": "CVE / 级别",
     "empty": "暂无 0day 加分记录"
+  },
+  "ban": {
+    "manual_ban": "手动封禁",
+    "manual_ban_title": "手动封禁队伍",
+    "manual_ban_warning": "封禁后该队在该 (Track, Level) 将无法提交，需手动解封才能恢复",
+    "team": "队伍",
+    "challenge": "题目",
+    "track": "题目 Track",
+    "track_id": "Track ID",
+    "level": "Level",
+    "reason": "封禁理由",
+    "type": "类型",
+    "time": "封禁时间",
+    "actions": "操作",
+    "manual": "手动",
+    "trap": "Trap 自动",
+    "unban": "解封",
+    "submit": "封禁",
+    "banned": "已封禁",
+    "unbanned": "已解封",
+    "bans_title": "封禁列表",
+    "alerts_title": "限流告警",
+    "no_bans": "暂无封禁记录",
+    "no_alerts": "暂无限流告警",
+    "error_fields_required": "请填写所有必填字段"
   }
 }

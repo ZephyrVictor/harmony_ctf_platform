@@ -3,8 +3,12 @@ using System.Globalization;
 using System.Net;
 using System.Net.Mime;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
+using GZCTF.Models;
+using GZCTF.Models.Data;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 
 namespace GZCTF.Middlewares;
@@ -94,6 +98,17 @@ public static class RateLimiter
                 afterSec = (int)retryAfter.TotalSeconds;
 
             context.HttpContext.Response.Headers.RetryAfter = afterSec.ToString(NumberFormatInfo.InvariantInfo);
+
+            // 提交限流告警：如果是 submit 端点被限流，写一条 RateLimitAlert GameNotice
+            try
+            {
+                await TryWriteSubmitRateLimitAlert(context.HttpContext, cancellationToken);
+            }
+            catch
+            {
+                // 告警失败不影响限流响应
+            }
+
             await context.HttpContext.Response.WriteAsJsonAsync(
                 new RequestResponse(localizer[nameof(Resources.Program.RateLimit_TooManyRequests), afterSec],
                     StatusCodes.Status429TooManyRequests
@@ -136,5 +151,66 @@ public static class RateLimiter
             o.TokensPerPeriod = 50;
             o.ReplenishmentPeriod = TimeSpan.FromSeconds(5);
         });
+    }
+
+    /// <summary>
+    /// 提交端点被限流时写一条 RateLimitAlert GameNotice（admin-only 可见）
+    /// 去重：同一队同一题 5 分钟内只记一条
+    /// </summary>
+    private static readonly Regex SubmitPathRegex =
+        new(@"^/api/game/(?<gameId>\d+)/Challenges/(?<challengeId>\d+)$",
+            RegexOptions.Compiled);
+
+    private static async Task TryWriteSubmitRateLimitAlert(HttpContext httpContext, CancellationToken token)
+    {
+        var path = httpContext.Request.Path.Value ?? string.Empty;
+        var match = SubmitPathRegex.Match(path);
+        if (!match.Success) return;
+        if (httpContext.Request.Method != "POST") return;
+
+        var gameId = int.Parse(match.Groups["gameId"].Value);
+        var challengeId = int.Parse(match.Groups["challengeId"].Value);
+
+        var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return;
+
+        var db = httpContext.RequestServices.GetRequiredService<AppDbContext>();
+
+        // 找 participation + team
+        var participation = await (from p in db.Participations
+                                   join t in db.Teams on p.TeamId equals t.Id
+                                   where p.GameId == gameId && db.Participations
+                                       .Any(pp => pp.GameId == gameId
+                                                  && pp.Team.Members.Any(m => m.Id == Guid.Parse(userId)))
+                                   select new { p.Id, TeamName = t.Name, TeamId = t.Id })
+                                   .FirstOrDefaultAsync(token);
+        if (participation is null) return;
+
+        // 去重：5 分钟内同一队同一题只记一条
+        var since = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var exists = await db.GameNotices.AnyAsync(n =>
+            n.GameId == gameId &&
+            n.Type == NoticeType.RateLimitAlert &&
+            n.PublishTimeUtc > since, token);
+        if (exists) return;
+
+        var challenge = await db.GameChallenges
+            .Where(c => c.Id == challengeId)
+            .Select(c => c.Title)
+            .FirstOrDefaultAsync(token);
+
+        db.GameNotices.Add(new GameNotice
+        {
+            GameId = gameId,
+            Type = NoticeType.RateLimitAlert,
+            Values = new List<string>
+            {
+                participation.TeamName,
+                challenge ?? $"#{challengeId}",
+                DateTimeOffset.UtcNow.ToString("O")
+            },
+            PublishTimeUtc = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync(token);
     }
 }

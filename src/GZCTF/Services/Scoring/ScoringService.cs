@@ -103,6 +103,25 @@ public class ScoringService
             };
         }
 
+        // 2.5 封禁检查（trap 自动封 + 管理员手动封）
+        // 如果该 (Track, Level) 已被封禁，拒绝任何提交
+        if (trackId is not null)
+        {
+            var isBanned = await _banStateRepo.IsBanned(
+                participation.Id, challenge.Id, trackId.Value, level, token);
+            if (isBanned)
+            {
+                return new ScoreResult
+                {
+                    Status = AnswerResult.WrongAnswer,
+                    ScoreChange = 0,
+                    BannedTrackId = trackId,
+                    BannedLevel = level,
+                    Message = "已被封禁，请联系管理员"
+                };
+            }
+        }
+
         // 3. 匹配
         ChallengeFlag[] candidates;
         if (trackId is null)
@@ -277,7 +296,10 @@ public class ScoringService
                         ChallengeId = challenge.Id,
                         TrackId = trackId.Value,
                         Level = level,
-                        BanAnswer = answer
+                        BanAnswer = answer,
+                        Reason = "Trap triggered",
+                        BannedBy = null,
+                        IsManual = false
                     }, token);
                 }
                 bannedTrackId = trackId;

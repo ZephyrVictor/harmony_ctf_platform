@@ -839,5 +839,30 @@
     "low": "Low Count",
     "cve_severity": "CVE / Severity",
     "empty": "No 0day bonus records"
+  },
+  "ban": {
+    "manual_ban": "Manual Ban",
+    "manual_ban_title": "Manually Ban Team",
+    "manual_ban_warning": "After banning, the team cannot submit at this (Track, Level). Manual unban required to restore.",
+    "team": "Team",
+    "challenge": "Challenge",
+    "track": "Challenge Track",
+    "track_id": "Track ID",
+    "level": "Level",
+    "reason": "Ban Reason",
+    "type": "Type",
+    "time": "Banned At",
+    "actions": "Actions",
+    "manual": "Manual",
+    "trap": "Trap Auto",
+    "unban": "Unban",
+    "submit": "Ban",
+    "banned": "Banned",
+    "unbanned": "Unbanned",
+    "bans_title": "Ban List",
+    "alerts_title": "Rate Limit Alerts",
+    "no_bans": "No ban records",
+    "no_alerts": "No rate limit alerts",
+    "error_fields_required": "Please fill in all required fields"
   }
 }
