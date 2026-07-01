@@ -19,4 +19,10 @@ public class GameJoinModel
     /// Invitation code for participation
     /// </summary>
     public string? InviteCode { get; set; }
+
+    /// <summary>
+    /// Whether the user has read and accepted the commitment letter
+    /// </summary>
+    [Required]
+    public bool CommitmentAccepted { get; set; }
 }

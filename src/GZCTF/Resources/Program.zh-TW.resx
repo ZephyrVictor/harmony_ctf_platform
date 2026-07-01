@@ -554,6 +554,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>比賽邀請碼錯誤</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>請先閱讀並勾選承諾書後再報名</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>無效的參賽單位</value>
   </data>

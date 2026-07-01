@@ -604,6 +604,11 @@ export const enum ErrorCodes {
    * 比赛已结束
    */
   GameEnded = 10002,
+
+  /**
+   * 承诺书未勾选
+   */
+  GameCommitmentRequired = 10003,
 }
 
 const showErrorNotification = (title: string, message: string) => {

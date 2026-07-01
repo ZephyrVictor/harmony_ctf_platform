@@ -567,6 +567,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>Code d'invitation au jeu invalide</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>Veuillez lire et accepter la lettre d'engagement avant de vous inscrire</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>Division invalide</value>
   </data>

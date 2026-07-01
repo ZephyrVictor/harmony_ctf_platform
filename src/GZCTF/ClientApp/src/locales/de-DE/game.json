@@ -26,6 +26,12 @@
       "comment": "Vielleicht warten noch schwierigere Herausforderungen auf dich...",
       "title": "Alle Herausforderungen wurden gelöst!"
     },
+    "commitment": {
+      "title": "Verpflichtungsschreiben",
+      "agree": "Ich habe das Verpflichtungsschreiben sorgfältig gelesen",
+      "next": "Weiter",
+      "cancel": "Abbrechen"
+    },
     "duration": "{{hours}} Stunde(n)",
     "end_at": "Endet um",
     "end_time": "Endzeit",

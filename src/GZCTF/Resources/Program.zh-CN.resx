@@ -554,6 +554,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>比赛邀请码错误</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>请先阅读并勾选承诺书后再报名</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>无效的参赛分组</value>
   </data>

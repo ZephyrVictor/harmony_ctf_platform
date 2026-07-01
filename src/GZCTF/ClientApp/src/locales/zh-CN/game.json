@@ -30,6 +30,12 @@
       "comment": "或许还有更难的挑战在等着你……",
       "title": "题目都被解出啦！"
     },
+    "commitment": {
+      "title": "承诺书",
+      "agree": "我已认真阅读承诺书相关内容",
+      "next": "下一步",
+      "cancel": "取消"
+    },
     "duration": "{{hours}} 小时",
     "end_at": "结束于",
     "end_time": "结束时间",

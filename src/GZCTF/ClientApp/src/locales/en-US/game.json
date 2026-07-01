@@ -30,6 +30,12 @@
       "comment": "Perhaps more difficult challenges are waiting for you...",
       "title": "All challenges were solved!"
     },
+    "commitment": {
+      "title": "Commitment Letter",
+      "agree": "I have carefully read the commitment letter",
+      "next": "Next",
+      "cancel": "Cancel"
+    },
     "duration": "{{hours}} hour(s)",
     "end_at": "Ends at",
     "end_time": "End Time",

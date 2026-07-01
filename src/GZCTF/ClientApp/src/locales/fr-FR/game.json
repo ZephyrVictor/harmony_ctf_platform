@@ -26,6 +26,12 @@
       "comment": "Peut-être que des défis plus difficiles vous attendent...",
       "title": "Tous les défis ont été résolus !"
     },
+    "commitment": {
+      "title": "Lettre d'engagement",
+      "agree": "J'ai attentivement lu le contenu de la lettre d'engagement",
+      "next": "Suivant",
+      "cancel": "Annuler"
+    },
     "duration": "{{hours}} heure(s)",
     "end_at": "Se termine à",
     "end_time": "Heure de fin",

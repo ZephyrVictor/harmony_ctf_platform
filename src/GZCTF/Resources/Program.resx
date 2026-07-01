@@ -554,6 +554,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>Invalid game invitation code</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>Commitment letter must be read and accepted before registration</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>Invalid division</value>
   </data>
