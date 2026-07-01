@@ -28,7 +28,7 @@
     },
     "commitment": {
       "title": "Thư cam kết",
-      "agree": "Tôi đã đọc kỹ nội dung thư cam kết",
+      "agree": "Tôi đã đọc kỹ và đồng ý với nội dung thư cam kết",
       "next": "Tiếp theo",
       "cancel": "Hủy"
     },
