@@ -250,6 +250,69 @@ public class ExtController(
         return NoContent();
     }
 
+    /// <summary>
+    /// 批量更新 flag（启用/禁用）
+    /// </summary>
+    [RequireAdmin]
+    [HttpPost("challenges/{challengeId:int}/flags/batch-update")]
+    [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> BatchUpdateFlags(
+        [FromRoute] int challengeId,
+        [FromBody] BatchFlagUpdateModel model,
+        CancellationToken token)
+    {
+        if (model.FlagIds.Count == 0)
+            return BadRequest(new RequestResponse("No flags selected"));
+
+        var flags = await context.ChallengeFlags
+            .Where(f => f.ChallengeId == challengeId && model.FlagIds.Contains(f.Id))
+            .ToListAsync(token);
+
+        foreach (var f in flags)
+            f.IsEnabled = model.IsEnabled;
+
+        await context.SaveChangesAsync(token);
+        await FlushScoreboardForChallenge(challengeId, token);
+
+        return Ok(new RequestResponse($"Updated {flags.Count} flags"));
+    }
+
+    /// <summary>
+    /// 批量删除 flag
+    /// </summary>
+    [RequireAdmin]
+    [HttpPost("challenges/{challengeId:int}/flags/batch-delete")]
+    [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> BatchDeleteFlags(
+        [FromRoute] int challengeId,
+        [FromBody] BatchFlagDeleteModel model,
+        CancellationToken token)
+    {
+        if (model.FlagIds.Count == 0)
+            return BadRequest(new RequestResponse("No flags selected"));
+
+        // 检查是否有提交记录
+        var flagsWithSubs = await context.SubmissionRecords
+            .Where(r => model.FlagIds.Contains(r.MatchedFlagId.Value))
+            .Select(r => r.MatchedFlagId!.Value)
+            .Distinct()
+            .ToListAsync(token);
+
+        if (flagsWithSubs.Count > 0)
+            return Conflict(new RequestResponse(
+                $"Cannot delete {flagsWithSubs.Count} flags with existing submissions"));
+
+        var flags = await context.ChallengeFlags
+            .Where(f => f.ChallengeId == challengeId && model.FlagIds.Contains(f.Id))
+            .ToListAsync(token);
+
+        context.ChallengeFlags.RemoveRange(flags);
+        await context.SaveChangesAsync(token);
+        await FlushScoreboardForChallenge(challengeId, token);
+
+        return Ok(new RequestResponse($"Deleted {flags.Count} flags"));
+    }
+
     #endregion
 
     #region Penalty Configuration

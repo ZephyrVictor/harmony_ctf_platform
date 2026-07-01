@@ -374,7 +374,7 @@ const OneAttachmentWithFlags: FC<FlagEditProps> = ({ onDelete }) => {
               </Center>
             </>
           )}
-          <FlagEditPanel flags={challenge?.flags} onDelete={onDelete} unifiedAttachment={challenge?.attachment} />
+          <FlagEditPanel flags={challenge?.flags} onDelete={onDelete} unifiedAttachment={challenge?.attachment} challengeId={numCId} onRefresh={() => mutate()} />
         </ScrollArea>
       )}
       <FlagCreateModal
@@ -389,7 +389,7 @@ const OneAttachmentWithFlags: FC<FlagEditProps> = ({ onDelete }) => {
 const FlagsWithAttachments: FC<FlagEditProps> = ({ onDelete }) => {
   const { id, chalId } = useParams()
   const [numId, numCId] = [parseInt(id ?? '-1'), parseInt(chalId ?? '-1')]
-  const { challenge } = useEditChallenge(numId, numCId)
+  const { challenge, mutate } = useEditChallenge(numId, numCId)
 
   const [attachmentUploadModalOpened, setAttachmentUploadModalOpened] = useState(false)
   const [remoteAttachmentModalOpened, setRemoteAttachmentModalOpened] = useState(false)
@@ -423,7 +423,7 @@ const FlagsWithAttachments: FC<FlagEditProps> = ({ onDelete }) => {
             </Center>
           </>
         )}
-        <FlagEditPanel flags={challenge?.flags} onDelete={onDelete} />
+        <FlagEditPanel flags={challenge?.flags} onDelete={onDelete} challengeId={numCId} onRefresh={() => mutate()} />
       </ScrollArea>
       <AttachmentUploadModal
         title={t('admin.button.challenges.flag.add.dynamic')}

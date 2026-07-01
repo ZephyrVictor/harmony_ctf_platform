@@ -195,3 +195,27 @@ export const getEvents = (unconsumedOnly = true, count = 100) => {
   params.set('count', String(count))
   return request<BigScreenEventDto[]>(`/events?${params}`)
 }
+
+
+// ---- Flag Batch Operations ----
+
+export interface BatchFlagUpdateModel {
+  flagIds: string[]
+  isEnabled: boolean
+}
+
+export interface BatchFlagDeleteModel {
+  flagIds: string[]
+}
+
+export const batchUpdateFlags = (challengeId: number, model: BatchFlagUpdateModel) =>
+  request<{ message?: string }>(`/challenges/${challengeId}/flags/batch-update`, {
+    method: 'POST',
+    body: JSON.stringify(model),
+  })
+
+export const batchDeleteFlags = (challengeId: number, model: BatchFlagDeleteModel) =>
+  request<{ message?: string }>(`/challenges/${challengeId}/flags/batch-delete`, {
+    method: 'POST',
+    body: JSON.stringify(model),
+  })
