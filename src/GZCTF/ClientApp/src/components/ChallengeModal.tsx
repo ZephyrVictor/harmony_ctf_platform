@@ -85,7 +85,9 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
           </Badge>
           {currentLevel !== undefined && (
             <Badge variant="light" color="indigo">
-              {t('challenge.level.current')}: L{currentLevel}
+              {t('challenge.level.current')}: {activeLevels.find((l) => l.level === currentLevel)?.title
+                ? `L${currentLevel} - ${activeLevels.find((l) => l.level === currentLevel)?.title}`
+                : `L${currentLevel}`}
             </Badge>
           )}
         </Group>
@@ -165,7 +167,7 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
               <React.Fragment key={level}>
                 {idx > 0 && <Text size="sm" c="dimmed">→</Text>}
                 <Badge variant={isCurrent ? 'filled' : 'light'} color={color}>
-                  L{level}{icon}
+                  {levelInfo.title ? `L${level} - ${levelInfo.title}` : `L${level}`}{icon}
                 </Badge>
               </React.Fragment>
             )

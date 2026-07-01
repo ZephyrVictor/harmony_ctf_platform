@@ -238,7 +238,8 @@ public class FlagImportService(
                         {
                             ChallengeId = challengeId,
                             Level = lc.Level,
-                            Title = lc.LevelTitle,
+                            // iter2: 没显式设 LevelTitle 时用 ColumnName 作为 level 显示名
+                            Title = string.IsNullOrWhiteSpace(lc.LevelTitle) ? lc.ColumnName : lc.LevelTitle,
                             Score = lc.Score,
                             SubmissionLimit = effectiveSubmissionLimit,
                             PenaltyScore = lc.PenaltyScore,
@@ -507,7 +508,8 @@ public class FlagImportService(
                     {
                         ChallengeId = challengeId,
                         Level = lc.Level,
-                        Title = lc.LevelTitle,
+                        // iter2: 没显式设 LevelTitle 时用 ColumnName 作为 level 显示名
+                        Title = string.IsNullOrWhiteSpace(lc.LevelTitle) ? lc.ColumnName : lc.LevelTitle,
                         Score = lc.Score,
                         SubmissionLimit = effectiveSubmissionLimit,
                         PenaltyScore = lc.PenaltyScore,
