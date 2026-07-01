@@ -28,7 +28,7 @@
     },
     "commitment": {
       "title": "Lettre d'engagement",
-      "agree": "J'ai attentivement lu le contenu de la lettre d'engagement",
+      "agree": "J'ai attentivement lu et accepte le contenu de la lettre d'engagement",
       "next": "Suivant",
       "cancel": "Annuler"
     },

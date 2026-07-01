@@ -28,7 +28,7 @@
     },
     "commitment": {
       "title": "Carta de compromiso",
-      "agree": "He leído atentamente el contenido de la carta de compromiso",
+      "agree": "He leído atentamente y acepto el contenido de la carta de compromiso",
       "next": "Siguiente",
       "cancel": "Cancelar"
     },

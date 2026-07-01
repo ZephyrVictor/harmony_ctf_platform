@@ -28,7 +28,7 @@
     },
     "commitment": {
       "title": "Verpflichtungsschreiben",
-      "agree": "Ich habe das Verpflichtungsschreiben sorgfältig gelesen",
+      "agree": "Ich habe das Verpflichtungsschreiben sorgfältig gelesen und stimme zu",
       "next": "Weiter",
       "cancel": "Abbrechen"
     },

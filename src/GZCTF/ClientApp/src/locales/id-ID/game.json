@@ -28,7 +28,7 @@
     },
     "commitment": {
       "title": "Surat Komitmen",
-      "agree": "Saya telah membaca dengan saksama isi surat komitmen",
+      "agree": "Saya telah membaca dengan saksama dan menyetujui isi surat komitmen",
       "next": "Berikutnya",
       "cancel": "Batal"
     },
