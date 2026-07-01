@@ -598,4 +598,9 @@ public static class ErrorCodes
     /// Game ended
     /// </summary>
     public const int GameEnded = 10002;
+
+    /// <summary>
+    /// Commitment letter not accepted
+    /// </summary>
+    public const int GameCommitmentRequired = 10003;
 }

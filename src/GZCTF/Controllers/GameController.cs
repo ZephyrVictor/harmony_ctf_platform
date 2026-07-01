@@ -188,6 +188,11 @@ public class GameController(
             return BadRequest(
                 new RequestResponse(localizer[nameof(Resources.Program.Game_Ended)], ErrorCodes.GameEnded));
 
+        if (!model.CommitmentAccepted)
+            return BadRequest(new RequestResponse(
+                localizer[nameof(Resources.Program.Game_CommitmentRequired)],
+                ErrorCodes.GameCommitmentRequired));
+
         var user = await userManager.GetUserAsync(User);
         var team = await teamRepository.GetTeamById(model.TeamId, token);
 

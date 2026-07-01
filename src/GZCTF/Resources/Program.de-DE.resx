@@ -570,6 +570,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>Ungültiger Spieleinladungscode</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>Bitte lesen und akzeptieren Sie das Verpflichtungsschreiben vor der Anmeldung</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>Ungültige Abteilung</value>
   </data>

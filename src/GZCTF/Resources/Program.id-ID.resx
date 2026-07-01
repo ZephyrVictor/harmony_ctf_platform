@@ -554,6 +554,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>Kode undangan tidak valid</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>Harap baca dan setujui surat komitmen sebelum mendaftar</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>Divisi tidak valid</value>
   </data>

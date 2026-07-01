@@ -2625,6 +2625,8 @@ export interface GameJoinModel {
   divisionId?: number | null;
   /** Invitation code for participation */
   inviteCode?: string | null;
+  /** Whether the user has read and accepted the commitment letter */
+  commitmentAccepted: boolean;
 }
 
 /** Scoreboard */

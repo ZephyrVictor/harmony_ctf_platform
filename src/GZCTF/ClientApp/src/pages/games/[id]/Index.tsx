@@ -20,6 +20,7 @@ import { Icon } from '@mdi/react'
 import { FC, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
+import { GameCommitmentModal } from '@Components/GameCommitmentModal'
 import { GameJoinModal } from '@Components/GameJoinModal'
 import { GameProgress } from '@Components/GameProgress'
 import { Markdown } from '@Components/MarkdownRenderer'
@@ -112,6 +113,7 @@ const GameDetail: FC = () => {
   const { scrollIntoView, targetRef } = useScrollIntoView<HTMLDivElement>()
 
   const [joinModalOpen, setJoinModalOpen] = useState(false)
+  const [commitmentModalOpen, setCommitmentModalOpen] = useState(false)
 
   useEffect(() => scrollIntoView({ alignment: 'center' }), [scrollIntoView])
 
@@ -168,23 +170,7 @@ const GameDetail: FC = () => {
   const teamRequire =
     user && status === ParticipationStatus.Unsubmitted && isGameOpenForJoin && teams && teams.length === 0
 
-  const onJoin = () =>
-    modals.openConfirmModal({
-      title: t('game.content.join.confirm'),
-      children: (
-        <Stack gap="xs">
-          <Text size="sm">{t('game.content.join.content.0')}</Text>
-          <Text size="sm">
-            <Trans i18nKey="game.content.join.content.1" />
-          </Text>
-          <Text size="sm">
-            <Trans i18nKey="game.content.join.content.2" />
-          </Text>
-        </Stack>
-      ),
-      onConfirm: () => setJoinModalOpen(true),
-      confirmProps: { color: theme.primaryColor },
-    })
+  const onJoin = () => setCommitmentModalOpen(true)
 
   const onLeave = () =>
     modals.openConfirmModal({
@@ -308,6 +294,14 @@ const GameDetail: FC = () => {
           )}
           <Markdown source={game?.content ?? ''} />
         </Stack>
+        <GameCommitmentModal
+          opened={commitmentModalOpen}
+          onClose={() => setCommitmentModalOpen(false)}
+          onConfirm={() => {
+            setCommitmentModalOpen(false)
+            setJoinModalOpen(true)
+          }}
+        />
         <GameJoinModal
           title={t('game.content.join.title')}
           opened={joinModalOpen}

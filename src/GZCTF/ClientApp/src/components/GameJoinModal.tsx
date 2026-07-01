@@ -133,6 +133,7 @@ export const GameJoinModal: FC<GameJoinModalProps> = (props) => {
             : !canSelectDivision && joinedDivision
               ? joinedDivision.id
               : undefined,
+        commitmentAccepted: true,
       })
     } finally {
       setInviteCode('')

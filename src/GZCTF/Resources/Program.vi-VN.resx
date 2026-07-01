@@ -554,6 +554,9 @@
   <data name="Game_InvalidInvitationCode" xml:space="preserve">
     <value>Mã mời tham gia trò chơi không hợp lệ</value>
   </data>
+  <data name="Game_CommitmentRequired" xml:space="preserve">
+    <value>Vui lòng đọc và chấp nhận thư cam kết trước khi đăng ký</value>
+  </data>
   <data name="Game_InvalidDivision" xml:space="preserve">
     <value>Bảng không hợp lệ</value>
   </data>

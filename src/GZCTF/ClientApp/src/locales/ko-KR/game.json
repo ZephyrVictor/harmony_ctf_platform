@@ -26,6 +26,12 @@
       "comment": "아마 더 어려운 문제들이 기다리고 있을 것입니다...",
       "title": "모든 문제를 해결했습니다!"
     },
+    "commitment": {
+      "title": "약정서",
+      "agree": "약정서 내용을 모두 숙지했습니다",
+      "next": "다음",
+      "cancel": "취소"
+    },
     "duration": "{{hours}} 시간",
     "end_at": "종료 시각",
     "end_time": "종료 시각",

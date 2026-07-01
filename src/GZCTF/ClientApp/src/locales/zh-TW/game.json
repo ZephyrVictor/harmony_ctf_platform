@@ -26,6 +26,12 @@
       "comment": "或許還有更難的挑戰在等著你……",
       "title": "題目都被解出啦！"
     },
+    "commitment": {
+      "title": "承諾書",
+      "agree": "我已認真閱讀承諾書相關內容",
+      "next": "下一步",
+      "cancel": "取消"
+    },
     "duration": "{{hours}} 小時",
     "end_at": "結束於",
     "end_time": "結束時間",

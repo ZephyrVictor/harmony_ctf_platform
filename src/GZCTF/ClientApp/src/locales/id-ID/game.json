@@ -26,6 +26,12 @@
       "comment": "Mungkin tantangan yang lebih sulit menunggu kamu...",
       "title": "Semua challenge telah diselesaikan!"
     },
+    "commitment": {
+      "title": "Surat Komitmen",
+      "agree": "Saya telah membaca dengan saksama isi surat komitmen",
+      "next": "Berikutnya",
+      "cancel": "Batal"
+    },
     "duration": "{{hours}} jam",
     "end_at": "Berakhir pada",
     "end_time": "Waktu Berakhir",

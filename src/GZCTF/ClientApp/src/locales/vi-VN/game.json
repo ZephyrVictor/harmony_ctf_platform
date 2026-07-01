@@ -26,6 +26,12 @@
       "comment": "Có thể những thử thách khó khăn hơn đang chờ bạn...",
       "title": "Tất cả các thử thách đã được giải quyết!"
     },
+    "commitment": {
+      "title": "Thư cam kết",
+      "agree": "Tôi đã đọc kỹ nội dung thư cam kết",
+      "next": "Tiếp theo",
+      "cancel": "Hủy"
+    },
     "duration": "{{hours}} giờ",
     "end_at": "Kết thúc lúc",
     "end_time": "Thời gian kết thúc",

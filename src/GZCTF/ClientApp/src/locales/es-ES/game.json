@@ -26,6 +26,12 @@
       "comment": "Quizás te esperan desafíos más difíciles...",
       "title": "¡Todos los desafíos fueron resueltos!"
     },
+    "commitment": {
+      "title": "Carta de compromiso",
+      "agree": "He leído atentamente el contenido de la carta de compromiso",
+      "next": "Siguiente",
+      "cancel": "Cancelar"
+    },
     "duration": "{{hours}} hora(s)",
     "end_at": "Finaliza a las",
     "end_time": "Hora de finalización",
