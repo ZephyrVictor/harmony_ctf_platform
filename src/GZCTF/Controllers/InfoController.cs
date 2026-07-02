@@ -64,7 +64,6 @@ public class InfoController(
     /// <param name="token"></param>
     /// <response code="200">Successfully retrieved posts</response>
     [HttpGet("Posts")]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Query))]
     [ProducesResponseType(typeof(PostInfoModel[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPosts(CancellationToken token)
     {
@@ -166,7 +165,6 @@ public class InfoController(
     /// <response code="200">Successfully retrieved Pow Challenge</response>
     /// <response code="404">Pow is disabled</response>
     [HttpGet("Captcha/PowChallenge")]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.PowChallenge))]
     [ProducesResponseType(typeof(HashPowChallenge), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> PowChallenge(CancellationToken token = default)

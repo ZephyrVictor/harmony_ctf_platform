@@ -384,23 +384,6 @@ public class EditController(
     }
 
     /// <summary>
-    /// Get alert notices (admin-only, includes RateLimitAlert)
-    /// </summary>
-    [HttpGet("Games/{id:int}/AlertNotices")]
-    [ProducesResponseType(typeof(GameNotice[]), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAlertNotices([FromRoute] int id, CancellationToken token = default)
-    {
-        var game = await gameRepository.GetGameById(id, token);
-
-        if (game is null)
-            return NotFound(new RequestResponse(localizer[nameof(Resources.Program.Game_NotFound)],
-                StatusCodes.Status404NotFound));
-
-        return Ok(await gameNoticeRepository.GetAlertNotices(id, token));
-    }
-
-    /// <summary>
     /// Update Game Notice
     /// </summary>
     /// <remarks>

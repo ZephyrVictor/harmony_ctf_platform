@@ -55,12 +55,6 @@ public class Challenge
     public DateTimeOffset? DeadlineUtc { get; set; }
 
     /// <summary>
-    /// Maximum number of submissions allowed per team (0 = no limit)
-    /// </summary>
-    [Required]
-    public int SubmissionLimit { get; set; }
-
-    /// <summary>
     /// 临时全题锁时长（分钟），0 = 永久
     /// </summary>
     [Range(0, int.MaxValue)]

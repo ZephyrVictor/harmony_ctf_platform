@@ -26,13 +26,6 @@ export interface BanCreateModel {
   reason: string
 }
 
-export interface AlertNotice {
-  id: number
-  type: string
-  values: string[] | null
-  time: string
-}
-
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -66,6 +59,3 @@ export const deleteBan = (gameId: number, banId: number) =>
   request<void>(`${BASE}/games/${gameId}/bans/${banId}`, {
     method: 'DELETE',
   })
-
-export const listAlertNotices = (gameId: number) =>
-  request<AlertNotice[]>(`${EDIT_BASE}/Games/${gameId}/AlertNotices`)

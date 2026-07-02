@@ -40,7 +40,6 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
             Level = model.Level,
             Title = model.Title,
             Score = model.Score,
-            SubmissionLimit = model.SubmissionLimit ?? 0,
             PenaltyScore = model.PenaltyScore ?? 0,
             LockOnAnswers = model.LockOnAnswers ?? [],
             BanOnAnswers = model.BanOnAnswers ?? [],
@@ -75,7 +74,6 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
 
         if (model.Title is not null) config.Title = model.Title;
         if (model.Score.HasValue) config.Score = model.Score.Value;
-        if (model.SubmissionLimit.HasValue) config.SubmissionLimit = model.SubmissionLimit.Value;
         if (model.PenaltyScore.HasValue) config.PenaltyScore = model.PenaltyScore.Value;
         if (model.LockOnAnswers is not null) config.LockOnAnswers = model.LockOnAnswers;
         if (model.BanOnAnswers is not null) config.BanOnAnswers = model.BanOnAnswers;
@@ -119,9 +117,6 @@ public class LevelConfigCreateModel
     public int Score { get; set; }
 
     [Range(0, int.MaxValue)]
-    public int? SubmissionLimit { get; set; }
-
-    [Range(0, int.MaxValue)]
     public int? PenaltyScore { get; set; }
 
     public List<string>? LockOnAnswers { get; set; }
@@ -139,9 +134,6 @@ public class LevelConfigUpdateModel
 
     [Range(0, int.MaxValue)]
     public int? Score { get; set; }
-
-    [Range(0, int.MaxValue)]
-    public int? SubmissionLimit { get; set; }
 
     [Range(0, int.MaxValue)]
     public int? PenaltyScore { get; set; }

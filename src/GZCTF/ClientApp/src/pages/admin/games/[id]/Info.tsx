@@ -465,6 +465,24 @@ const GameInfoEdit: FC = () => {
           </Text>
         </Stack>
       </SimpleGrid>
+
+      <SimpleGrid cols={2} spacing="md">
+        <Stack gap="sm">
+          <NumberInput
+            label={t('admin.content.games.info.cooldown_minutes.label', { defaultValue: '题目冷却分钟数' })}
+            description={t('admin.content.games.info.cooldown_minutes.desc', { defaultValue: '答错达阈值后封锁该题 X 分钟。0 = 不限流' })}
+            disabled={disabled}
+            min={0}
+            value={game?.cooldownMinutes ?? 5}
+            onChange={(e) => game && setGame({ ...game, cooldownMinutes: getInputNumber(e) })}
+          />
+        </Stack>
+        <Stack gap="sm" justify="center">
+          <Text size="xs" c="dimmed">
+            {t('admin.content.games.info.cooldown_minutes.hint', { defaultValue: '答错次数阈值为题目 track 数 × 5，自动计算，无需配置。' })}
+          </Text>
+        </Stack>
+      </SimpleGrid>
     </WithGameEditTab>
   )
 }

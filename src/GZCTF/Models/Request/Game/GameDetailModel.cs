@@ -48,4 +48,9 @@ public class GameDetailModel
     /// 0day 加分基础倍数
     /// </summary>
     public int ZeroDayBaseScore { get; set; } = 1;
+
+    /// <summary>
+    /// 题目冷却分钟数。0 = 不限流
+    /// </summary>
+    public int CooldownMinutes { get; set; } = 5;
 }

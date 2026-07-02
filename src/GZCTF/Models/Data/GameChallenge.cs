@@ -81,7 +81,6 @@ public class GameChallenge : Challenge
         Repository = model.Repository ?? Repository;
         FileName = model.FileName ?? FileName;
         DisableBloodBonus = model.DisableBloodBonus ?? DisableBloodBonus;
-        SubmissionLimit = model.SubmissionLimit ?? SubmissionLimit;
         LockDurationMinutes = model.LockDurationMinutes ?? LockDurationMinutes;
 
         // isEnabled should be updated alone

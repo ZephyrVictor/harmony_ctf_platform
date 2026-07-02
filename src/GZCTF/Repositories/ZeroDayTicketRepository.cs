@@ -212,7 +212,6 @@ public class ZeroDayTicketRepository(AppDbContext context) : RepositoryBase(cont
                 Level = level,
                 Title = $"Level {level}",
                 Score = score,
-                SubmissionLimit = 5,  // 默认防爆破 (R4)
                 PenaltyScore = 0,
                 LockOnAnswers = [],
                 BanOnAnswers = [],

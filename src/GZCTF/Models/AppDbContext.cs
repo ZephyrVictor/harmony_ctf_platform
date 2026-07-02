@@ -53,7 +53,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<ChallengeLevelConfig> ChallengeLevelConfigs { get; set; } = null!;
     public DbSet<ChallengeLockState> ChallengeLockStates { get; set; } = null!;
     public DbSet<ChallengeTrackLevelBanState> ChallengeTrackLevelBanStates { get; set; } = null!;
-    public DbSet<ChallengeWrongCountState> ChallengeWrongCountStates { get; set; } = null!;
+    public DbSet<ChallengeCooldownState> ChallengeCooldownStates { get; set; } = null!;
 
     private static ValueConverter<T?, string> GetJsonConverter<T>() where T : class, new() =>
         new(
@@ -700,9 +700,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId, e.TrackId, e.Level }).IsUnique();
         });
 
-        builder.Entity<ChallengeWrongCountState>(entity =>
+        builder.Entity<ChallengeCooldownState>(entity =>
         {
-            entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId, e.Level }).IsUnique();
+            entity.HasIndex(e => new { e.ParticipationId, e.ChallengeId }).IsUnique();
         });
     }
 }

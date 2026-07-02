@@ -44,7 +44,6 @@ public class AccountController(
     /// <response code="200">Registration successful</response>
     /// <response code="400">Validation failed or user already exists</response>
     [HttpPost]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Register))]
     [ProducesResponseType(typeof(RequestResponse<RegisterStatus>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterModel model, CancellationToken token = default)
@@ -147,7 +146,6 @@ public class AccountController(
     /// <response code="400">Validation failed</response>
     /// <response code="404">User does not exist</response>
     [HttpPost]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Register))]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
@@ -197,7 +195,6 @@ public class AccountController(
     /// <response code="200">Password reset successfully</response>
     /// <response code="400">Validation failed</response>
     [HttpPost]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Register))]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> PasswordReset([FromBody] PasswordResetModel model)
@@ -425,7 +422,6 @@ public class AccountController(
     /// <response code="401">Unauthorized</response>
     [HttpPut]
     [RequireUser]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Register))]
     [ProducesResponseType(typeof(RequestResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status401Unauthorized)]

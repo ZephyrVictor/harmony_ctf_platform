@@ -59,7 +59,8 @@ public class GameController(
     IChallengeTrackRepository trackRepository,
     IChallengeLevelConfigRepository levelConfigRepository,
     IChallengeLockStateRepository lockStateRepository,
-    IChallengeTrackLevelBanStateRepository banStateRepository) : ControllerBase
+    IChallengeTrackLevelBanStateRepository banStateRepository,
+    IChallengeCooldownRepository cooldownRepository) : ControllerBase
 {
     const string PositiveFlagUniqueIndexName = "IX_SubmissionRecords_ParticipationId_MatchedFlagId";
 
@@ -98,7 +99,6 @@ public class GameController(
     /// <response code="200">Successfully retrieved game notices</response>
     /// <response code="400">Game not found</response>
     [HttpGet]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Query))]
     [ResponseCache(VaryByQueryKeys = ["count", "skip"], Duration = 60)]
     [ProducesResponseType(typeof(ArrayResponse<BasicGameInfoModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Games([FromQuery][Range(0, 50)] int count = 10,
@@ -795,7 +795,8 @@ public class GameController(
             WriteupRequired = context.Game!.WriteupRequired,
             WriteupDeadline = context.Game!.WriteupDeadline,
             ZeroDayInfoMarkdown = context.Game!.ZeroDayInfoMarkdown,
-            ZeroDayBaseScore = context.Game!.ZeroDayBaseScore
+            ZeroDayBaseScore = context.Game!.ZeroDayBaseScore,
+            CooldownMinutes = context.Game!.CooldownMinutes
         });
     }
 
@@ -1036,7 +1037,6 @@ public class GameController(
                     Title = lc.Title,
                     Status = status,
                     AttemptsUsed = attemptsUsed,
-                    SubmissionLimit = lc.SubmissionLimit > 0 ? lc.SubmissionLimit : instance.Challenge.SubmissionLimit,
                     UnlocksAt = activeLock?.UnlocksAt,
                     SolvedAt = solvedAt
                 });
@@ -1060,6 +1060,18 @@ public class GameController(
         };
         result.CurrentLevel = currentLevel;
 
+        // 题目冷却状态（per-challenge 答错次数 + 临时冷却）
+        var cooldownState = await cooldownRepository.Get(context.Participation!.Id, challengeId, token);
+        var gameCooldownMinutes = context.Game?.CooldownMinutes ?? 0;
+        var wrongAnswerLimit = tracks.Length * 5;
+        result.Cooldown = new CooldownInfo
+        {
+            WrongCount = cooldownState?.WrongCount ?? 0,
+            WrongAnswerLimit = wrongAnswerLimit,
+            CooldownMinutes = gameCooldownMinutes,
+            CooldownUntil = cooldownState?.CooldownUntil
+        };
+
         return Ok(result);
     }
 
@@ -1078,7 +1090,6 @@ public class GameController(
     /// <response code="404">Game not found</response>
     [RequireUser]
     [HttpPost("{id:int}/Challenges/{challengeId:int}")]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Submit))]
     [ProducesResponseType(typeof(FlagSubmitResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
@@ -1121,15 +1132,6 @@ public class GameController(
             if (!permission.HasFlag(GamePermission.ViewChallenge | GamePermission.SubmitFlags))
                 return BadRequest(
                     new RequestResponse(localizer[nameof(Resources.Program.Challenge_SubmissionNoPermission)]));
-
-            var currentAttempts =
-                await submissionRepository.CountSubmissions(context.Participation!.Id, challengeId, token);
-
-            if (instance.Challenge.SubmissionLimit > 0 && currentAttempts >= instance.Challenge.SubmissionLimit)
-            {
-                return BadRequest(
-                    new RequestResponse(localizer[nameof(Resources.Program.Challenge_SubmissionLimitExceeded)]));
-            }
 
             ScoreResult? scoreResult = null;
             try
@@ -1232,7 +1234,8 @@ public class GameController(
                     UnlocksAt = result.UnlocksAt,
                     BannedTrackId = result.BannedTrackId,
                     BannedLevel = result.BannedLevel,
-                    TriggerAnswer = triggerAnswer
+                    TriggerAnswer = triggerAnswer,
+                    Cooldown = result.Cooldown
                 });
             }
             catch (DbUpdateConcurrencyException) when (retry < maxRetries - 1)
@@ -1464,7 +1467,6 @@ public class GameController(
     /// <response code="400">Container creation not allowed for challenge</response>
     [RequireUser]
     [HttpPost("{id:int}/Container/{challengeId:int}")]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Container))]
     [ProducesResponseType(typeof(ContainerInfoModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
@@ -1533,7 +1535,6 @@ public class GameController(
     /// <response code="400">Container not created or cannot be extended</response>
     [RequireUser]
     [HttpPost("{id:int}/Container/{challengeId:int}/Extend")]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Container))]
     [ProducesResponseType(typeof(ContainerInfoModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
@@ -1583,7 +1584,6 @@ public class GameController(
     /// <response code="400">Container creation not allowed for challenge</response>
     [RequireUser]
     [HttpDelete("{id:int}/Container/{challengeId:int}")]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Container))]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]

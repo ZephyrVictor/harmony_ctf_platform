@@ -76,6 +76,11 @@ public partial class Game
     public int ZeroDayBaseScore { get; set; } = 1;
 
     /// <summary>
+    /// 题目冷却分钟数。答错达阈值（trackCount×5）后封锁该题 X 分钟，自动解封。0 = 不限流
+    /// </summary>
+    public int CooldownMinutes { get; set; } = 5;
+
+    /// <summary>
     /// Teams can join without review
     /// </summary>
     public bool AcceptWithoutReview { get; set; }
@@ -214,6 +219,7 @@ public partial class Game
         BloodBonus = BloodBonus.FromValue(model.BloodBonusValue);
         ZeroDayInfoMarkdown = model.ZeroDayInfoMarkdown;
         ZeroDayBaseScore = model.ZeroDayBaseScore;
+        CooldownMinutes = model.CooldownMinutes;
 
         return this;
     }

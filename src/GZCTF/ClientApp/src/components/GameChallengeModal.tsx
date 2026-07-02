@@ -250,6 +250,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       mutate({
         attempts,
         ...challenge,
+        cooldown: res.data.cooldown ?? challenge?.cooldown,
       })
       return
     } catch (e) {

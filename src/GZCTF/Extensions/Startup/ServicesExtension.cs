@@ -113,7 +113,7 @@ internal static class ServicesExtension
             builder.Services.AddScoped<IChallengeLevelConfigRepository, ChallengeLevelConfigRepository>();
             builder.Services.AddScoped<IChallengeLockStateRepository, ChallengeLockStateRepository>();
             builder.Services.AddScoped<IChallengeTrackLevelBanStateRepository, ChallengeTrackLevelBanStateRepository>();
-            builder.Services.AddScoped<IChallengeWrongCountStateRepository, ChallengeWrongCountStateRepository>();
+            builder.Services.AddScoped<IChallengeCooldownRepository, ChallengeCooldownRepository>();
             builder.Services.AddScoped<ScoringService>();
             builder.Services.AddScoped<CompetitionSettingsService>();
 
@@ -135,7 +135,6 @@ internal static class ServicesExtension
         internal void AddWebServices()
         {
             builder.Services.AddRouting(options => options.LowercaseUrls = true);
-            builder.Services.AddRateLimiter(RateLimiter.ConfigureRateLimiter);
             builder.Services.AddResponseCompression(options =>
             {
                 options.Providers.Add<ZStandardCompressionProvider>();

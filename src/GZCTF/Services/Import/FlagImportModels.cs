@@ -44,11 +44,6 @@ public class LevelColumnMapping
     public ChallengeFlagAnswerType AnswerType { get; set; } = ChallengeFlagAnswerType.Exact;
     public int Score { get; set; }
 
-    /// <summary>
-    /// 每条 Track×Level 的最大错误提交次数。0 = 使用默认值 5（规则 R4 防爆破）。
-    /// </summary>
-    public int SubmissionLimit { get; set; } = 5;
-
     public int PenaltyScore { get; set; }
     public List<string> LockOnAnswers { get; set; } = [];
     public List<string> BanOnAnswers { get; set; } = [];

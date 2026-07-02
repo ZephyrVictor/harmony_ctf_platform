@@ -67,4 +67,9 @@ public class FlagSubmitResponse
     /// 触发锁/封禁的错误答案（用于详细提示）
     /// </summary>
     public string? TriggerAnswer { get; set; }
+
+    /// <summary>
+    /// 题目冷却信息（per-challenge 答错次数 + 临时冷却）
+    /// </summary>
+    public CooldownInfo? Cooldown { get; set; }
 }

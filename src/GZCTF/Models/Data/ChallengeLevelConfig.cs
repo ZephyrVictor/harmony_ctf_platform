@@ -29,12 +29,6 @@ public class ChallengeLevelConfig
     public int Score { get; set; }
 
     /// <summary>
-    /// 0 = 继承 Challenge.SubmissionLimit
-    /// </summary>
-    [Range(0, int.MaxValue)]
-    public int SubmissionLimit { get; set; }
-
-    /// <summary>
     /// 0 = 继承 ChallengePenalty
     /// </summary>
     [Range(0, int.MaxValue)]

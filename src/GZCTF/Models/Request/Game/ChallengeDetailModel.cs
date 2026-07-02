@@ -102,6 +102,11 @@ public class ChallengeDetailModel
     /// </summary>
     public Guid? ActiveTrackId { get; set; }
 
+    /// <summary>
+    /// 题目冷却信息（per-challenge 答错次数 + 临时冷却）
+    /// </summary>
+    public CooldownInfo? Cooldown { get; set; }
+
     internal static ChallengeDetailModel FromInstance(GameInstance gameInstance, int attemptCount,
         ChallengeInfo? scoreboardChallenge = null, ISet<Guid>? solvedFlagIds = null) =>
         new()
@@ -125,7 +130,7 @@ public class ChallengeDetailModel
                                     && gameInstance.Challenge.Flags
                                         .Where(f => f.IsEnabled)
                                         .All(f => solvedFlagIds?.Contains(f.Id) ?? false),
-            Limit = gameInstance.Challenge.SubmissionLimit,
+            Limit = 0, // SubmissionLimit removed; kept for API backwards compat
             Deadline = gameInstance.Challenge.DeadlineUtc,
             Attempts = attemptCount,
             Context = new()
@@ -181,7 +186,6 @@ public class TrackLevelStatusModel
     public string Status { get; set; } = "Unsolved";
     public DateTimeOffset? SolvedAt { get; set; }
     public int AttemptsUsed { get; set; }
-    public int SubmissionLimit { get; set; }
     public DateTimeOffset? UnlocksAt { get; set; }
 }
 

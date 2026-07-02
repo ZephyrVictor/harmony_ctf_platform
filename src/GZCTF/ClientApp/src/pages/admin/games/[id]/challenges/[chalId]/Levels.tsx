@@ -43,7 +43,6 @@ const LevelEditModal: FC<{
           level: config.level,
           title: config.title,
           score: config.score,
-          submissionLimit: config.submissionLimit,
           penaltyScore: config.penaltyScore,
           lockOnAnswers: config.lockOnAnswers ?? [],
           banOnAnswers: config.banOnAnswers ?? [],
@@ -54,7 +53,6 @@ const LevelEditModal: FC<{
           level: 1,
           title: '',
           score: 5,
-          submissionLimit: 0,
           penaltyScore: 0,
           lockOnAnswers: [],
           banOnAnswers: [],
@@ -106,11 +104,6 @@ const LevelEditModal: FC<{
             label="Score (default: L1=5 / L2=4 / L3=1)"
             value={model.score ?? 0}
             onChange={(v) => setModel({ ...model, score: typeof v === 'number' ? v : 0 })}
-          />
-          <NumberInput
-            label="SubmissionLimit (0 = use challenge limit)"
-            value={model.submissionLimit ?? 0}
-            onChange={(v) => setModel({ ...model, submissionLimit: typeof v === 'number' ? v : 0 })}
           />
           <NumberInput
             label="PenaltyScore"
@@ -230,7 +223,6 @@ const AdminLevels: FC = () => {
                       </Group>
                       <Group gap="xs">
                         <Badge variant="outline">Score: {cfg.score}</Badge>
-                        <Badge variant="outline">SubmissionLimit: {cfg.submissionLimit}</Badge>
                         <Badge variant="outline">Penalty: {cfg.penaltyScore}</Badge>
                       </Group>
                       {cfg.lockOnAnswers && cfg.lockOnAnswers.length > 0 && (

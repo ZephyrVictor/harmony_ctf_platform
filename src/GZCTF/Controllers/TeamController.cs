@@ -84,7 +84,6 @@ public partial class TeamController(
     /// <response code="400">Team does not exist</response>
     [HttpPost]
     [RequireUser]
-    [EnableRateLimiting(nameof(RateLimiter.LimitPolicy.Concurrency))]
     [ProducesResponseType(typeof(TeamInfoModel), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status401Unauthorized)]

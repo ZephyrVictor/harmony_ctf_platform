@@ -86,9 +86,6 @@ internal static class AppExtensions
 
             app.UseRouting();
 
-            if (app.Configuration.GetValue<bool>("DisableRateLimit") is not true)
-                app.UseRateLimiter();
-
             app.UseAuthentication();
             app.UseAuthorization();
 

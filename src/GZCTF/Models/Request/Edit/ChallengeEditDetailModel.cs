@@ -131,12 +131,6 @@ public class ChallengeEditDetailModel
     public DateTimeOffset? DeadlineUtc { get; set; }
 
     /// <summary>
-    /// Maximum number of submissions allowed per team (0 = no limit)
-    /// </summary>
-    [Required]
-    public int SubmissionLimit { get; set; }
-
-    /// <summary>
     /// 临时全题锁时长（分钟），0 = 永久
     /// </summary>
     public int LockDurationMinutes { get; set; } = 0;
@@ -191,7 +185,6 @@ public class ChallengeEditDetailModel
             Repository = chal.Repository,
             FileName = chal.FileName,
             Attachment = chal.Attachment,
-            SubmissionLimit = chal.SubmissionLimit,
             LockDurationMinutes = chal.LockDurationMinutes,
             DeadlineUtc = chal.DeadlineUtc,
             AcceptedCount = 0, // This field should be set externally

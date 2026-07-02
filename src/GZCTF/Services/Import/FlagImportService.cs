@@ -232,8 +232,6 @@ public class FlagImportService(
                     var levelConfig = await levelConfigRepo.GetConfig(challengeId, lc.Level, token);
                     if (levelConfig is null)
                     {
-                        // 规则 R4: 默认 SubmissionLimit=5 (防爆破)
-                        var effectiveSubmissionLimit = lc.SubmissionLimit > 0 ? lc.SubmissionLimit : 5;
                         await levelConfigRepo.CreateConfig(new ChallengeLevelConfig
                         {
                             ChallengeId = challengeId,
@@ -241,7 +239,6 @@ public class FlagImportService(
                             // iter2: 没显式设 LevelTitle 时用 ColumnName 作为 level 显示名
                             Title = string.IsNullOrWhiteSpace(lc.LevelTitle) ? lc.ColumnName : lc.LevelTitle,
                             Score = lc.Score,
-                            SubmissionLimit = effectiveSubmissionLimit,
                             PenaltyScore = lc.PenaltyScore,
                             LockOnAnswers = lc.LockOnAnswers,
                             BanOnAnswers = lc.BanOnAnswers,
@@ -502,8 +499,6 @@ public class FlagImportService(
                 var levelConfig = await levelConfigRepo.GetConfig(challengeId, lc.Level, token);
                 if (levelConfig is null)
                 {
-                    // 规则 R4: 默认 SubmissionLimit=5 (防爆破)
-                    var effectiveSubmissionLimit = lc.SubmissionLimit > 0 ? lc.SubmissionLimit : 5;
                     await levelConfigRepo.CreateConfig(new ChallengeLevelConfig
                     {
                         ChallengeId = challengeId,
@@ -511,7 +506,6 @@ public class FlagImportService(
                         // iter2: 没显式设 LevelTitle 时用 ColumnName 作为 level 显示名
                         Title = string.IsNullOrWhiteSpace(lc.LevelTitle) ? lc.ColumnName : lc.LevelTitle,
                         Score = lc.Score,
-                        SubmissionLimit = effectiveSubmissionLimit,
                         PenaltyScore = lc.PenaltyScore,
                         LockOnAnswers = lc.LockOnAnswers,
                         BanOnAnswers = lc.BanOnAnswers,

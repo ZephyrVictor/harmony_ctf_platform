@@ -101,7 +101,6 @@ public static class TransferExtensions
                                 Level = c.Level,
                                 Title = c.Title,
                                 Score = c.Score,
-                                SubmissionLimit = c.SubmissionLimit,
                                 PenaltyScore = c.PenaltyScore,
                                 // D4: 完整包含 trap/ban 答案
                                 LockOnAnswers = c.LockOnAnswers ?? [],
@@ -161,7 +160,7 @@ public static class TransferExtensions
                     MinRate = challenge.MinScoreRate,
                     Difficulty = challenge.Difficulty
                 },
-                Limits = new LimitsSection { Submission = challenge.SubmissionLimit, Deadline = challenge.DeadlineUtc },
+                Limits = new LimitsSection { Submission = 0, Deadline = challenge.DeadlineUtc },
                 Flags = flagsSection
             };
 
@@ -327,7 +326,6 @@ public static class TransferExtensions
                 OriginalScore = transfer.Scoring.Original,
                 MinScoreRate = transfer.Scoring.MinRate,
                 Difficulty = transfer.Scoring.Difficulty,
-                SubmissionLimit = transfer.Limits.Submission,
                 DeadlineUtc = transfer.Limits.Deadline,
                 FlagTemplate = transfer.Flags.Template,
                 DisableBloodBonus = transfer.Flags.DisableBloodBonus,

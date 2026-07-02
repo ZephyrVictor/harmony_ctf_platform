@@ -30,8 +30,6 @@ export interface LevelColumnMapping {
   answerType?: ChallengeFlagAnswerType
   /** @format int32 */
   score?: number
-  /** @format int32 — 每条 Track×Level 的最大错误提交次数,0 = 用默认值 5 (R4 防爆破) */
-  submissionLimit?: number
   /** @format int32 */
   penaltyScore?: number
   lockOnAnswers?: string[]

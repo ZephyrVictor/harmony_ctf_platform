@@ -18,4 +18,9 @@ public class ScoreResult
     public DateTimeOffset? UnlocksAt { get; set; }
     public bool TrackCompleted { get; set; }
     public bool ChallengeFirstSolve { get; set; }
+
+    /// <summary>
+    /// 题目冷却信息（per-challenge 答错次数 + 临时冷却）
+    /// </summary>
+    public GZCTF.Models.Request.Game.CooldownInfo? Cooldown { get; set; }
 }

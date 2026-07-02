@@ -139,6 +139,39 @@ namespace GZCTF.Migrations
                     b.ToTable("BigScreenEvents");
                 });
 
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeCooldownState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CooldownUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastWrongAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ParticipationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WrongCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("ParticipationId", "ChallengeId")
+                        .IsUnique();
+
+                    b.ToTable("ChallengeCooldownStates");
+                });
+
             modelBuilder.Entity("GZCTF.Models.Data.ChallengeFlag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -255,9 +288,6 @@ namespace GZCTF.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SubmissionLimit")
                         .HasColumnType("integer");
 
                     b.Property<string>("Title")
@@ -446,37 +476,6 @@ namespace GZCTF.Migrations
                         .IsUnique();
 
                     b.ToTable("ChallengeTrackLevelBanStates");
-                });
-
-            modelBuilder.Entity("GZCTF.Models.Data.ChallengeWrongCountState", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ChallengeId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("LastResetAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ParticipationId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("WrongCount")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParticipationId", "ChallengeId", "Level")
-                        .IsUnique();
-
-                    b.ToTable("ChallengeWrongCountStates");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.CheatInfo", b =>
@@ -719,9 +718,6 @@ namespace GZCTF.Migrations
                     b.Property<int?>("StorageLimit")
                         .HasColumnType("integer");
 
-                    b.Property<int>("SubmissionLimit")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Tags")
                         .HasColumnType("text");
 
@@ -846,6 +842,9 @@ namespace GZCTF.Migrations
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("CooldownMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("EndTimeUtc")
                         .HasColumnType("timestamp with time zone")
@@ -996,9 +995,6 @@ namespace GZCTF.Migrations
                         .HasColumnType("character varying(128)");
 
                     b.Property<int?>("StorageLimit")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SubmissionLimit")
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("TestContainerId")
@@ -2012,6 +2008,25 @@ namespace GZCTF.Migrations
                     b.Navigation("Challenge");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GZCTF.Models.Data.ChallengeCooldownState", b =>
+                {
+                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
+                        .WithMany()
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GZCTF.Models.Data.Participation", "Participation")
+                        .WithMany()
+                        .HasForeignKey("ParticipationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("Participation");
                 });
 
             modelBuilder.Entity("GZCTF.Models.Data.ChallengeFlag", b =>

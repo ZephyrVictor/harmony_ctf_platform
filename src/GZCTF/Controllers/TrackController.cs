@@ -5,6 +5,7 @@ using GZCTF.Models;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Controllers;
 
@@ -17,7 +18,8 @@ namespace GZCTF.Controllers;
 public class TrackController(
     IChallengeTrackRepository trackRepository,
     IChallengeFlagRepository flagRepository,
-    IChallengeLevelConfigRepository levelConfigRepository) : ControllerBase
+    IChallengeLevelConfigRepository levelConfigRepository,
+    AppDbContext dbContext) : ControllerBase
 {
     [RequireAdmin]
     [HttpGet]
@@ -65,70 +67,82 @@ public class TrackController(
         if (model.Levels is null || model.Levels.Count == 0)
             return BadRequest(new RequestResponse("At least one level is required"));
 
-        var trackModel = model.Track ?? new TrackCreateModel();
-        var track = new ChallengeTrack
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(token);
+        try
         {
-            Id = Guid.NewGuid(),
-            ChallengeId = challengeId,
-            Title = trackModel.Title,
-            FlawNo = trackModel.FlawNo,
-            Repository = trackModel.Repository,
-            Module = trackModel.Module,
-            FilePath = trackModel.FilePath,
-            Category = trackModel.Category,
-            ReferenceUrl = trackModel.ReferenceUrl,
-            IsEnabled = trackModel.IsEnabled ?? true,
-            SortOrder = trackModel.SortOrder ?? 0
-        };
-        track = await trackRepository.CreateTrack(track, token);
-
-        var createdFlags = new List<ChallengeFlag>();
-        foreach (var lvl in model.Levels)
-        {
-            if (string.IsNullOrWhiteSpace(lvl.FlagValue))
-                return BadRequest(new RequestResponse($"FlagValue for level {lvl.Level} is required"));
-
-            var flagValue = lvl.FlagValue.Trim();
-            // 注：按计划"数据集严格按原样导入"，不做 dup 校验。
-
-            var flag = new ChallengeFlag
+            var trackModel = model.Track ?? new TrackCreateModel();
+            var track = new ChallengeTrack
             {
                 Id = Guid.NewGuid(),
                 ChallengeId = challengeId,
-                FlagValue = flagValue,
-                AnswerType = lvl.AnswerType,
-                RawAnswer = flagValue,
-                NormalizedAnswerKey = ScoringService.NormalizeHybridLineAnswer(flagValue, lvl.AnswerType),
-                Level = lvl.Level,
-                TrackId = track.Id,
-                IsEnabled = true,
-                IsVisible = true,
-                SortOrder = 0
+                Title = trackModel.Title,
+                FlawNo = trackModel.FlawNo,
+                Repository = trackModel.Repository,
+                Module = trackModel.Module,
+                FilePath = trackModel.FilePath,
+                Category = trackModel.Category,
+                ReferenceUrl = trackModel.ReferenceUrl,
+                IsEnabled = trackModel.IsEnabled ?? true,
+                SortOrder = trackModel.SortOrder ?? 0
             };
-            createdFlags.Add(await flagRepository.CreateFlag(flag, token));
+            track = await trackRepository.CreateTrack(track, token);
 
-            // Upsert LevelConfig
-            var levelConfig = await levelConfigRepository.GetConfig(challengeId, lvl.Level, token);
-            if (levelConfig is null)
+            var createdFlags = new List<ChallengeFlag>();
+            foreach (var lvl in model.Levels)
             {
-                await levelConfigRepository.CreateConfig(new ChallengeLevelConfig
+                if (string.IsNullOrWhiteSpace(lvl.FlagValue))
                 {
-                    ChallengeId = challengeId,
-                    Level = lvl.Level,
-                    Title = lvl.LevelTitle,
-                    Score = lvl.Score,
-                    SubmissionLimit = lvl.SubmissionLimit,
-                    PenaltyScore = lvl.PenaltyScore,
-                    LockOnAnswers = lvl.LockOnAnswers,
-                    BanOnAnswers = lvl.BanOnAnswers,
-                    IsEnabled = true,
-                    SortOrder = lvl.Level
-                }, token);
-            }
-        }
+                    await transaction.RollbackAsync(token);
+                    return BadRequest(new RequestResponse($"FlagValue for level {lvl.Level} is required"));
+                }
 
-        return CreatedAtAction(nameof(GetTrack), new { challengeId, trackId = track.Id },
-            new TrackFullCreateResult { Track = track, Flags = createdFlags });
+                var flagValue = lvl.FlagValue.Trim();
+                // 注：按计划"数据集严格按原样导入"，不做 dup 校验。
+
+                var flag = new ChallengeFlag
+                {
+                    Id = Guid.NewGuid(),
+                    ChallengeId = challengeId,
+                    FlagValue = flagValue,
+                    AnswerType = lvl.AnswerType,
+                    RawAnswer = flagValue,
+                    NormalizedAnswerKey = ScoringService.NormalizeHybridLineAnswer(flagValue, lvl.AnswerType),
+                    Level = lvl.Level,
+                    TrackId = track.Id,
+                    IsEnabled = true,
+                    IsVisible = true,
+                    SortOrder = 0
+                };
+                createdFlags.Add(await flagRepository.CreateFlag(flag, token));
+
+                // Upsert LevelConfig
+                var levelConfig = await levelConfigRepository.GetConfig(challengeId, lvl.Level, token);
+                if (levelConfig is null)
+                {
+                    await levelConfigRepository.CreateConfig(new ChallengeLevelConfig
+                    {
+                        ChallengeId = challengeId,
+                        Level = lvl.Level,
+                        Title = lvl.LevelTitle,
+                        Score = lvl.Score,
+                        PenaltyScore = lvl.PenaltyScore,
+                        LockOnAnswers = lvl.LockOnAnswers,
+                        BanOnAnswers = lvl.BanOnAnswers,
+                        IsEnabled = true,
+                        SortOrder = lvl.Level
+                    }, token);
+                }
+            }
+
+            await transaction.CommitAsync(token);
+            return CreatedAtAction(nameof(GetTrack), new { challengeId, trackId = track.Id },
+                new TrackFullCreateResult { Track = track, Flags = createdFlags });
+        }
+        catch
+        {
+            await transaction.RollbackAsync(token);
+            throw;
+        }
     }
 
     [RequireAdmin]
@@ -260,7 +274,6 @@ public class TrackFullLevelModel
     /// </summary>
     public int Score { get; set; }
 
-    public int SubmissionLimit { get; set; }
     public int PenaltyScore { get; set; }
     public List<string> LockOnAnswers { get; set; } = [];
     public List<string> BanOnAnswers { get; set; } = [];

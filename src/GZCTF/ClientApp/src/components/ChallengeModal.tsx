@@ -22,6 +22,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InstanceEntry } from '@Components/InstanceEntry'
 import { ChallengeLockNotice } from '@Components/ChallengeLockNotice'
+import { CooldownNotice } from '@Components/CooldownNotice'
 import { ContentPlaceholder, InlineMarkdown, Markdown } from '@Components/MarkdownRenderer'
 import { useLanguage } from '@Utils/I18n'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
@@ -377,6 +378,7 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
               banTriggerAnswer={challenge.challengeLock.banTriggerAnswer}
             />
           )}
+          <CooldownNotice cooldown={challenge?.cooldown} />
           {isHybridLine && (
             <Stack gap="xs" className={classes.flagList}>
               <Group justify="space-between" gap="xs">

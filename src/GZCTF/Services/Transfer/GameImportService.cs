@@ -399,7 +399,6 @@ public class GameImportService(
             Difficulty = transferChallenge.Scoring.Difficulty,
 
             // Limits
-            SubmissionLimit = transferChallenge.Limits.Submission,
             DeadlineUtc = transferChallenge.Limits.Deadline,
 
             // Flags configuration
@@ -550,7 +549,6 @@ public class GameImportService(
                 Level = transferLevel.Level,
                 Title = transferLevel.Title,
                 Score = transferLevel.Score,
-                SubmissionLimit = transferLevel.SubmissionLimit,
                 PenaltyScore = transferLevel.PenaltyScore,
                 LockOnAnswers = transferLevel.LockOnAnswers ?? [],
                 BanOnAnswers = transferLevel.BanOnAnswers ?? [],
@@ -629,7 +627,6 @@ public class GameImportService(
                     Level = 1,
                     Title = "Level 1",
                     Score = challenge.OriginalScore,
-                    SubmissionLimit = 0, // 0 = 继承 Challenge.SubmissionLimit
                     PenaltyScore = 0,
                     IsEnabled = true,
                     SortOrder = 0

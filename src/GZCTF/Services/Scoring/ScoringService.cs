@@ -1,9 +1,11 @@
 using GZCTF.Hubs;
 using GZCTF.Hubs.Clients;
+using GZCTF.Models.Request.Game;
 using GZCTF.Repositories.Interface;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using CooldownInfo = GZCTF.Models.Request.Game.CooldownInfo;
 
 namespace GZCTF.Services.Scoring;
 
@@ -23,7 +25,7 @@ public class ScoringService
     private readonly IChallengeLevelConfigRepository _levelConfigRepo;
     private readonly IChallengeLockStateRepository _lockStateRepo;
     private readonly IChallengeTrackLevelBanStateRepository _banStateRepo;
-    private readonly IChallengeWrongCountStateRepository _wrongCountRepo;
+    private readonly IChallengeCooldownRepository _cooldownRepo;
 
     public ScoringService(
         AppDbContext context,
@@ -40,7 +42,7 @@ public class ScoringService
         IChallengeLevelConfigRepository levelConfigRepo,
         IChallengeLockStateRepository lockStateRepo,
         IChallengeTrackLevelBanStateRepository banStateRepo,
-        IChallengeWrongCountStateRepository wrongCountRepo)
+        IChallengeCooldownRepository cooldownRepo)
     {
         _context = context;
         _flagRepo = flagRepo;
@@ -56,7 +58,7 @@ public class ScoringService
         _levelConfigRepo = levelConfigRepo;
         _lockStateRepo = lockStateRepo;
         _banStateRepo = banStateRepo;
-        _wrongCountRepo = wrongCountRepo;
+        _cooldownRepo = cooldownRepo;
     }
 
     /// <summary>
@@ -81,15 +83,14 @@ public class ScoringService
             };
         }
 
-        // 1. 过期锁清理 + 计数重置
+        // 1. 过期锁清理（trap 锁过期后允许继续提交；冷却机制独立，不在此处重置）
         var expiredLocks = await _lockStateRepo.GetExpiredLocks(participation.Id, challenge.Id, token);
         if (expiredLocks.Count > 0)
         {
             await _lockStateRepo.DeleteLocks(expiredLocks, token);
-            await _wrongCountRepo.ResetAllLevels(participation.Id, challenge.Id, token);
         }
 
-        // 2. 活跃锁检查
+        // 2. 活跃锁检查（trap 锁）
         var activeLock = await _lockStateRepo.GetActiveLock(participation.Id, challenge.Id, token);
         if (activeLock is not null)
         {
@@ -122,6 +123,37 @@ public class ScoringService
             }
         }
 
+        // 2.6 题目冷却检查（per-challenge 答错次数 + 临时冷却）
+        // 与 trap 锁相互独立；冷却中拒绝提交，到点自动解封
+        var game = await _context.Games.AsNoTracking()
+            .Where(g => g.Id == challenge.GameId)
+            .Select(g => new { g.CooldownMinutes })
+            .FirstOrDefaultAsync(token);
+        var cooldownMinutes = game?.CooldownMinutes ?? 0;
+
+        var tracks = await _trackRepo.GetTracks(challenge.Id, token);
+        var trackCount = tracks.Length;
+        var wrongAnswerLimit = trackCount * 5;
+
+        var cooldownState = await _cooldownRepo.Get(participation.Id, challenge.Id, token);
+        if (cooldownMinutes > 0 && cooldownState?.CooldownUntil is not null
+            && cooldownState.CooldownUntil > DateTimeOffset.UtcNow)
+        {
+            return new ScoreResult
+            {
+                Status = AnswerResult.WrongAnswer,
+                ScoreChange = 0,
+                Message = $"题目冷却中，剩 {cooldownState.CooldownUntil.Value - DateTimeOffset.UtcNow:mm\\:ss}",
+                Cooldown = new CooldownInfo
+                {
+                    WrongCount = cooldownState.WrongCount,
+                    WrongAnswerLimit = wrongAnswerLimit,
+                    CooldownMinutes = cooldownMinutes,
+                    CooldownUntil = cooldownState.CooldownUntil
+                }
+            };
+        }
+
         // 3. 匹配
         ChallengeFlag[] candidates;
         if (trackId is null)
@@ -147,7 +179,8 @@ public class ScoringService
             .ToList();
 
         if (matchedFlags.Count == 0)
-            return await HandleWrongSubmission(challenge, participation, answer, level, trackId, token);
+            return await HandleWrongSubmission(challenge, participation, answer, level, trackId,
+                cooldownMinutes, wrongAnswerLimit, cooldownState, token);
 
         // 5. 分类匹配结果
         var firstValid = await PickFirstValidMatch(challenge, participation, matchedFlags, level, token);
@@ -241,6 +274,15 @@ public class ScoringService
 
         var submissionType = await DetermineSubmissionType(challenge, participation, token);
 
+        // 答对时重置冷却计数（清零 WrongCount，清空 CooldownUntil）
+        var cooldownState = await _cooldownRepo.Get(participation.Id, challenge.Id, token);
+        if (cooldownState is not null && (cooldownState.WrongCount != 0 || cooldownState.CooldownUntil is not null))
+        {
+            cooldownState.WrongCount = 0;
+            cooldownState.CooldownUntil = null;
+            await _cooldownRepo.Upsert(cooldownState, token);
+        }
+
         return new ScoreResult
         {
             Status = AnswerResult.Accepted,
@@ -259,6 +301,9 @@ public class ScoringService
         string answer,
         int level,
         Guid? trackId,
+        int cooldownMinutes,
+        int wrongAnswerLimit,
+        ChallengeCooldownState? cooldownState,
         CancellationToken token)
     {
         // 1. 加载 Level 配置（先加载以便检测 trap/ban）
@@ -269,14 +314,13 @@ public class ScoringService
 
         // 2. Trap / Ban 检测 — 必须在 dedup 之前，确保 ban 答案幂等生效
         bool triggerChallengeLock = false;
-        string lockReason = "SubmissionLimitExceeded";
+        string lockReason = "TrapAnswer";
         Guid? bannedTrackId = null;
         int? bannedLevel = null;
 
         if (lockOnAnswers.Contains(answer))
         {
             triggerChallengeLock = true;
-            lockReason = "TrapAnswer";
         }
 
         // BanOnAnswers 仅 Level 2+ 且有 trackId 时生效；幂等创建 ban state
@@ -326,6 +370,21 @@ public class ScoringService
                 Level = level,
                 BannedTrackId = bannedTrackId,
                 BannedLevel = bannedLevel,
+                Cooldown = cooldownState is not null
+                    ? new CooldownInfo
+                    {
+                        WrongCount = cooldownState.WrongCount,
+                        WrongAnswerLimit = wrongAnswerLimit,
+                        CooldownMinutes = cooldownMinutes,
+                        CooldownUntil = cooldownState.CooldownUntil
+                    }
+                    : new CooldownInfo
+                    {
+                        WrongCount = 0,
+                        WrongAnswerLimit = wrongAnswerLimit,
+                        CooldownMinutes = cooldownMinutes,
+                        CooldownUntil = null
+                    },
                 Message = "Duplicate wrong submission, no penalty"
             };
         }
@@ -343,53 +402,47 @@ public class ScoringService
             }
         }
 
-        // 5. WrongCount 累加 + SubmissionLimit 检查
-        // 规则 R4: 防爆破维度 = per file path (Track)，跨所有 Level 累计错误提交数
-        // 重复提交不累加（已 dedup）
-        int wrongCount = 0;
-        if (!duplicate)
+        // 5. 题目冷却计数（per-challenge，所有 track/level 合计）
+        // 阈值 = trackCount × 5（自动）；冷却时长 = game.CooldownMinutes（per-game 配置）
+        // 重复提交不累加；trap 触发时不进入冷却（trap 用 ChallengeLockState 处理）
+        CooldownInfo? cooldownInfo = null;
+        if (!duplicate && !triggerChallengeLock && cooldownMinutes > 0 && wrongAnswerLimit > 0)
         {
-            wrongCount = await _wrongCountRepo.IncrementWrongCount(
-                participation.Id, challenge.Id, level, token);
-
-            if (!triggerChallengeLock)
+            var state = cooldownState ?? new ChallengeCooldownState
             {
-                var limit = levelConfig?.SubmissionLimit > 0
-                    ? levelConfig.SubmissionLimit
-                    : challenge.SubmissionLimit;
+                ParticipationId = participation.Id,
+                ChallengeId = challenge.Id,
+                WrongCount = 0,
+                CooldownUntil = null
+            };
 
-                if (limit > 0)
-                {
-                    int effectiveWrongCount;
-                    if (trackId is not null)
-                    {
-                        // per-track 跨 level 累计（含本次 +1）
-                        var historicalTrackWrong = await _context.SubmissionRecords
-                            .AsNoTracking()
-                            .CountAsync(r => r.ParticipationId == participation.Id
-                                          && r.ChallengeId == challenge.Id
-                                          && r.TrackId == trackId
-                                          && r.IsPenalty, token);
-                        effectiveWrongCount = historicalTrackWrong + 1;
-                    }
-                    else
-                    {
-                        // 无 Track 题目退化为 per-level 计数
-                        effectiveWrongCount = wrongCount;
-                    }
-
-                    if (effectiveWrongCount >= limit)
-                    {
-                        triggerChallengeLock = true;
-                        lockReason = "SubmissionLimitExceeded";
-                    }
-                }
+            // 冷却已过期则清空 CooldownUntil（避免返回过期时间给前端）
+            if (state.CooldownUntil is not null && state.CooldownUntil <= DateTimeOffset.UtcNow)
+            {
+                state.CooldownUntil = null;
             }
+
+            state.WrongCount += 1;
+            state.LastWrongAt = DateTimeOffset.UtcNow;
+
+            if (state.WrongCount >= wrongAnswerLimit)
+            {
+                state.CooldownUntil = DateTimeOffset.UtcNow.AddMinutes(cooldownMinutes);
+                state.WrongCount = 0;
+            }
+
+            await _cooldownRepo.Upsert(state, token);
+
+            cooldownInfo = new CooldownInfo
+            {
+                WrongCount = state.WrongCount,
+                WrongAnswerLimit = wrongAnswerLimit,
+                CooldownMinutes = cooldownMinutes,
+                CooldownUntil = state.CooldownUntil
+            };
         }
 
-        // 6. 创建全题锁
-        // 规则 R10: 防爆破冻结"当日"提交窗口。LockDurationMinutes=0 时使用 24h 默认（避免无限锁）。
-        // 管理员可通过 challenge.LockDurationMinutes 显式配置（含 0 表示使用默认 24h）。
+        // 6. 创建全题锁（仅 trap 触发；SubmissionLimit 已被冷却机制替代）
         DateTimeOffset? unlocksAt = null;
         if (triggerChallengeLock)
         {
@@ -443,6 +496,7 @@ public class ScoringService
             BannedLevel = bannedLevel,
             ChallengeLocked = triggerChallengeLock,
             UnlocksAt = unlocksAt,
+            Cooldown = cooldownInfo,
             Message = submissionType == "Trap" ? "Trap answer triggered"
                 : submissionType == "Ban" ? "Answer banned this track-level"
                 : duplicate ? "Duplicate wrong submission, no penalty"

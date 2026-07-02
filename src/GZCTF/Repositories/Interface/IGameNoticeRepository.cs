@@ -27,11 +27,6 @@ public interface IGameNoticeRepository : IRepository
     public Task<GameNotice[]> GetNormalNotices(int gameId, CancellationToken token = default);
 
     /// <summary>
-    /// 获取告警类通知（admin-only，含 RateLimitAlert）
-    /// </summary>
-    public Task<GameNotice[]> GetAlertNotices(int gameId, CancellationToken token = default);
-
-    /// <summary>
     /// Update a game notice
     /// </summary>
     /// <param name="notice"></param>

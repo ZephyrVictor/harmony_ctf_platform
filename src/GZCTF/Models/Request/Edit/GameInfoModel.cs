@@ -118,6 +118,11 @@ public class GameInfoModel
     /// </summary>
     public int ZeroDayBaseScore { get; set; } = 1;
 
+    /// <summary>
+    /// 题目冷却分钟数。0 = 不限流
+    /// </summary>
+    public int CooldownMinutes { get; set; } = 5;
+
     internal static GameInfoModel FromGame(Data.Game game) =>
         new()
         {
@@ -140,6 +145,7 @@ public class GameInfoModel
             WriteupRequired = game.WriteupRequired,
             BloodBonusValue = game.BloodBonus.Val,
             ZeroDayInfoMarkdown = game.ZeroDayInfoMarkdown,
-            ZeroDayBaseScore = game.ZeroDayBaseScore
+            ZeroDayBaseScore = game.ZeroDayBaseScore,
+            CooldownMinutes = game.CooldownMinutes
         };
 }

@@ -362,22 +362,6 @@ const GameChallengeEdit: FC = () => {
           </Grid.Col>
           <Grid.Col span={1}>
             <Stack gap="0.425625rem">
-              <NumberInput
-                label={t('admin.content.games.challenges.submission_limit.label')}
-                description={t('admin.content.games.challenges.submission_limit.description')}
-                placeholder={t('admin.content.games.challenges.submission_limit.placeholder')}
-                min={0}
-                max={10000}
-                disabled={disabled}
-                stepHoldDelay={500}
-                stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
-                value={challengeInfo?.submissionLimit || undefined}
-                onChange={(e) => {
-                  const number = getInputNumber(e)
-                  if (isNaN(number)) return
-                  setChallengeInfo({ ...challengeInfo, submissionLimit: number })
-                }}
-              />
               <DateTimePicker
                 label={t('admin.content.games.challenges.deadline.label')}
                 placeholder={t('admin.content.games.challenges.deadline.placeholder')}
@@ -655,7 +639,7 @@ const GameChallengeEdit: FC = () => {
           content: tryDefault([challengeInfo?.content, challenge?.content]),
           hints: tryDefault([challengeInfo?.hints, challenge?.hints], []),
           score: tryDefault([challengeInfo?.originalScore, challenge?.originalScore], 0),
-          limit: tryDefault([challengeInfo?.submissionLimit, challenge?.submissionLimit], 0),
+          limit: 0,
           category: category as ChallengeCategory,
           deadline: deadline ? deadline.valueOf() : undefined,
           type: challenge?.type ?? ChallengeType.StaticAttachment,

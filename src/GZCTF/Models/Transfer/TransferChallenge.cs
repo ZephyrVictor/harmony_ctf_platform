@@ -225,9 +225,6 @@ public class TransferLevelConfig
     public int Score { get; set; }
 
     [Range(0, int.MaxValue)]
-    public int SubmissionLimit { get; set; }
-
-    [Range(0, int.MaxValue)]
     public int PenaltyScore { get; set; }
 
     /// <summary>

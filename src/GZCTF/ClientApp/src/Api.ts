@@ -1029,6 +1029,8 @@ export interface GameInfoModel {
   zeroDayInfoMarkdown?: string;
   /** 0day 加分基础倍数 */
   zeroDayBaseScore?: number;
+  /** 题目冷却分钟数。0 = 不限流 */
+  cooldownMinutes?: number;
 }
 
 /** List response */
@@ -2993,6 +2995,8 @@ export interface GameDetailModel {
   zeroDayInfoMarkdown?: string;
   /** 0day 加分基础倍数 */
   zeroDayBaseScore?: number;
+  /** 题目冷却分钟数。0 = 不限流 */
+  cooldownMinutes?: number;
 }
 
 /** Participation for review (Admin) */
@@ -3103,6 +3107,8 @@ export interface ChallengeDetailModel {
    * @format guid
    */
   activeTrackId?: string | null;
+  /** 题目冷却信息（per-challenge 答错次数 + 临时冷却） */
+  cooldown?: CooldownInfo | null;
 }
 
 export interface ClientFlagContext {
@@ -3156,10 +3162,24 @@ export interface TrackLevelStatusModel {
   solvedAt?: number | null;
   /** @format int32 */
   attemptsUsed?: number;
-  /** @format int32 */
-  submissionLimit?: number;
   /** @format uint64 */
   unlocksAt?: number | null;
+}
+
+/** 题目冷却状态快照（返回给前端） */
+export interface CooldownInfo {
+  /** 当前周期错答次数 */
+  /** @format int32 */
+  wrongCount?: number;
+  /** 错答次数阈值（= trackCount × 5）。0 = 不限流 */
+  /** @format int32 */
+  wrongAnswerLimit?: number;
+  /** 冷却分钟数（per-game 配置） */
+  /** @format int32 */
+  cooldownMinutes?: number;
+  /** 冷却到期时间。null = 未冷却；> now = 冷却中 */
+  /** @format uint64 */
+  cooldownUntil?: number | null;
 }
 
 /** 全题锁状态（选手视图） */
@@ -3226,6 +3246,8 @@ export interface FlagSubmitResponse {
   bannedLevel?: number | null;
   /** 触发锁/封禁的错误答案（用于详细提示） */
   triggerAnswer?: string | null;
+  /** 题目冷却信息（per-challenge 答错次数 + 临时冷却） */
+  cooldown?: CooldownInfo | null;
 }
 
 /** Flag submission */

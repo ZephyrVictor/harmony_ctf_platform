@@ -53,13 +53,6 @@ public class ChallengeUpdateModel
     public DateTimeOffset? DeadlineUtc { get; set; }
 
     /// <summary>
-    /// Maximum number of flag submissions allowed per team for this challenge (0 = no limit)
-    /// </summary>
-    [Range(0, 10000, ErrorMessageResourceName = nameof(Resources.Program.Model_OutOfRange),
-        ErrorMessageResourceType = typeof(Resources.Program))]
-    public int? SubmissionLimit { get; set; }
-
-    /// <summary>
     /// 临时全题锁时长（分钟），0 = 永久
     /// </summary>
     [Range(0, int.MaxValue)]

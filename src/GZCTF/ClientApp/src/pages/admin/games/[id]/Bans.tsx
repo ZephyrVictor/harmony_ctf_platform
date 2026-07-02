@@ -2,7 +2,7 @@ import {
   Alert, Badge, Button, Card, Code, Group, Modal, Select,
   SimpleGrid, Stack, Table, Text, Textarea, TextInput,
 } from '@mantine/core'
-import { mdiAlertOctagonOutline, mdiGavel } from '@mdi/js'
+import { mdiGavel } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +11,8 @@ import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import api from '@Api'
 import {
-  createBan, deleteBan, listAlertNotices, listBans,
-  AlertNotice, BanStateDto,
+  createBan, deleteBan, listBans,
+  BanStateDto,
 } from '@Utils/AdminBanApi'
 import { searchTeams, TeamSearchResult } from '@Utils/AdminScoreApi'
 
@@ -22,7 +22,6 @@ const Bans: FC = () => {
   const gameId = Number(id)
 
   const [bans, setBans] = useState<BanStateDto[]>([])
-  const [alerts, setAlerts] = useState<AlertNotice[]>([])
   const [loading, setLoading] = useState(false)
 
   // 手动封禁弹窗状态
@@ -43,12 +42,8 @@ const Bans: FC = () => {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [banList, alertList] = await Promise.all([
-        listBans(gameId),
-        listAlertNotices(gameId),
-      ])
+      const banList = await listBans(gameId)
       setBans(banList)
-      setAlerts(alertList)
     } catch (e) {
       showErrorMsg(e, t)
     } finally {
@@ -131,37 +126,6 @@ const Bans: FC = () => {
   return (
     <WithGameEditTab>
       <Stack gap="md">
-        {/* 告警区 */}
-        <Card withBorder p="lg">
-          <Group mb="md">
-            <Icon path={mdiAlertOctagonOutline} size={1} color="red" />
-            <Text fw={700} size="lg">{t('admin.ban.alerts_title')}</Text>
-            <Badge color="red">{alerts.length}</Badge>
-          </Group>
-          {alerts.length === 0 ? (
-            <Text c="dimmed" size="sm">{t('admin.ban.no_alerts')}</Text>
-          ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>{t('admin.ban.time')}</Table.Th>
-                  <Table.Th>{t('admin.ban.team')}</Table.Th>
-                  <Table.Th>{t('admin.ban.challenge')}</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {alerts.map((a) => (
-                  <Table.Tr key={a.id}>
-                    <Table.Td>{new Date(a.time).toLocaleString()}</Table.Td>
-                    <Table.Td>{a.values?.[0] ?? '-'}</Table.Td>
-                    <Table.Td>{a.values?.[1] ?? '-'}</Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
-        </Card>
-
         {/* 封禁列表 */}
         <Card withBorder p="lg">
           <Group mb="md" justify="space-between">
