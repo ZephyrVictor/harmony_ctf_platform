@@ -248,7 +248,7 @@
   },
   "ban": {
     "title": "Vulnerability banned",
-    "level_banned": "Level L{{level}}",
+    "level_banned": "Level",
     "banned": "has been permanently banned",
     "trigger_answer": "Trigger answer"
   }

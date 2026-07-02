@@ -248,7 +248,7 @@
   },
   "ban": {
     "title": "漏洞已封禁",
-    "level_banned": "该漏洞 L{{level}}",
+    "level_banned": "该漏洞",
     "banned": "已被永久封禁",
     "trigger_answer": "触发答案"
   }
