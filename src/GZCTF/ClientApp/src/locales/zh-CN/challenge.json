@@ -48,7 +48,8 @@
       "exact": "精确匹配",
       "single_line": "单行",
       "line_range": "行号范围",
-      "multi_line": "多行"
+      "multi_line": "多行",
+      "source_location": "源码位置"
     },
     "flag_status": {
       "completed": "已完成",
@@ -162,9 +163,21 @@
       },
       "wrong": "flag 错误",
       "trap": "陷阱答案已触发",
-      "banned": "此关卡已封禁",
-      "duplicate": "重复错误提交，不扣分",
-      "multi_level_track_required": "上下文未恢复，请刷新页面"
+      "multi_level_track_required": "上下文未恢复，请刷新页面",
+      "locked": {
+        "title": "题目已锁定",
+        "unlock_at": "解锁时间",
+        "permanent": "题目已永久锁定"
+      },
+      "banned": {
+        "title": "漏洞已封禁",
+        "level": "级别",
+        "banned": "已封禁"
+      },
+      "duplicate": {
+        "title": "已提交过",
+        "message": "该级别已提交过，请继续提交下一 Level。"
+      }
     },
     "instance": {
       "copied": {
@@ -238,7 +251,19 @@
     "banned": "已封禁",
     "unlock_at": "{{time}} 解锁",
     "solved_count": "已解 {{count}} 个漏洞",
-    "submit_l1_to_start": "提交 L1 flag 开始攻击"
+    "submit_l1_to_start": "提交 L1 flag 开始攻击",
+    "select_track": "选择漏洞链",
+    "track_fallback": "漏洞链 {{index}}",
+    "new_vulnerability": "+ 新漏洞",
+    "starting_new": "✓ 正在开启新漏洞",
+    "next_submission_l1": "下一次提交将作为新漏洞链的 L1 处理。"
+  },
+  "cooldown": {
+    "title": "题目冷却中",
+    "remaining": "剩余时间",
+    "hint": "答错次数已达阈值，请稍后再试。",
+    "counter_title": "答错计数",
+    "counter_hint": "答错达阈值后进入冷却"
   },
   "lock": {
     "title": "题目已锁定",

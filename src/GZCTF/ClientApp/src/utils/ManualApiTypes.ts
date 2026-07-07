@@ -35,6 +35,12 @@ export interface LevelColumnMapping {
   lockOnAnswers?: string[]
   banOnAnswers?: string[]
   levelTitle?: string | null
+  caseSensitive?: boolean
+  pathCaseSensitive?: boolean
+  orSeparators?: string
+  rangeSeparator?: string
+  stripLinePrefix?: boolean
+  normalizeSourceLocation?: boolean
 }
 
 /** 镜像后端 `FlagImportModels.cs` 的 `FlagImportColumnMapping` */

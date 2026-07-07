@@ -1,4 +1,5 @@
 using System;
+using GZCTF.Models;
 using GZCTF.Models.Transfer;
 using GZCTF.Utils;
 using Xunit;
@@ -505,7 +506,7 @@ public class TransferValidatorTest
             Title = "Test Challenge",
             Category = ChallengeCategory.Web,
             Type = ChallengeType.StaticAttachment,
-            Flags = new FlagsSection { Static = [new() { Value = new string('a', 150) }] }
+            Flags = new FlagsSection { Static = [new() { Value = new string('a', Limits.MaxFlagLength + 1) }] }
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() =>

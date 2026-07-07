@@ -23,7 +23,6 @@ public class TransferChallengeTests
             OriginalScore = 1000,
             MinScoreRate = 0.25,
             Difficulty = 5.0,
-            SubmissionLimit = 0,
             DeadlineUtc = DateTimeOffset.UtcNow.AddDays(7),
             FlagTemplate = null,
             DisableBloodBonus = false,
@@ -134,7 +133,7 @@ public class TransferChallengeTests
         Assert.Equal(800, challenge.OriginalScore);
         Assert.Equal(0.3, challenge.MinScoreRate);
         Assert.Equal(4.0, challenge.Difficulty);
-        Assert.Equal(10, challenge.SubmissionLimit);
+        Assert.Equal(TransferChallenge.Limits.Deadline, challenge.DeadlineUtc);
         Assert.True(challenge.DisableBloodBonus);
         Assert.Equal(2, challenge.Hints!.Count);
     }

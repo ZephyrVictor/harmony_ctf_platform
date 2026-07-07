@@ -384,7 +384,12 @@ public enum ChallengeFlagAnswerType : byte
     /// <summary>
     /// A set of positive source lines that must match exactly
     /// </summary>
-    MultiLine = 3
+    MultiLine = 3,
+
+    /// <summary>
+    /// Source file path plus line expression. Supports ranges and OR alternatives.
+    /// </summary>
+    SourceLocation = 4
 }
 
 /// <summary>

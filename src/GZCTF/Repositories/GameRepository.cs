@@ -456,16 +456,9 @@ public class GameRepository(
                 meta.MinScoreRate, meta.Difficulty, solvedCount);
         }
 
-        // 5. sort challenge items by submit time, and update the Score and Type fields
-        var noBonus = game.BloodBonus.NoBonus;
-
-        float[] bloodFactors =
-        [
-            game.BloodBonus.FirstBloodFactor,
-            game.BloodBonus.SecondBloodFactor,
-            game.BloodBonus.ThirdBloodFactor
-        ];
-
+        // 5. Sort challenge-level solve markers by submit time.
+        // OpenHarmony CTF scoring is level-based: challenge-level solves/bloods are display-only
+        // and must not add score on top of SubmissionRecord.ScoreChange.
         List<ScoreTimelineEvent> scoredTimelineEvents = [];
         foreach (var solve in solves.OrderBy(s => s.SubmitTimeUtc))
         {
@@ -506,45 +499,11 @@ public class GameRepository(
                 });
             }
 
-            // 5.2. update score
-            if (solve.ScoreEligible)
-            {
-                item.Score = noBonus
-                    ? item.Type switch
-                    {
-                        SubmissionType.Unaccepted => throw new UnreachableException(),
-                        _ => challenge.Score
-                    }
-                    : item.Type switch
-                    {
-                        SubmissionType.Unaccepted => throw new UnreachableException(),
-                        SubmissionType.FirstBlood => Convert.ToInt32(challenge.Score * bloodFactors[0]),
-                        SubmissionType.SecondBlood => Convert.ToInt32(challenge.Score * bloodFactors[1]),
-                        SubmissionType.ThirdBlood => Convert.ToInt32(challenge.Score * bloodFactors[2]),
-                        SubmissionType.Normal => challenge.Score,
-                        _ => throw new ArgumentException(nameof(item.Type))
-                    };
-            }
-            else
-            {
-                item.Score = 0;
-            }
+            // 5.2. Challenge-level score is disabled for this rule set.
+            item.Score = 0;
 
             // 5.3. update scoreboard item
             scoreboardItem.SolvedChallenges.Add(item);
-
-            if (!solve.ScoreEligible)
-                continue;
-
-            // only update last submission time for eligible solves,
-            // to prevent incorrectly ranking teams with ineligible
-            // late submissions above teams with eligible early submissions
-            scoreboardItem.Score += item.Score;
-            scoredTimelineEvents.Add(new ScoreTimelineEvent(
-                solve.ParticipantId,
-                item.SubmitTimeUtc,
-                item.Score));
-            scoreboardItem.LastSubmissionTime = item.SubmitTimeUtc;
         }
 
         var submissionRecordsDetail = await Context.SubmissionRecords
@@ -573,8 +532,7 @@ public class GameRepository(
             item.SolvedCount = solvedTrackLevelCounts.GetValueOrDefault(item.ParticipantId);
         }
 
-        // 5.5. incorporate SubmissionRecords scores (penalties, refunds, bonuses, and multi-level flag hits)
-        // Exact/LineRange correct submissions stay scored via FirstSolves to avoid double-counting.
+        // 5.5. incorporate SubmissionRecords scores (level flag hits, penalties, refunds, and bonuses)
         foreach (var rec in submissionRecordsDetail)
         {
             if (!items.TryGetValue(rec.ParticipationId, out var item))

@@ -96,7 +96,7 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
       {hasMultipleTracks && (
         <Stack gap={4}>
           <Text size="xs" c="dimmed">
-            {t('challenge.level.select_track', { defaultValue: 'Select vulnerability track' })}
+            {t('challenge.level.select_track')}
           </Text>
           <Group gap="xs" wrap="wrap">
             {tracks.map((track, idx) => {
@@ -104,7 +104,7 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
               const isActive = activeTrackId ? track.trackId === activeTrackId : idx === 0
               const trackLevels = track.levels ?? []
               const allSolved = trackLevels.length > 0 && trackLevels.every((l) => l.status === 'Solved')
-              const label = track.title || `Track ${idx + 1}`
+              const label = track.title || t('challenge.level.track_fallback', { index: idx + 1 })
               return (
                 <Badge
                   key={trackId || idx}
@@ -124,13 +124,15 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
                 style={{ cursor: 'pointer' }}
                 onClick={onStartNewTrack}
               >
-                {startNewTrackActive ? '✓ Starting new' : '+ New vulnerability'}
+                {startNewTrackActive
+                  ? t('challenge.level.starting_new')
+                  : t('challenge.level.new_vulnerability')}
               </Badge>
             )}
           </Group>
           {startNewTrackActive && (
             <Text size="xs" c="green">
-              Next submission will be treated as L1 of a new vulnerability chain.
+              {t('challenge.level.next_submission_l1')}
             </Text>
           )}
         </Stack>
@@ -292,6 +294,8 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
         return t('challenge.content.answer_type.line_range')
       case ChallengeFlagAnswerType.MultiLine:
         return t('challenge.content.answer_type.multi_line')
+      case ChallengeFlagAnswerType.SourceLocation:
+        return t('challenge.content.answer_type.source_location')
       case ChallengeFlagAnswerType.SingleLine:
       default:
         return t('challenge.content.answer_type.single_line')

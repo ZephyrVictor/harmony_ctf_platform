@@ -679,6 +679,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
                 .HasConversion(listConverter)
                 .Metadata.SetValueComparer(listComparer);
 
+            entity.Property(e => e.CaseSensitive)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.PathCaseSensitive)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.OrSeparators)
+                .HasDefaultValue("、,;")
+                .HasMaxLength(32);
+
+            entity.Property(e => e.RangeSeparator)
+                .HasDefaultValue("-")
+                .HasMaxLength(8);
+
+            entity.Property(e => e.StripLinePrefix)
+                .HasDefaultValue(true);
+
             entity.HasOne(e => e.Challenge)
                 .WithMany(e => e.LevelConfigs)
                 .HasForeignKey(e => e.ChallengeId)

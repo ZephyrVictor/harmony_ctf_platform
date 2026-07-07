@@ -90,6 +90,7 @@ export enum ChallengeFlagAnswerType {
   SingleLine = "SingleLine",
   LineRange = "LineRange",
   MultiLine = "MultiLine",
+  SourceLocation = "SourceLocation",
 }
 
 /** Container network mode */
@@ -2245,6 +2246,16 @@ export interface ChallengeLevelConfig {
   lockOnAnswers?: string[];
   /** 触发永久 (Track, Level) 封禁的 trap 答案（仅 Level 2+ 生效） */
   banOnAnswers?: string[];
+  /** 是否区分答案整体大小写。SourceLocation 下主要用于路径部分。 */
+  caseSensitive?: boolean;
+  /** SourceLocation 路径部分是否区分大小写。 */
+  pathCaseSensitive?: boolean;
+  /** SourceLocation 行号 OR 分隔符，例如 "、,"。 */
+  orSeparators?: string;
+  /** SourceLocation 行号范围分隔符。 */
+  rangeSeparator?: string;
+  /** 是否剥离行号中的 c: / C: 前缀。 */
+  stripLinePrefix?: boolean;
   isEnabled?: boolean;
   /** @format int32 */
   sortOrder?: number;
@@ -3399,6 +3410,13 @@ export interface LevelConfigCreateModel {
   penaltyScore?: number | null;
   lockOnAnswers?: string[] | null;
   banOnAnswers?: string[] | null;
+  caseSensitive?: boolean | null;
+  pathCaseSensitive?: boolean | null;
+  /** @maxLength 32 */
+  orSeparators?: string | null;
+  /** @maxLength 8 */
+  rangeSeparator?: string | null;
+  stripLinePrefix?: boolean | null;
   isEnabled?: boolean | null;
   /**
    * @format int32
@@ -3431,6 +3449,13 @@ export interface LevelConfigUpdateModel {
   penaltyScore?: number | null;
   lockOnAnswers?: string[] | null;
   banOnAnswers?: string[] | null;
+  caseSensitive?: boolean | null;
+  pathCaseSensitive?: boolean | null;
+  /** @maxLength 32 */
+  orSeparators?: string | null;
+  /** @maxLength 8 */
+  rangeSeparator?: string | null;
+  stripLinePrefix?: boolean | null;
   isEnabled?: boolean | null;
   /**
    * @format int32
@@ -3587,12 +3612,15 @@ export interface TrackFullLevelModel {
    */
   score?: number;
   /** @format int32 */
-  submissionLimit?: number;
-  /** @format int32 */
   penaltyScore?: number;
   lockOnAnswers?: string[];
   banOnAnswers?: string[];
   levelTitle?: string | null;
+  caseSensitive?: boolean;
+  pathCaseSensitive?: boolean;
+  orSeparators?: string | null;
+  rangeSeparator?: string | null;
+  stripLinePrefix?: boolean;
 }
 
 export interface TrackUpdateModel {

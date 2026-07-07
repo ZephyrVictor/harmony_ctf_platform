@@ -12,9 +12,11 @@ import {
   Text,
   Title,
   NumberInput,
+  TextInput,
+  Switch,
 } from '@mantine/core'
 import { showNotification } from '@mantine/notifications'
-import { mdiCheck, mdiFileUploadOutline, mdiDatabaseImportOutline } from '@mdi/js'
+import { mdiCheck, mdiFileUploadOutline, mdiDatabaseImportOutline, mdiPlus, mdiDeleteOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +33,7 @@ import {
   ImportMode,
   LevelColumnMapping,
 } from '@Utils/ManualApiTypes'
+import { createDefaultLevelColumnMappings } from '@Utils/ChallengeLevelDefaults'
 
 const AdminImportFlags: FC = () => {
   const { id } = useParams()
@@ -51,11 +54,7 @@ const AdminImportFlags: FC = () => {
   const [trackRefUrlCol, setTrackRefUrlCol] = useState<string | null>(null)
   const [trackModuleCol, setTrackModuleCol] = useState<string | null>(null)
 
-  const [levelCols, setLevelCols] = useState<LevelColumnMapping[]>([
-    { level: 1, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 5, penaltyScore: 0 },
-    { level: 2, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 4, penaltyScore: 0 },
-    { level: 3, columnName: '', answerType: ChallengeFlagAnswerType.Exact, score: 1, penaltyScore: 0 },
-  ])
+  const [levelCols, setLevelCols] = useState<LevelColumnMapping[]>(createDefaultLevelColumnMappings)
 
   const doPreview = useCallback(
     async (f: File, m: FlagImportColumnMapping) => {
@@ -103,15 +102,21 @@ const AdminImportFlags: FC = () => {
             i === 0
               ? find((c) => c.includes('文件') || c.toLowerCase().includes('file'))
               : i === 1
-                ? find((c) => c.includes('commit'))
-                : find((c) => c.includes('修复研判') || c.toLowerCase().includes('revised')) ??
+                ? find((c) => c.toLowerCase().includes('commit'))
+                : find((c) => c.includes('CWE(修复研判')) ??
+                  find((c) => c.includes('修复研判') || c.toLowerCase().includes('revised')) ??
                   find((c) => c.toLowerCase().includes('cwe'))
           // Auto-detect extra columns for Level 1 (e.g. line number)
           const extraCols =
             i === 0
               ? cols.filter((c) => c.includes('行数') || c.toLowerCase().includes('line'))
               : []
-          return { ...l, columnName: col ?? '', extraColumns: extraCols.length > 0 ? extraCols : l.extraColumns }
+          return {
+            ...l,
+            columnName: col ?? '',
+            extraColumns: extraCols.length > 0 ? extraCols : l.extraColumns,
+            answerType: i === 0 ? ChallengeFlagAnswerType.SourceLocation : l.answerType,
+          }
         })
       )
     },
@@ -189,12 +194,29 @@ const AdminImportFlags: FC = () => {
   }
 
   const columnOptions = (preview?.columnNames ?? []).map((c) => ({ value: c, label: c }))
+  const addLevel = () =>
+    setLevelCols((ls) => [
+      ...ls,
+      {
+        level: Math.max(0, ...ls.map((l) => l.level)) + 1,
+        columnName: '',
+        answerType: ChallengeFlagAnswerType.Exact,
+        score: 0,
+        penaltyScore: 0,
+        caseSensitive: true,
+        pathCaseSensitive: true,
+        orSeparators: '、,;',
+        rangeSeparator: '-',
+        stripLinePrefix: true,
+        normalizeSourceLocation: true,
+      },
+    ])
 
   return (
     <WithGameEditTab>
       <Stack p="md">
         <Group justify="space-between">
-          <Title>Import Flags (Game-level: auto-create challenges)</Title>
+          <Title>{t('admin.import.game_level_title')}</Title>
           <FileButton onChange={onFileSelected} accept=".xlsx,.csv">
             {(props) => (
               <Button {...props} leftSection={<Icon path={mdiFileUploadOutline} size={1} />}>
@@ -211,7 +233,7 @@ const AdminImportFlags: FC = () => {
       </Alert>
       {file && (
         <Group>
-          <Badge variant="light">File: {file.name}</Badge>
+          <Badge variant="light">{t('admin.import.file')}: {file.name}</Badge>
           <Badge variant="light">{(file.size / 1024).toFixed(1)} KB</Badge>
         </Group>
       )}
@@ -219,36 +241,36 @@ const AdminImportFlags: FC = () => {
         <>
           <Card withBorder padding="md">
             <Stack gap="sm">
-              <Title order={5}>Preview</Title>
+              <Title order={5}>{t('admin.import.preview')}</Title>
               <Group>
                 <Badge variant="light" color="blue">
-                  Repositories: {preview.repositories?.length ?? 0}
+                  {t('admin.import.repositories')}: {preview.repositories?.length ?? 0}
                 </Badge>
                 <Badge variant="light" color="teal">
-                  Submodules: {preview.submodules?.length ?? 0}
+                  {t('admin.import.submodules')}: {preview.submodules?.length ?? 0}
                 </Badge>
                 <Badge variant="light" color="indigo">
-                  Tracks: {preview.tracks?.length ?? 0}
+                  {t('admin.import.tracks')}: {preview.tracks?.length ?? 0}
                 </Badge>
               </Group>
               {preview.repositories && preview.repositories.length > 0 && (
                 <Text size="sm">
-                  <strong>Repositories:</strong> {preview.repositories.join(', ')}
+                  <strong>{t('admin.import.repositories')}:</strong> {preview.repositories.join(', ')}
                 </Text>
               )}
               {preview.submodules && preview.submodules.length > 0 && (
                 <Text size="sm">
-                  <strong>Submodules:</strong> {preview.submodules.join(', ')}
+                  <strong>{t('admin.import.submodules')}:</strong> {preview.submodules.join(', ')}
                 </Text>
               )}
             </Stack>
           </Card>
           <Card withBorder padding="md">
             <Stack gap="sm">
-              <Title order={5}>Column Mapping</Title>
+              <Title order={5}>{t('admin.import.mapping')}</Title>
               <Group grow>
-                <Select label="Repository column (required)" value={repoCol} onChange={setRepoCol} data={columnOptions} />
-                <Select label="Submodule column (required)" value={submodCol} onChange={setSubmodCol} data={columnOptions} />
+                <Select label={`${t('admin.import.repositoryColumn')} (${t('admin.import.required')})`} value={repoCol} onChange={setRepoCol} data={columnOptions} />
+                <Select label={`${t('admin.import.submoduleColumn')} (${t('admin.import.required')})`} value={submodCol} onChange={setSubmodCol} data={columnOptions} />
               </Group>
               <Stack gap="xs">
                 <Select
@@ -270,71 +292,132 @@ const AdminImportFlags: FC = () => {
                 )}
               </Stack>
               <Group grow>
-                <Select label="Title column" value={trackTitleCol} onChange={setTrackTitleCol} data={columnOptions} clearable />
-                <Select label="FlawNo column" value={trackFlawNoCol} onChange={setTrackFlawNoCol} data={columnOptions} clearable />
-                <Select label="FilePath column" value={trackFilePathCol} onChange={setTrackFilePathCol} data={columnOptions} clearable />
+                <Select label={t('admin.import.titleColumn')} value={trackTitleCol} onChange={setTrackTitleCol} data={columnOptions} clearable />
+                <Select label={t('admin.import.flawNoColumn')} value={trackFlawNoCol} onChange={setTrackFlawNoCol} data={columnOptions} clearable />
+                <Select label={t('admin.import.filePathColumn')} value={trackFilePathCol} onChange={setTrackFilePathCol} data={columnOptions} clearable />
               </Group>
               <Group grow>
-                <Select label="Module column" value={trackModuleCol} onChange={setTrackModuleCol} data={columnOptions} clearable />
-                <Select label="Category column" value={trackCategoryCol} onChange={setTrackCategoryCol} data={columnOptions} clearable />
-                <Select label="ReferenceUrl column" value={trackRefUrlCol} onChange={setTrackRefUrlCol} data={columnOptions} clearable />
+                <Select label={t('admin.import.moduleColumn')} value={trackModuleCol} onChange={setTrackModuleCol} data={columnOptions} clearable />
+                <Select label={t('admin.import.categoryColumn')} value={trackCategoryCol} onChange={setTrackCategoryCol} data={columnOptions} clearable />
+                <Select label={t('admin.import.referenceUrlColumn')} value={trackRefUrlCol} onChange={setTrackRefUrlCol} data={columnOptions} clearable />
               </Group>
               <Title order={6} mt="sm">
-                Level columns
+                {t('admin.import.levelColumns')}
               </Title>
               <Text size="xs" c="dimmed">
-                Extra columns are concatenated to the main column with ":" separator. E.g. Column="文件路径" + Extra=["代码行数"] → "path.cpp:c:856-864"
+                {t('admin.import.levelHelp')}
               </Text>
               {levelCols.map((lc, idx) => (
-                <Group key={idx} grow align="flex-end">
-                  <NumberInput
-                    label={`Level ${idx + 1}`}
-                    value={lc.level}
-                    onChange={(v) =>
-                      setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, level: typeof v === 'number' ? v : 1 } : l)))
-                    }
-                  />
-                  <Select
-                    label="Column"
-                    value={lc.columnName}
-                    onChange={(v) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, columnName: v ?? '' } : l)))}
-                    data={columnOptions}
-                  />
-                  <MultiSelect
-                    label="Extra columns"
-                    placeholder="Concat with ':'"
-                    value={lc.extraColumns ?? []}
-                    onChange={(v) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, extraColumns: v } : l)))}
-                    data={columnOptions}
-                    clearable
-                  />
-                  <Select
-                    label="AnswerType"
-                    value={lc.answerType}
-                    onChange={(v) =>
-                      setLevelCols((ls) =>
-                        ls.map((l, i) => (i === idx ? { ...l, answerType: v as ChallengeFlagAnswerType } : l))
-                      )
-                    }
-                    data={Object.values(ChallengeFlagAnswerType).map((v) => ({ value: v, label: v }))}
-                  />
-                  <NumberInput
-                    label="Score"
-                    value={lc.score ?? 0}
-                    onChange={(v) =>
-                      setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, score: typeof v === 'number' ? v : 0 } : l)))
-                    }
-                  />
-                  <NumberInput
-                    label={t('admin.import.penaltyScore.label', { defaultValue: 'Penalty Score' })}
-                    description={t('admin.import.penaltyScore.description', { defaultValue: 'Wrong answer deduction (0 = no penalty)' })}
-                    value={lc.penaltyScore ?? 0}
-                    onChange={(v) =>
-                      setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, penaltyScore: typeof v === 'number' ? v : 0 } : l)))
-                    }
-                  />
-                </Group>
+                <Card key={idx} withBorder padding="sm" radius="sm">
+                  <Stack gap="xs">
+                    <Group justify="space-between">
+                      <Text fw={700}>{t('admin.import.level.level', { level: lc.level })}</Text>
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="compact-sm"
+                        leftSection={<Icon path={mdiDeleteOutline} size={0.75} />}
+                        onClick={() => setLevelCols((ls) => ls.filter((_, i) => i !== idx))}
+                      >
+                        {t('admin.import.level.remove')}
+                      </Button>
+                    </Group>
+                    <Group grow align="flex-end">
+                      <NumberInput
+                        label={t('admin.import.level.level', { level: idx + 1, defaultValue: `Level ${idx + 1}` })}
+                        value={lc.level}
+                        onChange={(v) =>
+                          setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, level: typeof v === 'number' ? v : 1 } : l)))
+                        }
+                      />
+                      <TextInput
+                        label={t('admin.import.level.title', { defaultValue: 'Title' })}
+                        value={lc.levelTitle ?? ''}
+                        onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, levelTitle: e.target.value } : l)))}
+                      />
+                      <Select
+                        label={t('admin.import.level.column', { defaultValue: 'Column' })}
+                        value={lc.columnName}
+                        onChange={(v) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, columnName: v ?? '' } : l)))}
+                        data={columnOptions}
+                      />
+                      <MultiSelect
+                        label={t('admin.import.level.extraColumns', { defaultValue: 'Extra columns' })}
+                        placeholder={t('admin.import.level.extraColumnsPlaceholder', { defaultValue: "Concat with ':'" })}
+                        value={lc.extraColumns ?? []}
+                        onChange={(v) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, extraColumns: v } : l)))}
+                        data={columnOptions}
+                        clearable
+                      />
+                    </Group>
+                    <Group grow align="flex-end">
+                      <Select
+                        label={t('admin.import.level.answerType', { defaultValue: 'Answer type' })}
+                        value={lc.answerType}
+                        onChange={(v) =>
+                          setLevelCols((ls) =>
+                            ls.map((l, i) => (i === idx ? { ...l, answerType: v as ChallengeFlagAnswerType } : l))
+                          )
+                        }
+                        data={Object.values(ChallengeFlagAnswerType).map((v) => ({ value: v, label: v }))}
+                      />
+                      <NumberInput
+                        label={t('admin.import.level.score', { defaultValue: 'Score' })}
+                        value={lc.score ?? 0}
+                        onChange={(v) =>
+                          setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, score: typeof v === 'number' ? v : 0 } : l)))
+                        }
+                      />
+                      <NumberInput
+                        label={t('admin.import.penaltyScore.label', { defaultValue: 'Penalty Score' })}
+                        description={t('admin.import.penaltyScore.description', { defaultValue: 'Wrong answer deduction (0 = no penalty)' })}
+                        value={lc.penaltyScore ?? 0}
+                        onChange={(v) =>
+                          setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, penaltyScore: typeof v === 'number' ? v : 0 } : l)))
+                        }
+                      />
+                    </Group>
+                    {lc.answerType === ChallengeFlagAnswerType.SourceLocation && (
+                      <Stack gap="xs">
+                        <Group grow>
+                          <TextInput
+                            label={t('admin.import.level.orSeparators', { defaultValue: 'OR separators' })}
+                            value={lc.orSeparators ?? '、,;'}
+                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, orSeparators: e.target.value } : l)))}
+                          />
+                          <TextInput
+                            label={t('admin.import.level.rangeSeparator', { defaultValue: 'Range separator' })}
+                            value={lc.rangeSeparator ?? '-'}
+                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, rangeSeparator: e.target.value } : l)))}
+                          />
+                        </Group>
+                        <Group>
+                          <Switch
+                            label={t('admin.import.level.caseSensitive', { defaultValue: 'Case sensitive' })}
+                            checked={lc.caseSensitive ?? true}
+                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, caseSensitive: e.target.checked } : l)))}
+                          />
+                          <Switch
+                            label={t('admin.import.level.pathCaseSensitive', { defaultValue: 'Path case sensitive' })}
+                            checked={lc.pathCaseSensitive ?? true}
+                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, pathCaseSensitive: e.target.checked } : l)))}
+                          />
+                          <Switch
+                            label={t('admin.import.level.stripLinePrefix', { defaultValue: 'Strip c: prefix' })}
+                            checked={lc.stripLinePrefix ?? true}
+                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, stripLinePrefix: e.target.checked } : l)))}
+                          />
+                        </Group>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Card>
               ))}
+              <Group>
+                <Button variant="light" leftSection={<Icon path={mdiPlus} size={1} />} onClick={addLevel}>
+                  {t('admin.import.level.add')}
+                </Button>
+              </Group>
               <Group justify="flex-end">
                 <Button disabled={disabled} onClick={onImport} leftSection={<Icon path={mdiDatabaseImportOutline} size={1} />}>
                   {t('admin.button.challenges.import.run', { defaultValue: 'Import' })}
@@ -347,7 +430,7 @@ const AdminImportFlags: FC = () => {
       {preview?.tracks && preview.tracks.length > 0 && (
         <Card withBorder padding="md">
           <Title order={5} mb="sm">
-            Track Preview ({preview.tracks.length} tracks)
+            {t('admin.import.trackPreview')} ({preview.tracks.length})
           </Title>
           <ScrollArea h={300}>
             <Stack gap="xs">
@@ -376,7 +459,7 @@ const AdminImportFlags: FC = () => {
               ))}
               {preview.tracks.length > 30 && (
                 <Text size="xs" c="dimmed">
-                  ... and {preview.tracks.length - 30} more
+                  {t('admin.import.andMore', { count: preview.tracks.length - 30 })}
                 </Text>
               )}
             </Stack>
@@ -386,26 +469,26 @@ const AdminImportFlags: FC = () => {
       {result && (
         <Card withBorder padding="md">
           <Title order={5} mb="sm">
-            Import Result
+            {t('admin.import.result')}
           </Title>
           <Group gap="md">
             <Badge variant="light" color="blue">
-              Total: {result.totalRows}
+              {t('admin.import.totalRows')}: {result.totalRows}
             </Badge>
             <Badge variant="light" color="teal">
-              Imported: {result.imported}
+              {t('admin.import.imported')}: {result.imported}
             </Badge>
             <Badge variant="light" color="yellow">
-              Updated: {result.updated}
+              {t('admin.import.updated')}: {result.updated}
             </Badge>
             <Badge variant="light" color="green">
-              Created Challenges: {result.createdChallenges}
+              {t('admin.import.createdChallenges')}: {result.createdChallenges}
             </Badge>
             <Badge variant="light" color="cyan">
-              Reused Challenges: {result.reusedChallenges}
+              {t('admin.import.reusedChallenges')}: {result.reusedChallenges}
             </Badge>
             <Badge variant="light" color="red">
-              Failed: {result.failed}
+              {t('admin.import.failed')}: {result.failed}
             </Badge>
           </Group>
           {result.errors && result.errors.length > 0 && (

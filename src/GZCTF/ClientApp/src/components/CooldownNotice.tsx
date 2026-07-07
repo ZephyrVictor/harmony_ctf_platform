@@ -54,14 +54,14 @@ export const CooldownNotice: FC<CooldownNoticeProps> = ({ cooldown }) => {
           icon={<Icon path={mdiTimerSand} size={1} />}
           color="orange"
           variant="filled"
-          title={t('challenge.cooldown.title', { defaultValue: '题目冷却中' })}
+          title={t('challenge.cooldown.title')}
         >
           <Stack gap={4}>
             <Text size="sm">
-              {t('challenge.cooldown.remaining', { defaultValue: '剩余时间' })}: <strong>{remainingStr}</strong>
+              {t('challenge.cooldown.remaining')}: <strong>{remainingStr}</strong>
             </Text>
             <Text size="sm" c="white">
-              {t('challenge.cooldown.hint', { defaultValue: '答错次数达阈值，请稍后再试。' })}
+              {t('challenge.cooldown.hint')}
             </Text>
           </Stack>
         </Alert>
@@ -80,7 +80,7 @@ export const CooldownNotice: FC<CooldownNoticeProps> = ({ cooldown }) => {
         icon={<Icon path={mdiTimerSand} size={1} />}
         color={isWarning ? 'yellow' : 'blue'}
         variant="light"
-        title={t('challenge.cooldown.counter_title', { defaultValue: '答错计数' })}
+        title={t('challenge.cooldown.counter_title')}
       >
         <Stack gap={6}>
           <Group gap="xs">
@@ -88,7 +88,7 @@ export const CooldownNotice: FC<CooldownNoticeProps> = ({ cooldown }) => {
               {wrongCount} / {limit}
             </Badge>
             <Text size="xs" c="dimmed">
-              {t('challenge.cooldown.counter_hint', { defaultValue: '答错达阈值后进入冷却' })}
+              {t('challenge.cooldown.counter_hint')}
             </Text>
           </Group>
           <Progress value={pct} size="sm" color={isWarning ? 'red' : 'blue'} />

@@ -15,6 +15,7 @@ import { Icon } from '@mdi/react'
 import { FC, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { showErrorMsg } from '@Utils/Shared'
+import { createDefaultTrackFullLevels } from '@Utils/ChallengeLevelDefaults'
 import api, {
   ChallengeFlagAnswerType,
   TrackFullCreateModel,
@@ -28,12 +29,6 @@ interface TrackFullCreateModalProps {
   challengeId: number
   onSaved: () => void
 }
-
-const defaultLevels = (): TrackFullLevelModel[] => [
-  { level: 1, flagValue: '', answerType: ChallengeFlagAnswerType.Exact, score: 5 },
-  { level: 2, flagValue: '', answerType: ChallengeFlagAnswerType.Exact, score: 4 },
-  { level: 3, flagValue: '', answerType: ChallengeFlagAnswerType.Exact, score: 1 },
-]
 
 export const TrackFullCreateModal: FC<TrackFullCreateModalProps> = ({
   opened,
@@ -54,7 +49,7 @@ export const TrackFullCreateModal: FC<TrackFullCreateModalProps> = ({
     isEnabled: true,
     sortOrder: 0,
   })
-  const [levels, setLevels] = useState<TrackFullLevelModel[]>(defaultLevels())
+  const [levels, setLevels] = useState<TrackFullLevelModel[]>(createDefaultTrackFullLevels())
 
   const updateLevel = (idx: number, patch: Partial<TrackFullLevelModel>) => {
     setLevels((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
@@ -108,7 +103,7 @@ export const TrackFullCreateModal: FC<TrackFullCreateModalProps> = ({
         isEnabled: true,
         sortOrder: 0,
       })
-      setLevels(defaultLevels())
+      setLevels(createDefaultTrackFullLevels())
     } catch (e) {
       showErrorMsg(e, t)
     } finally {

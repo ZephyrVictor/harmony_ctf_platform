@@ -34,6 +34,9 @@ public class FlagImportService(
         {
             foreach (var row in rows)
             {
+                if (IsIgnorableRow(row, mapping))
+                    continue;
+
                 var trackMeta = ExtractTrackMeta(row, mapping);
                 var submodule = mapping.SubmoduleColumn is not null && row.TryGetValue(mapping.SubmoduleColumn, out var sm)
                     ? sm : null;
@@ -55,21 +58,10 @@ public class FlagImportService(
 
                 foreach (var lc in mapping.LevelColumns)
                 {
-                    if (!row.TryGetValue(lc.ColumnName, out var answer) || string.IsNullOrWhiteSpace(answer))
+                    var combinedValue = BuildFlagValue(row, lc);
+                    if (string.IsNullOrWhiteSpace(combinedValue))
                         continue;
-                    var combinedValue = answer.Trim();
-                    if (lc.ExtraColumns is { Count: > 0 })
-                    {
-                        foreach (var extra in lc.ExtraColumns)
-                        {
-                            if (!row.TryGetValue(extra, out var extraVal) || string.IsNullOrWhiteSpace(extraVal))
-                                continue;
-                            combinedValue = $"{combinedValue}:{extraVal.Trim()}";
-                        }
-                    }
 
-                    // Normalize: lowercase line-number prefixes (C: → c:) and collapse double colons (:: → :)
-                    combinedValue = combinedValue.Replace("C:", "c:").Replace("::", ":");
                     trackPreview.Levels.Add(new FlagImportLevelPreview
                     {
                         Level = lc.Level,
@@ -106,6 +98,12 @@ public class FlagImportService(
         {
             try
             {
+                if (IsIgnorableRow(row, mapping))
+                {
+                    result.Skipped++;
+                    continue;
+                }
+
                 await using var transaction = await context.Database.BeginTransactionAsync(token);
 
                 var trackMeta = ExtractTrackMeta(row, mapping);
@@ -191,23 +189,9 @@ public class FlagImportService(
                 // 创建 flags
                 foreach (var lc in mapping.LevelColumns)
                 {
-                    if (!row.TryGetValue(lc.ColumnName, out var answer) || string.IsNullOrWhiteSpace(answer))
+                    var flagValue = BuildFlagValue(row, lc);
+                    if (string.IsNullOrWhiteSpace(flagValue))
                         continue;
-
-                    var flagValue = answer.Trim();
-                    // 拼接 ExtraColumns（如 L1 = 文件路径:代码行数）
-                    if (lc.ExtraColumns is { Count: > 0 })
-                    {
-                        foreach (var extra in lc.ExtraColumns)
-                        {
-                            if (!row.TryGetValue(extra, out var extraVal) || string.IsNullOrWhiteSpace(extraVal))
-                                continue;
-                            flagValue = $"{flagValue}:{extraVal.Trim()}";
-                        }
-                    }
-
-                    // Normalize: lowercase line-number prefixes (C: → c:) and collapse double colons (:: → :)
-                    flagValue = flagValue.Replace("C:", "c:").Replace("::", ":");
 
                     // 注：按计划"数据集严格按原样导入"，不做 dup 校验。
                     // 重复 L1/L2/L3 值会创建多个 Track，PickFirstValidMatch 匹配第一个，其余不可达——这是数据问题不是平台问题。
@@ -232,7 +216,7 @@ public class FlagImportService(
                     var levelConfig = await levelConfigRepo.GetConfig(challengeId, lc.Level, token);
                     if (levelConfig is null)
                     {
-                        await levelConfigRepo.CreateConfig(new ChallengeLevelConfig
+                        var config = new ChallengeLevelConfig
                         {
                             ChallengeId = challengeId,
                             Level = lc.Level,
@@ -244,7 +228,14 @@ public class FlagImportService(
                             BanOnAnswers = lc.BanOnAnswers,
                             IsEnabled = true,
                             SortOrder = lc.Level
-                        }, token);
+                        };
+                        ApplyLevelConfigStrategy(config, lc);
+                        await levelConfigRepo.CreateConfig(config, token);
+                    }
+                    else
+                    {
+                        ApplyLevelConfigStrategy(levelConfig, lc);
+                        await levelConfigRepo.UpdateConfig(levelConfig, token);
                     }
                 }
 
@@ -294,6 +285,12 @@ public class FlagImportService(
         {
             try
             {
+                if (IsIgnorableRow(row, mapping))
+                {
+                    result.Skipped++;
+                    continue;
+                }
+
                 if (!row.TryGetValue(mapping.RepositoryColumn!, out var repoRaw) || string.IsNullOrWhiteSpace(repoRaw))
                 {
                     result.Errors.Add(new FlagImportError { Row = idx + 1, Error = "Repository column is empty" });
@@ -461,23 +458,10 @@ public class FlagImportService(
 
             foreach (var lc in mapping.LevelColumns)
             {
-                if (!row.TryGetValue(lc.ColumnName, out var answer) || string.IsNullOrWhiteSpace(answer))
+                var flagValue = BuildFlagValue(row, lc);
+                if (string.IsNullOrWhiteSpace(flagValue))
                     continue;
 
-                var flagValue = answer.Trim();
-                // 拼接 ExtraColumns（如 L1 = 文件路径:代码行数）
-                if (lc.ExtraColumns is { Count: > 0 })
-                {
-                    foreach (var extra in lc.ExtraColumns)
-                    {
-                        if (!row.TryGetValue(extra, out var extraVal) || string.IsNullOrWhiteSpace(extraVal))
-                            continue;
-                        flagValue = $"{flagValue}:{extraVal.Trim()}";
-                    }
-                }
-
-                // Normalize: lowercase line-number prefixes (C: → c:) and collapse double colons (:: → :)
-                flagValue = flagValue.Replace("C:", "c:").Replace("::", ":");
                 // 注：按计划"数据集严格按原样导入"，不做 dup 校验。
 
                 var flag = new ChallengeFlag
@@ -499,7 +483,7 @@ public class FlagImportService(
                 var levelConfig = await levelConfigRepo.GetConfig(challengeId, lc.Level, token);
                 if (levelConfig is null)
                 {
-                    await levelConfigRepo.CreateConfig(new ChallengeLevelConfig
+                    var config = new ChallengeLevelConfig
                     {
                         ChallengeId = challengeId,
                         Level = lc.Level,
@@ -511,7 +495,14 @@ public class FlagImportService(
                         BanOnAnswers = lc.BanOnAnswers,
                         IsEnabled = true,
                         SortOrder = lc.Level
-                    }, token);
+                    };
+                    ApplyLevelConfigStrategy(config, lc);
+                    await levelConfigRepo.CreateConfig(config, token);
+                }
+                else
+                {
+                    ApplyLevelConfigStrategy(levelConfig, lc);
+                    await levelConfigRepo.UpdateConfig(levelConfig, token);
                 }
             }
 
@@ -523,6 +514,25 @@ public class FlagImportService(
             result.Errors.Add(new FlagImportError { Row = idx + 1, Error = ex.Message });
             result.Failed++;
         }
+    }
+
+    private static bool IsIgnorableRow(Dictionary<string, string> row, FlagImportColumnMapping mapping)
+    {
+        static bool Empty(Dictionary<string, string> values, string? column) =>
+            string.IsNullOrWhiteSpace(column)
+            || !values.TryGetValue(column, out var value)
+            || string.IsNullOrWhiteSpace(value);
+
+        if (mapping.LevelColumns.Any(lc => !string.IsNullOrWhiteSpace(BuildFlagValue(row, lc))))
+            return false;
+
+        return Empty(row, mapping.RepositoryColumn)
+               && Empty(row, mapping.SubmoduleColumn)
+               && Empty(row, mapping.TrackRepositoryColumn)
+               && Empty(row, mapping.TrackModuleColumn)
+               && Empty(row, mapping.TrackFilePathColumn)
+               && Empty(row, mapping.TrackTitleColumn)
+               && Empty(row, mapping.TrackFlawNoColumn);
     }
 
     private List<Dictionary<string, string>> ParseFile(Stream stream, string contentType)
@@ -625,6 +635,106 @@ public class FlagImportService(
         };
     }
 
+    private static string? BuildFlagValue(Dictionary<string, string> row, LevelColumnMapping lc)
+    {
+        if (!row.TryGetValue(lc.ColumnName, out var answer) || string.IsNullOrWhiteSpace(answer))
+            return null;
+
+        var flagValue = answer.Trim();
+        if (lc.ExtraColumns is { Count: > 0 })
+        {
+            foreach (var extra in lc.ExtraColumns)
+            {
+                if (!row.TryGetValue(extra, out var extraVal) || string.IsNullOrWhiteSpace(extraVal))
+                    continue;
+                flagValue = $"{flagValue}:{extraVal.Trim()}";
+            }
+        }
+
+        return NormalizeImportedFlagValue(flagValue, lc);
+    }
+
+    private static string NormalizeImportedFlagValue(string value, LevelColumnMapping lc)
+    {
+        var normalized = value.Trim().Replace('：', ':').Replace("::", ":", StringComparison.Ordinal);
+
+        if (lc is { AnswerType: ChallengeFlagAnswerType.SourceLocation, NormalizeSourceLocation: true })
+        {
+            normalized = NormalizeImportedSourceLocation(normalized, lc);
+        }
+        else if (lc.StripLinePrefix)
+        {
+            normalized = normalized.Replace("C:", "c:", StringComparison.Ordinal);
+        }
+
+        return lc.CaseSensitive ? normalized : normalized.ToUpperInvariant();
+    }
+
+    private static string NormalizeImportedSourceLocation(string value, LevelColumnMapping lc)
+    {
+        var cPrefixIndex = value.LastIndexOf(":c:", StringComparison.OrdinalIgnoreCase);
+        string path;
+        string lineExpr;
+        if (cPrefixIndex > 0 && cPrefixIndex + 3 < value.Length)
+        {
+            path = value[..cPrefixIndex];
+            lineExpr = value[(cPrefixIndex + 1)..];
+        }
+        else
+        {
+            var separatorIndex = value.LastIndexOf(':');
+            if (separatorIndex <= 0 || separatorIndex == value.Length - 1)
+                return value;
+            path = value[..separatorIndex];
+            lineExpr = value[(separatorIndex + 1)..];
+        }
+
+        path = path.Trim()
+            .Replace('\\', '/')
+            .Replace('＼', '/')
+            .Replace('∕', '/')
+            .Replace('／', '/');
+        while (path.Contains("//", StringComparison.Ordinal))
+            path = path.Replace("//", "/", StringComparison.Ordinal);
+        if (!lc.PathCaseSensitive || !lc.CaseSensitive)
+            path = path.ToUpperInvariant();
+
+        if (lc.StripLinePrefix)
+            lineExpr = NormalizeImportedLineExpression(lineExpr, lc.OrSeparators);
+
+        return $"{path}:{lineExpr.Trim()}";
+    }
+
+    private static string NormalizeImportedLineExpression(string lineExpr, string orSeparators)
+    {
+        var separators = string.IsNullOrEmpty(orSeparators) ? "、,;" : orSeparators;
+        var parts = lineExpr.Split(separators.ToCharArray(),
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0)
+            parts = [lineExpr];
+
+        return string.Join('、', parts.Select(p =>
+            p.StartsWith("c:", StringComparison.OrdinalIgnoreCase) ? p[2..].Trim() : p.Trim()));
+    }
+
+    private static void ApplyLevelConfigStrategy(ChallengeLevelConfig config, LevelColumnMapping lc)
+    {
+        config.Score = lc.Score;
+        config.PenaltyScore = lc.PenaltyScore;
+        config.LockOnAnswers = lc.LockOnAnswers;
+        config.BanOnAnswers = DefaultBanOnAnswers(lc.Level, lc.BanOnAnswers);
+        config.CaseSensitive = lc.CaseSensitive;
+        config.PathCaseSensitive = lc.PathCaseSensitive;
+        config.OrSeparators = string.IsNullOrEmpty(lc.OrSeparators) ? "、,;" : lc.OrSeparators;
+        config.RangeSeparator = string.IsNullOrWhiteSpace(lc.RangeSeparator) ? "-" : lc.RangeSeparator;
+        config.StripLinePrefix = lc.StripLinePrefix;
+    }
+
+    private static List<string> DefaultBanOnAnswers(int level, List<string> configured) =>
+        configured.Count > 0 || level != 2
+            ? configured
+            : ["0", "hash(0)", "0000000000000000000000000000000000000000"];
+
     /// <summary>
     /// 计算 L1 flag 值（含 ExtraColumns 拼接），用于 "L1" MatchBy。
     /// 必须与存 flag 时的归一化保持一致（C:→c:, ::→:），否则重复导入时查不到已有 track。
@@ -634,20 +744,6 @@ public class FlagImportService(
         var lc = mapping.LevelColumns.FirstOrDefault(c => c.Level == 1);
         if (lc is null || string.IsNullOrWhiteSpace(lc.ColumnName))
             return null;
-        if (!row.TryGetValue(lc.ColumnName, out var answer) || string.IsNullOrWhiteSpace(answer))
-            return null;
-        var val = answer.Trim();
-        if (lc.ExtraColumns is { Count: > 0 })
-        {
-            foreach (var extra in lc.ExtraColumns)
-            {
-                if (!row.TryGetValue(extra, out var extraVal) || string.IsNullOrWhiteSpace(extraVal))
-                    continue;
-                val = $"{val}:{extraVal.Trim()}";
-            }
-        }
-        // 与 ImportFlagsAsync/ImportSingleRowAsync 存 flag 时的归一化保持一致
-        val = val.Replace("C:", "c:").Replace("::", ":");
-        return val;
+        return BuildFlagValue(row, lc);
     }
 }

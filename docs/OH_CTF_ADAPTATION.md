@@ -4,9 +4,37 @@
 > 以及为适配 **第二届 OpenHarmony CTF (Capture The Flaw) 智能漏洞挖掘赛** 所做的所有改动。
 >
 > - **基线版本**: GZCTF (上游开源版)
-> - **适配目标**: 比赛规则 R1–R30 (`memo/比赛规则-第二届OpenHarmony CTF.docx`)
-> - **数据集**: `memo/OH社区第二届CTF大赛AI数据集（0608）修复.xlsx` (59 行 / 14 仓库 / 22 挑战)
-> - **测试审计**: `trace.md` (Phase 0–8 完整执行日志)
+> - **适配目标**: 比赛规则 R1–R30 (`memo/比赛规则.docx`)
+> - **数据集**: `memo/数据集.xlsx` (最终导入验证: 59 条有效 Track / 14 仓库 / 22 挑战)
+> - **当前测试审计**: `docs/e2e-contest-flow/TEST_PLAN.md`
+> - **当前 E2E 证据**: `docs/e2e-contest-flow/e2e-results.json`, `docs/e2e-contest-flow/screenshots/`, `docs/e2e-contest-flow/traces/`
+
+## 当前验证状态 (2026-07-07)
+
+最新 Chrome E2E 已覆盖管理员与参赛者关键办赛链路:
+
+- 管理员视角: 题目列表、导入页、封禁页、监控提交页。
+- 参赛者视角: 比赛首页、题目列表、题目弹窗、正常提交、trap 封禁、cooldown、提交记录。
+- 提交流程: L1 `SourceLocation`, L2 commit hash, L3 CWE。
+- trap: `hash(0)` 触发对应 Track L2 封禁, 封禁后提交返回 `已被封禁，请联系管理员`。
+- cooldown: 2 个 Track 时错误阈值为 `2 * 5 = 10`, 触发后约 5 分钟冷却。
+- 计分: 题目级 solve marker 仅用于展示,默认 `score=0`;总分只汇总 Level 提交分与显式调分。导入默认 `PenaltyScore=0` 的 Level 答错不回退到全局默认扣分。
+- 0day: 比赛内 `/games/{id}/zeroday-info` 入口已修复为小写路由并纳入 Chrome E2E 截图,不再 404。
+- UI/i18n: 最新 E2E 固定中文界面并断言不再出现历史截图中的英文 fallback/乱码;所有截图保存前均断言页面不是 404。
+
+最终证据:
+
+| 证据 | 路径 |
+|---|---|
+| 完整测试计划与截图清单 | `docs/e2e-contest-flow/TEST_PLAN.md` |
+| 结构化断言结果 | `docs/e2e-contest-flow/e2e-results.json` |
+| Chrome 截图 | `docs/e2e-contest-flow/screenshots/` |
+| Playwright trace | `docs/e2e-contest-flow/traces/` |
+
+本轮发现并修复了 `SourceLocation` 完整位置 OR 匹配问题:
+`path1.cpp:286、path2.cpp:856-864` 现在可按任一完整位置匹配;原有 `path.cpp:281、286` 同路径多行 OR 语义保持不变。
+
+本轮也修复了 Level 计分回归:配置 `PenaltyScore=0` 时不再回退到全局 `Scoring.DefaultPenaltyScore`,避免错误提交把 Level-only 计分拉偏。
 
 ---
 
@@ -32,25 +60,38 @@
 | 层 | 技术 |
 |---|---|
 | 后端 | ASP.NET Core (.NET 10) + EF Core + PostgreSQL + Redis |
-| 前端 | React 18 + TypeScript + Vite + Mantine UI v7 |
+| 前端 | React 19 + TypeScript + Vite + Mantine UI v9 |
 | 容器 | Docker Compose (gzctf + db + redis) |
 | 实时通信 | SignalR (比赛通知、提交监控) |
 | 文件存储 | 本地文件系统 / 对象存储 (MinIO/S3) |
 | 容器调度 | Docker 或 K8s (动态容器题目) |
 
-### 1.2 部署架构
+### 1.2 当前架构
 
 ```
-┌─────────────────────────────────────────┐
-│  Docker Compose (harmony_ctf_platform)  │
-│  ┌──────────┐  ┌─────┐  ┌────────────┐  │
-│  │ gzctf    │←→│redis│  │ postgresql │  │
-│  │ :8081    │  │     │  │ db         │  │
-│  └──────────┘  └─────┘  └────────────┘  │
-│       ↑                                  │
-│       └─── Playwright daemon (Chrome)    │
-└─────────────────────────────────────────┘
+Production / compose:
+
+Browser
+  ↓
+10.77.0.10:8081
+  ↓ host port map
+gzctf container :8080
+  ├─ PostgreSQL container :5432
+  ├─ Redis container :6379
+  └─ Docker socket / container provider
+
+Current Chrome E2E / manual validation:
+
+Browser
+  ↓
+Vite preview 0.0.0.0:63000
+  ↓ API requests
+GZCTF backend *:8080
+  ├─ isolated PostgreSQL :15432
+  └─ Docker provider via local Docker socket
 ```
+
+当前手工验证入口: `http://10.37.237.106:63000/`。
 
 ### 1.3 用户角色
 
@@ -136,16 +177,22 @@ GameChallenge (题目)
 | `Level` | int | 1/2/3 (对应 5/4/1 分) |
 | `TrackId` | Guid | 所属漏洞链 ID |
 | `FlagValue` | string | 正确答案 |
-| `AnswerType` | enum | `Exact` / `LineRange` / `MultiLine` / `SingleLine` |
+| `AnswerType` | enum | `Exact` / `SourceLocation` / `LineRange` / `MultiLine` / `SingleLine` |
 | `IsVisible` | bool | 是否在 UI 展示 (用于"可见 Flag"列表) |
 | `IsEnabled` | bool | 是否启用 |
 
 #### 3.1.3 答案类型与 L1 格式
 
 - **Exact**: 精确匹配 (L2 commit hash、L3 CWE)
-- **SingleLine**: 单行格式 `path.cpp:c:1060`
-- **LineRange**: 范围格式 `path.cpp:c:550-559`
-- **MultiLine**: 多行格式 `path.cpp:c:281、c:286`
+- **SourceLocation**: 源码位置匹配,格式 `path.cpp:lineExpr`。路径部分按配置决定是否区分大小写;行号表达式支持范围分隔符 `-` 和 OR 分隔符 `、`/`,`/`;`;行号中的 `c:`/`C:` 前缀可按配置剥离。
+- **SingleLine**: 纯行号单行格式 `c:1060`
+- **LineRange**: 纯行号范围格式 `c:550-559`
+- **MultiLine**: 纯多行集合格式 `c:281、c:286`
+
+**L1 SourceLocation 匹配语义**:
+- 标准答案 `ecmascript/base/json_stringifier_optimized.cpp:856-864` 可接受选手提交 `...:857` 或 `...:856-863`,但不接受 `...:855` 或 `...:856-865`。
+- 标准答案 `ecmascript/builtins/builtins.cpp:281、286` 可接受选手提交 `...:281` 或 `...:286`。每个 OR 项也可以是一个范围。
+- 导入时 L1 由 `文件路径` + `代码行数` 拼接;`path.cpp:c:856-864` 会标准化为 `path.cpp:856-864` 后保存。
 
 **R30 组合 CWE 顺序敏感性**: L3 答案 `CWE-125; CWE-787` 与 `CWE-787; CWE-125` 不同 (Exact 类型强制顺序)。
 
@@ -236,31 +283,42 @@ Admin 审核通过 0day 工单时:
   "TrackFilePathColumn": "文件路径",
   "TrackCategoryColumn": "参考类别",
   "TrackReferenceUrlColumn": "社区公开PR",
-  "MatchBy": "FilePath",
+  "MatchBy": "L1",
   "LevelColumns": [
     {
       "Level": 1,
       "ColumnName": "文件路径",
       "ExtraColumns": ["代码行数"],
-      "AnswerType": "Exact",
-      "Score": 5
+      "AnswerType": "SourceLocation",
+      "Score": 5,
+      "LevelTitle": "漏洞定位",
+      "CaseSensitive": true,
+      "PathCaseSensitive": true,
+      "OrSeparators": "、,;",
+      "RangeSeparator": "-",
+      "StripLinePrefix": true,
+      "NormalizeSourceLocation": true
     },
     {
       "Level": 2,
       "ColumnName": "commit id",
       "AnswerType": "Exact",
       "Score": 4,
+      "LevelTitle": "漏洞引入",
       "BanOnAnswers": ["0"]
     },
     {
       "Level": 3,
       "ColumnName": "CWE(修复研判)",
       "AnswerType": "Exact",
-      "Score": 1
+      "Score": 1,
+      "LevelTitle": "漏洞类型"
     }
   ]
 }
 ```
+
+`LevelColumns` 是可变长度配置,管理员可新增/删除 level,每个 level 可单独选择主列、额外拼接列、答案类型、分值、扣分和匹配策略。比赛默认 Nday 配置为 L1=5、L2=4、L3=1,总分 10 分。
 
 #### 3.3.3 R28 ban-trigger 数据驱动
 
@@ -272,9 +330,9 @@ Admin 审核通过 0day 工单时:
 
 | Case | 处理 |
 |---|---|
-| 单行格式 `c:1060` | L1 = `path:c:1060`, AnswerType=Exact |
-| 范围格式 `c:550-559` | L1 = `path:c:550-559`, AnswerType=Exact |
-| 多行格式 `c:281、c:286` | L1 = `path:c:281、c:286`, AnswerType=Exact |
+| 单行格式 `c:1060` | L1 = `path:1060`, AnswerType=SourceLocation;选手可提交 `path:1060` 或 `path:c:1060` |
+| 范围格式 `c:550-559` | L1 = `path:550-559`, AnswerType=SourceLocation;选手提交其中任意单行或子区间均命中 |
+| 多解格式 `c:281、c:286` | L1 = `path:281、286`, AnswerType=SourceLocation;选手提交其中任意一个 OR 项均命中 |
 | 组合 CWE `CWE-125; CWE-787` | L3 = `CWE-125; CWE-787`, AnswerType=Exact (顺序敏感) |
 | `无法验证` L3 | L3 = `无法验证` (literal, 数据集语义问题) |
 | `hash(0)` 行 | L2 = `hash(0)` + BanOnAnswers=`["0"]` |
@@ -717,10 +775,10 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 | **R5** | 满分 10 分,动态分值,部分完成 | ✅ L1/L2/L3 独立计分 | Phase 2.6 |
 | **R6** | 4 级 flag 链 (file:line/commit/CWE/引入) | ✅ 3 级实现 (L4 未实现) | Phase 1/2 |
 | **R7** | 4 级分值 5/4/1 | ✅ ChallengeLevelConfig | Phase 1.8 |
-| **R8** | 精确到代码行标记 | ✅ L1 格式严格 (Exact/SingleLine/LineRange/MultiLine) | Phase 2.11 |
+| **R8** | 精确到代码行标记 | ✅ L1 `SourceLocation` 支持路径、单行、范围、OR 与子区间匹配 | Phase 2.11 |
 | **R9** | commit 语义 (引入 vs 修复) | ✅ 数据集 commit 列直接用作 L2 | Phase 1.10 |
 | **R10** | 防爆破冻结当日 | ✅ ChallengeLockStates | Phase 2.12 |
-| **R11** | 3 次冻结取消资格 | ❌ 未实现 (跨题累积) | — |
+| **R11** | 3 次冻结取消资格 | ✅ 3 次 trap 冻结后自动 Suspended | Phase 2.12 |
 | **R12** | 晋级前 10 + ≥5 个 ≥9 分 Nday | N/A (外部赛事) | — |
 | **R13** | 后 1/3 冲刺前 5 晋级 | N/A | — |
 | **R14** | 晋级 15 支,XCTF 总决赛 | N/A | — |
@@ -737,14 +795,14 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 | **R25** | F1 Score 指标 | ❌ 未实现 (用户同意不修) | — |
 | **R26** | AI 工具使用 <50% 不积分 | N/A (评审主观) | — |
 | **R27** | ban-trigger 永久封禁 | ✅ BanOnAnswers + BanState | Phase 2.3 |
-| **R28** | hash(0) 数据源 | ✅ 导入时 BanOnAnswers=["0"] | Phase 1.10 |
+| **R28** | hash(0) 数据源 | ✅ 导入/建题默认 BanOnAnswers=["0","hash(0)",40 个 0] | Phase 1.10 |
 | **R29** | 类别不符/可争议 误报申诉 | ✅ 工单系统支持 | Phase 4.5 |
 | **R30** | 组合 CWE 顺序 | ✅ Exact 强制顺序 | Phase 2.9 |
 
 ### 8.1 已实现规则统计
 
-- **完全实现**: R2, R4, R5, R6 (3级), R7, R8, R9, R10, R15, R17, R18, R20, R24, R27, R28, R29, R30 — **17 条**
-- **未实现**: R11 (跨题累积冻结), R16 (工单配额), R19 (Nday≥200 gate), R21/R22 (仓库白名单), R25 (F1 Score) — **6 条**
+- **完全实现**: R2, R4, R5, R6 (3级), R7, R8, R9, R10, R11, R15, R17, R18, R20, R24, R27, R28, R29, R30 — **18 条**
+- **未实现**: R16 (工单配额), R19 (Nday≥200 gate), R21/R22 (仓库白名单), R25 (F1 Score) — **5 条**
 - **N/A (外部赛事/资金/评审)**: R1, R3, R12, R13, R14, R23, R26 — **7 条**
 
 ---
@@ -757,12 +815,19 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 # docker-compose.yml (关键部分)
 services:
   gzctf:
-    image: gzctf/gzctf:latest  # 或自构建
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       - ConnectionStrings__Database=Host=db;Port=5432;Database=gzctf;Username=gzctf;Password=${DB_PASSWORD:-gzctf_pass}
+      - ASPNETCORE_URLS=http://+:8080
+      - XorKey=${XOR_KEY:-gzctf-xor-key}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@2022}
     ports:
-      - "8081:8081"
+      - "10.77.0.10:8081:8080"
+    volumes:
+      - appdata:/app/files
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on: [db, redis]
   db:
     image: postgres:17-alpine
@@ -774,6 +839,8 @@ services:
     image: redis:7-alpine
 ```
 
+说明: compose 生产环境中应用容器监听 `8080`,宿主机通过 `10.77.0.10:8081` 映射访问。当前 Chrome E2E / 手工验收环境使用本机后端 `*:8080` 和前端 preview `0.0.0.0:63000`。
+
 ### 9.2 开发环境
 
 ```yaml
@@ -784,14 +851,16 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
 ```
 
-### 9.3 前端构建
+### 9.3 前端构建与验证入口
 
 ```bash
 cd src/GZCTF/ClientApp
-pnpm install
-pnpm run build  # 输出到 build/
-# 部署: docker cp build/. <gzctf-container>:/app/wwwroot/
+corepack pnpm install
+TMPDIR=/dev/shm/gz-e2e VITE_BACKEND_URL=http://127.0.0.1:8080 corepack pnpm exec vite build
+TMPDIR=/dev/shm/gz-e2e corepack pnpm exec vite preview --host 0.0.0.0 --port 63000
 ```
+
+当前验证入口: `http://10.37.237.106:63000/`。
 
 ### 9.4 数据库迁移
 
@@ -809,7 +878,6 @@ docker exec <gzctf-container> dotnet ef database update
 
 | 规则 | 描述 | 状态 | 备注 |
 |---|---|---|---|
-| **R11** | 3 次冻结取消资格 | ❌ 未实现 | 当前 R10 是单题维度锁定,无跨题累积机制 |
 | **R16** | 每队工单配额 | ❌ 未实现 | 0day 工单无数量限制 |
 | **R19** | 0day 加成需 Nday≥200 | ❌ 未实现 | 用户明确同意不修 |
 | **R21/R22** | 决赛指定仓库白名单 | ❌ 未实现 | 0day 工单不校验 FilePath 是否在指定仓库 |
@@ -830,7 +898,7 @@ docker exec <gzctf-container> dotnet ef database update
 ### 10.4 数据集语义问题
 
 - **`无法验证` L3**: 数据集中 5 行的 L3 是 `无法验证` 字面字符串,玩家若提交该字面值会得分。这是数据集维护者的语义问题,非平台 bug。
-- **`hash(0)` 行**: 数据集中 commit id 列值是 `hash(0)` 而非 `0`,平台导入时把它当作 L2 flag 值。BanOnAnswers=`["0"]` 确保玩家提交 `0` 触发永久封禁 (R27/R28)。
+- **`hash(0)` 行**: 数据集中 commit id 列值是 `hash(0)` 而非 `0`,平台导入与手工建题默认设置 L2 BanOnAnswers=`["0","hash(0)","0000000000000000000000000000000000000000"]`,玩家提交任一 trap 值都会封禁对应 Track/Level (R27/R28)。
 
 ---
 
@@ -847,23 +915,32 @@ docker exec <gzctf-container> dotnet ef database update
 | `Models/Data/ZeroDayTicket.cs` | 0day 工单模型 |
 | `Models/Data/ChallengeTrack.cs` | 漏洞链模型 |
 | `Models/Data/ChallengeFlag.cs` | Flag 模型 (含 Level/TrackId) |
+| `Models/Data/ChallengeLevelConfig.cs` | Level 分值、扣分、匹配策略与 ban/lock 策略 |
 | `Models/Data/ChallengeLockState.cs` | R10 临时锁定 |
 | `Models/Data/ChallengeTrackLevelBanState.cs` | R27 永久封禁 |
 | `Repositories/ZeroDayTicketRepository.cs` | 0day 工单仓储 (含 R18 闭环 + R24 检查) |
+| `Repositories/GameRepository.cs` | 记分牌汇总;题目级 solve marker 不加分 |
 | `Services/Import/FlagImportService.cs` | Excel 导入服务 |
-| `Services/Scoring/ScoringService.cs` | 计分服务 (多级 flag + 0day bonus) |
-| `Migrations/20260628110230_ExpandZeroDayTickets.cs` | 最新迁移 |
+| `Services/Scoring/ScoringService.cs` | 计分服务 (多级 flag、SourceLocation、trap/cooldown、Level-only 计分) |
+| `Migrations/20260706193000_LevelAnswerStrategies.cs` | Level 答案策略最新迁移 |
 
 ### 前端 (React/TypeScript)
 
 | 文件 | 用途 |
 |---|---|
+| `pages/games/[id]/zeroday-info.tsx` | 玩家 0day 信息页 (小写路由,修复 404) |
 | `pages/games/[id]/zeroday-tickets.tsx` | 玩家 0day 工单页 |
 | `pages/admin/games/[id]/zeroday-tickets.tsx` | Admin 0day 审核页 |
 | `pages/admin/games/[id]/import-flags.tsx` | Admin Excel 导入页 |
+| `pages/admin/games/[id]/bans.tsx` | Admin Track/Level 封禁页 (小写路由) |
+| `pages/admin/games/[id]/score-adjustment.tsx` | Admin 手动调分页 (小写路由) |
+| `pages/admin/games/[id]/score-ledger.tsx` | Admin 计分流水页 (小写路由) |
+| `pages/admin/games/[id]/zeroday-bonus-ledger.tsx` | Admin 0day 加分流水页 (小写路由) |
 | `components/ChallengeModal.tsx` | 题目弹窗 (含 MultiLevelProgress) |
 | `components/GameChallengeModal.tsx` | 游戏题目弹窗 (含 Bug #4 修复) |
 | `components/ChallengeLockNotice.tsx` | 锁定/封禁提示组件 |
+| `components/CooldownNotice.tsx` | 题目冷却提示组件 |
+| `utils/ChallengeLevelDefaults.ts` | 前端默认 L1/L2/L3 分值、匹配策略与 L2 trap 答案 |
 | `utils/Shared.tsx` | `tryGetErrorMsg` (含 Bug #5 修复) |
 | `Api.ts` | API 客户端 (含 0day 工单 + 多级 flag 类型) |
 
@@ -871,10 +948,12 @@ docker exec <gzctf-container> dotnet ef database update
 
 | 文件 | 用途 |
 |---|---|
-| `trace.md` | 完整 E2E 测试审计日志 (Phase 0–8) |
-| `docs/test.md` | 测试计划 (R1–R30 映射) |
+| `docs/e2e-contest-flow/TEST_PLAN.md` | 最新 Chrome E2E 测试计划与关键截图清单 |
+| `docs/e2e-contest-flow/e2e-results.json` | 最新结构化 E2E 断言结果 |
+| `docs/test.md` | 历史测试计划 (R1–R30 映射) |
 | `docs/OH_CTF_ADAPTATION.md` | 本文档 |
-| `trace-shots/phase8/` | Phase 8 最终验证截图 (10 张) |
+| `docs/e2e-contest-flow/screenshots/` | 最新 Chrome E2E 截图 (13 张) |
+| `docs/e2e-contest-flow/traces/` | 最新 Playwright trace (admin/player) |
 
 ---
 
@@ -886,9 +965,12 @@ docker exec <gzctf-container> dotnet ef database update
 | #4 | UI 无法切换 track (currentLevel>1) | `startNewTrack` state + "+ New Vulnerability" 按钮 (toggle-able) | playerA 在 L2 of T1 时切换到 TRACK 1 L1 ✓ |
 | #5 | R24 错误消息显示完整堆栈 | `tryExtractExceptionMessage` 提取首行 | 通知显示 "R24: ..." 无堆栈 ✓ |
 | #6 | 0day 工单无 ChallengeId 时 bonus 丢失 | Admin 审核弹窗新增 Challenge 选择器 | T1 (无 ChallengeId) Approve 时选中 ecmascript/builtins ✓ |
+| #7 | `0day 提交` 信息页与多个 Admin tab 404 | 路由文件统一为小写 slug | Chrome E2E 截图前断言非 404 ✓ |
+| #8 | Level `PenaltyScore=0` 仍回退全局默认扣分 | Level 配置优先,仅无 Level 配置时使用默认扣分 | 单测 + E2E scoreboard=15 且 solve marker score=0 ✓ |
+| #9 | 重复提交已解 Level 通知卡住 | `FlagSubmitted` 立即结束 loading 并提示继续下一 Level | E2E 断言中文提示 ✓ |
 
 ---
 
-**文档版本**: 1.0  
-**最后更新**: 2026-06-28  
+**文档版本**: 1.1
+**最后更新**: 2026-07-07
 **维护者**: OpenHarmony CTF 平台适配团队

@@ -4,6 +4,42 @@
 > 范围：F1-F6 共 6 个 feature 的后端接口测试 + 前端 Chrome e2e 验证
 > 测试原则：先后端后前端 → 每种情况完整验证 → 关键步骤截图+trace → 列 issue 修复 → 复测
 
+> 当前状态 (2026-07-06): 本文件保留为第二轮迭代历史测试计划。最新办赛核心链路 Chrome E2E、截图、trace 与复测结论以 `docs/e2e-contest-flow/TEST_PLAN.md` 为准。旧示例中的 `localhost:3000`, `trace-shots/iter2/*`, `drive.js` 是早期计划口径,不是当前最终复测环境。
+
+## 0. 当前最终复测入口
+
+最新复测覆盖管理员与参赛者视角的核心办赛链路:
+
+- 管理员: 题目列表、导入页、封禁页、监控提交页。
+- 参赛者: 比赛首页、题目列表、题目弹窗、正常 L1/L2/L3 提交、trap 封禁、cooldown、提交记录。
+- 提交断言: L1 `SourceLocation`, L2 commit hash, L3 CWE, 完整 source-location OR, 错误 hash, `hash(0)`, 封禁后拒绝, cooldown 阈值与 5 分钟时长。
+
+最终证据:
+
+| 证据 | 路径 |
+|---|---|
+| 最新测试计划 | `docs/e2e-contest-flow/TEST_PLAN.md` |
+| 结构化断言结果 | `docs/e2e-contest-flow/e2e-results.json` |
+| 13 张关键截图 | `docs/e2e-contest-flow/screenshots/` |
+| admin/player trace | `docs/e2e-contest-flow/traces/` |
+
+当前最终验证命令:
+
+```bash
+TMPDIR=/dev/shm/gz-e2e DOTNET_CLI_USE_MSBUILD_SERVER=0 UseSharedCompilation=false \
+  /data00/home/fengjingwei.369/.dotnet/dotnet test src/GZCTF.Test/GZCTF.Test.csproj -m:1
+
+cd src/GZCTF/ClientApp
+TMPDIR=/dev/shm/gz-e2e corepack pnpm check
+```
+
+已通过:
+
+- 后端全量单元测试: 208 passed。
+- 前端 TypeScript strict check: passed。
+- `git diff --check`: passed。
+- 最新 E2E 结构化结果: `bugs: []`, `screenshots=13`, `traces=2`, `apiChecks=18`。
+
 ---
 
 ## 1. 测试流程总览
@@ -306,7 +342,20 @@ curl -s http://localhost:3000/api/game/1/Challenges/1 \
   -H "Authorization: Bearer $PLAYER_TOKEN" | jq '.data.tracks[0].levels[].title'
 ```
 
-**预期**：返回 `["文件路径", "commit", "CWE"]`（或导入时设置的列名）。
+**预期**：默认比赛导入返回 `["漏洞定位", "漏洞引入", "漏洞类型"]`；若管理员在导入配置里改了 LevelTitle，则返回自定义标题。
+
+#### 2.5.2 验证 L1 SourceLocation 策略
+
+导入 `memo/数据集.xlsx` 后，选择第一条 track：
+
+| 标准答案 | 提交 | 预期 |
+|---|---|---|
+| `ecmascript/base/json_stringifier_optimized.cpp:856-864` | `ecmascript/base/json_stringifier_optimized.cpp:857` | Accepted |
+| 同上 | `ecmascript/base/json_stringifier_optimized.cpp:856-863` | Accepted |
+| 同上 | `ecmascript/base/json_stringifier_optimized.cpp:856-865` | WrongAnswer |
+| `ecmascript/builtins/builtins.cpp:281、286` | `ecmascript/builtins/builtins.cpp:286` | Accepted |
+
+**预期**：L1 使用 `AnswerType=SourceLocation`，`OrSeparators="、,;"`，`RangeSeparator="-"`，`StripLinePrefix=true`。路径必须匹配；行号单点或子区间只要落在标准答案任一 OR 项内即通过。
 
 ---
 
@@ -487,8 +536,19 @@ curl -s http://localhost:3000/api/game/1/Challenges/1 \
 1. 选手进入题目详情（已导入 flag 的题目）
 2. **截图**：`trace-shots/iter2/F6/01-level-titles.png`
 3. **验证**：
-   - 进度条显示 `L1 - 文件路径`、`L2 - commit`、`L3 - CWE`（或导入时设置的列名）
+   - 进度条显示 `L1 - 漏洞定位`、`L2 - 漏洞引入`、`L3 - 漏洞类型`（或导入时设置的标题）
    - 当前 level badge 也显示名字
+
+#### 场景 3.6.1b: 导入页可配置 level 策略
+
+1. 管理员进入比赛级导入页 `/admin/games/1/import-flags`
+2. 上传 `memo/数据集.xlsx`
+3. **验证**：
+   - 自动识别 `所属仓库` 为题目方向、`子模块` 为题目、`文件路径` + `代码行数` 为 L1
+   - L1 默认 `AnswerType=SourceLocation`
+   - L1 策略面板显示 OR 分隔符、范围分隔符、大小写、路径大小写、剥离 `c:` 前缀
+   - 可以添加/删除 level
+   - 预览中 `ecmascript/builtins` 下存在多个 track
 
 #### 场景 3.6.2: 未导入 level 名字回退
 
@@ -550,7 +610,8 @@ curl -s http://localhost:3000/api/game/1/Challenges/1 \
 - [ ] F5: POST /api/ext/challenges/{id}/flags/batch-update 启用/禁用
 - [ ] F5: POST /api/ext/challenges/{id}/flags/batch-delete 删除
 - [ ] F5: 有提交记录的 flag 删除返回 409
-- [ ] F6: 导入后 ChallengeLevelConfig.Title = ColumnName（无 LevelTitle 时）
+- [ ] F6: 导入后 ChallengeLevelConfig.Title = LevelTitle；未配置 LevelTitle 时回退 ColumnName
+- [ ] F6: L1 SourceLocation 范围/OR/大小写策略匹配符合 2.5.2
 
 ### 5.2 前端 Chrome e2e
 

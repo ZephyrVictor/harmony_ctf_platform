@@ -127,7 +127,12 @@ public class TrackController(
                         Score = lvl.Score,
                         PenaltyScore = lvl.PenaltyScore,
                         LockOnAnswers = lvl.LockOnAnswers,
-                        BanOnAnswers = lvl.BanOnAnswers,
+                        BanOnAnswers = DefaultBanOnAnswers(lvl.Level, lvl.BanOnAnswers),
+                        CaseSensitive = lvl.CaseSensitive,
+                        PathCaseSensitive = lvl.PathCaseSensitive,
+                        OrSeparators = string.IsNullOrEmpty(lvl.OrSeparators) ? "、,;" : lvl.OrSeparators,
+                        RangeSeparator = string.IsNullOrWhiteSpace(lvl.RangeSeparator) ? "-" : lvl.RangeSeparator,
+                        StripLinePrefix = lvl.StripLinePrefix,
                         IsEnabled = true,
                         SortOrder = lvl.Level
                     }, token);
@@ -192,6 +197,11 @@ public class TrackController(
         await trackRepository.DeleteTrack(trackId, token);
         return NoContent();
     }
+
+    static List<string> DefaultBanOnAnswers(int level, List<string> configured) =>
+        configured.Count > 0 || level != 2
+            ? configured
+            : ["0", "hash(0)", "0000000000000000000000000000000000000000"];
 }
 
 public class TrackCreateModel
@@ -278,6 +288,11 @@ public class TrackFullLevelModel
     public List<string> LockOnAnswers { get; set; } = [];
     public List<string> BanOnAnswers { get; set; } = [];
     public string? LevelTitle { get; set; }
+    public bool CaseSensitive { get; set; } = true;
+    public bool PathCaseSensitive { get; set; } = true;
+    public string OrSeparators { get; set; } = "、,;";
+    public string RangeSeparator { get; set; } = "-";
+    public bool StripLinePrefix { get; set; } = true;
 }
 
 public class TrackFullCreateResult

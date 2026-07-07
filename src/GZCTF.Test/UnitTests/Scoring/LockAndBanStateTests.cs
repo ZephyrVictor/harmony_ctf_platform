@@ -83,19 +83,19 @@ public class LockAndBanStateTests
     }
 
     [Fact]
-    public void WrongCountState_Defaults_AreZeroed()
+    public void CooldownState_Defaults_AreZeroed()
     {
-        var state = new ChallengeWrongCountState
+        var state = new ChallengeCooldownState
         {
             ParticipationId = 1,
-            ChallengeId = 1,
-            Level = 1
+            ChallengeId = 1
         };
 
         Assert.Equal(0, state.WrongCount);
-        // LastResetAt defaults to UtcNow per the model; verify it's a recent timestamp
-        Assert.True(state.LastResetAt <= DateTimeOffset.UtcNow);
-        Assert.True(state.LastResetAt > DateTimeOffset.UtcNow.AddSeconds(-5));
+        Assert.Null(state.CooldownUntil);
+        // LastWrongAt defaults to UtcNow per the model; verify it's a recent timestamp.
+        Assert.True(state.LastWrongAt <= DateTimeOffset.UtcNow);
+        Assert.True(state.LastWrongAt > DateTimeOffset.UtcNow.AddSeconds(-5));
     }
 
     /// <summary>
@@ -120,12 +120,12 @@ public class LockAndBanStateTests
             BannedTrackId = Guid.NewGuid(),
             BannedLevel = 2,
             ChallengeLocked = false,
-            Message = "Answer banned this track-level"
+            Message = "该 Track 的当前 Level 已被封禁，请联系管理员"
         };
 
         Assert.NotNull(result.BannedTrackId);
         Assert.Equal(2, result.BannedLevel);
-        Assert.Equal("Answer banned this track-level", result.Message);
+        Assert.Equal("该 Track 的当前 Level 已被封禁，请联系管理员", result.Message);
     }
 
     [Fact]
@@ -200,7 +200,6 @@ public class LockAndBanStateTests
             Title = "L1",
             Status = "Solved",
             AttemptsUsed = 3, // 2 wrong + 1 correct
-                    SubmissionLimit = 5,
             UnlocksAt = null,
             SolvedAt = DateTimeOffset.UtcNow
         };

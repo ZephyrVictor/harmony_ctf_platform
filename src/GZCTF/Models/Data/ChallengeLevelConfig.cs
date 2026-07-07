@@ -44,6 +44,33 @@ public class ChallengeLevelConfig
     /// </summary>
     public List<string> BanOnAnswers { get; set; } = [];
 
+    /// <summary>
+    /// 是否区分答案整体大小写。SourceLocation 下主要用于路径部分。
+    /// </summary>
+    public bool CaseSensitive { get; set; } = true;
+
+    /// <summary>
+    /// SourceLocation 路径部分是否区分大小写。
+    /// </summary>
+    public bool PathCaseSensitive { get; set; } = true;
+
+    /// <summary>
+    /// SourceLocation 行号 OR 分隔符，例如 "、,"。
+    /// </summary>
+    [MaxLength(32)]
+    public string OrSeparators { get; set; } = "、,;";
+
+    /// <summary>
+    /// SourceLocation 行号范围分隔符。
+    /// </summary>
+    [MaxLength(8)]
+    public string RangeSeparator { get; set; } = "-";
+
+    /// <summary>
+    /// 是否剥离行号中的 c: / C: 前缀。
+    /// </summary>
+    public bool StripLinePrefix { get; set; } = true;
+
     public bool IsEnabled { get; set; } = true;
     public int SortOrder { get; set; }
 

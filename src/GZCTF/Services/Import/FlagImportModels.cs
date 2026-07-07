@@ -48,6 +48,13 @@ public class LevelColumnMapping
     public List<string> LockOnAnswers { get; set; } = [];
     public List<string> BanOnAnswers { get; set; } = [];
     public string? LevelTitle { get; set; }
+
+    public bool CaseSensitive { get; set; } = true;
+    public bool PathCaseSensitive { get; set; } = true;
+    public string OrSeparators { get; set; } = "、,;";
+    public string RangeSeparator { get; set; } = "-";
+    public bool StripLinePrefix { get; set; } = true;
+    public bool NormalizeSourceLocation { get; set; } = true;
 }
 
 public enum ImportMode { Upsert, Skip, Fail }

@@ -33,21 +33,21 @@ export const ChallengeLockNotice: FC<ChallengeLockNoticeProps> = ({
           icon={<Icon path={mdiLockOutline} size={1} />}
           color="orange"
           variant="filled"
-          title={t('challenge.lock.title', { defaultValue: 'Challenge locked' })}
+          title={t('challenge.lock.title')}
         >
           <Stack gap={4}>
             <Text size="sm">
-              {t('challenge.lock.unlock_at', { defaultValue: 'Unlocks at' })}:{' '}
+              {t('challenge.lock.unlock_at')}:{' '}
               {unlocksAt ? dayjs(typeof unlocksAt === 'number' ? unlocksAt * 1000 : unlocksAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
             </Text>
             {reason && (
               <Text size="sm" c="white">
-                {t('challenge.lock.reason', { defaultValue: 'Reason' })}: {reason}
+                {t('challenge.lock.reason')}: {reason}
               </Text>
             )}
             {triggerAnswer && (
               <Text size="sm" c="white" ff="monospace">
-                {t('challenge.lock.trigger_answer', { defaultValue: 'Trigger answer' })}: {triggerAnswer}
+                {t('challenge.lock.trigger_answer')}: {triggerAnswer}
               </Text>
             )}
           </Stack>
@@ -58,16 +58,16 @@ export const ChallengeLockNotice: FC<ChallengeLockNoticeProps> = ({
           icon={<Icon path={mdiAlertCircleOutline} size={1} />}
           color="red"
           variant="filled"
-          title={t('challenge.ban.title', { defaultValue: 'Vulnerability banned' })}
+          title={t('challenge.ban.title')}
         >
           <Stack gap={4}>
             <Text size="sm">
-              {t('challenge.ban.level_banned', { defaultValue: 'Level' })} L{bannedLevel ?? '-'}{' '}
-              {t('challenge.ban.banned', { defaultValue: 'has been permanently banned' })}
+              {t('challenge.ban.level_banned')} L{bannedLevel ?? '-'}{' '}
+              {t('challenge.ban.banned')}
             </Text>
             {banTriggerAnswer && (
               <Text size="sm" c="white" ff="monospace">
-                {t('challenge.ban.trigger_answer', { defaultValue: 'Trigger answer' })}: {banTriggerAnswer}
+                {t('challenge.ban.trigger_answer')}: {banTriggerAnswer}
               </Text>
             )}
           </Stack>

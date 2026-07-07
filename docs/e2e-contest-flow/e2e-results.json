@@ -1,0 +1,459 @@
+{
+  "runId": "2026-07-07T11-21-29-388Z",
+  "baseUrl": "http://127.0.0.1:63000",
+  "backendUrl": "http://127.0.0.1:8080",
+  "screenshots": [
+    "docs/e2e-contest-flow/screenshots/01-admin-challenges-list.png",
+    "docs/e2e-contest-flow/screenshots/02-admin-import-flags-page.png",
+    "docs/e2e-contest-flow/screenshots/03-admin-bans-empty.png",
+    "docs/e2e-contest-flow/screenshots/04-player-game-home.png",
+    "docs/e2e-contest-flow/screenshots/05-player-challenge-list.png",
+    "docs/e2e-contest-flow/screenshots/06-player-challenge-modal-initial.png",
+    "docs/e2e-contest-flow/screenshots/07-player-after-normal-track.png",
+    "docs/e2e-contest-flow/screenshots/08-player-after-hash0-ban.png",
+    "docs/e2e-contest-flow/screenshots/09-player-cooldown-notice.png",
+    "docs/e2e-contest-flow/screenshots/10-player-submissions.png",
+    "docs/e2e-contest-flow/screenshots/13-player-zeroday-info.png",
+    "docs/e2e-contest-flow/screenshots/11-admin-bans-after-trap.png",
+    "docs/e2e-contest-flow/screenshots/12-monitor-submissions.png"
+  ],
+  "traces": [
+    "docs/e2e-contest-flow/traces/2026-07-07T11-21-29-388Z-admin.zip",
+    "docs/e2e-contest-flow/traces/2026-07-07T11-21-29-388Z-player.zip"
+  ],
+  "apiChecks": [
+    {
+      "answer": "ecmascript/builtins/builtins_arraybuffer.cpp:552",
+      "level": 1,
+      "response": {
+        "id": 1,
+        "message": "Accepted",
+        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "level": 1,
+        "solvedCount": 0,
+        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": null
+      },
+      "status": "Accepted"
+    },
+    {
+      "answer": "af0534741d9990427700aa4c43f2080b42c0a93f",
+      "level": 2,
+      "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+      "response": {
+        "id": 2,
+        "message": "Accepted",
+        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "level": 2,
+        "solvedCount": 0,
+        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": null
+      },
+      "status": "Accepted"
+    },
+    {
+      "answer": "ecmascript/builtins/builtins.cpp:286",
+      "level": 1,
+      "response": {
+        "id": 3,
+        "message": "Accepted",
+        "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "level": 1,
+        "solvedCount": 0,
+        "activeTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": null
+      },
+      "status": "Accepted"
+    },
+    {
+      "answer": "ecmascript/builtins/builtins_arraybuffer.cpp:552",
+      "level": 1,
+      "response": {
+        "id": 4,
+        "message": "该级别已提交过，请继续提交下一 Level",
+        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "level": 1,
+        "solvedCount": 0,
+        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": null
+      },
+      "status": "FlagSubmitted"
+    },
+    {
+      "answer": "CWE-476",
+      "level": 3,
+      "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+      "response": {
+        "id": 5,
+        "message": "Accepted",
+        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "level": 3,
+        "solvedCount": 1,
+        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "isTrackComplete": true,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": null
+      },
+      "status": "Accepted"
+    },
+    {
+      "answer": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "level": 2,
+      "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+      "response": {
+        "id": 6,
+        "message": "Wrong answer",
+        "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "level": 2,
+        "solvedCount": 1,
+        "activeTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 1,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "hash(0)",
+      "level": 2,
+      "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+      "response": {
+        "id": 7,
+        "message": "该 Track 的当前 Level 已被封禁，请联系管理员",
+        "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "level": 2,
+        "solvedCount": 1,
+        "activeTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "bannedLevel": 2,
+        "triggerAnswer": "hash(0)",
+        "cooldown": {
+          "wrongCount": 2,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "0",
+      "level": 2,
+      "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+      "response": {
+        "id": 8,
+        "message": "该 Track 的当前 Level 已被封禁，请联系管理员",
+        "trackId": null,
+        "level": null,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "bannedLevel": 2,
+        "triggerAnswer": "0",
+        "cooldown": null
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-0-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 9,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 3,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-1-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 10,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 4,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-2-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 11,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 5,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-3-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 12,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 6,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-4-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 13,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 7,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-5-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 14,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 8,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-6-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 15,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 9,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": null
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-7-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 16,
+        "message": "Wrong answer",
+        "trackId": null,
+        "level": 1,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 0,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": 1783423616069
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-8-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 17,
+        "message": "题目冷却中，剩 04:59",
+        "trackId": null,
+        "level": null,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 0,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": 1783423616069
+        }
+      },
+      "status": "WrongAnswer"
+    },
+    {
+      "answer": "wrong-during-cooldown-2026-07-07T11-21-29-388Z",
+      "level": 1,
+      "response": {
+        "id": 18,
+        "message": "题目冷却中，剩 04:59",
+        "trackId": null,
+        "level": null,
+        "solvedCount": 1,
+        "activeTrackId": null,
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": {
+          "wrongCount": 0,
+          "wrongAnswerLimit": 10,
+          "cooldownMinutes": 5,
+          "cooldownUntil": 1783423616069
+        }
+      },
+      "status": "WrongAnswer"
+    }
+  ],
+  "bugs": [],
+  "entities": {
+    "gameId": 1,
+    "challengeId": 1,
+    "teamId": 1,
+    "trackNormalId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+    "trackTrapId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a"
+  }
+}

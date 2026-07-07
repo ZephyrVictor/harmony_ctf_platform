@@ -43,6 +43,11 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
             PenaltyScore = model.PenaltyScore ?? 0,
             LockOnAnswers = model.LockOnAnswers ?? [],
             BanOnAnswers = model.BanOnAnswers ?? [],
+            CaseSensitive = model.CaseSensitive ?? true,
+            PathCaseSensitive = model.PathCaseSensitive ?? true,
+            OrSeparators = string.IsNullOrEmpty(model.OrSeparators) ? "、,;" : model.OrSeparators,
+            RangeSeparator = string.IsNullOrWhiteSpace(model.RangeSeparator) ? "-" : model.RangeSeparator,
+            StripLinePrefix = model.StripLinePrefix ?? true,
             IsEnabled = model.IsEnabled ?? true,
             SortOrder = model.SortOrder ?? model.Level
         };
@@ -77,6 +82,11 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
         if (model.PenaltyScore.HasValue) config.PenaltyScore = model.PenaltyScore.Value;
         if (model.LockOnAnswers is not null) config.LockOnAnswers = model.LockOnAnswers;
         if (model.BanOnAnswers is not null) config.BanOnAnswers = model.BanOnAnswers;
+        if (model.CaseSensitive.HasValue) config.CaseSensitive = model.CaseSensitive.Value;
+        if (model.PathCaseSensitive.HasValue) config.PathCaseSensitive = model.PathCaseSensitive.Value;
+        if (model.OrSeparators is not null) config.OrSeparators = string.IsNullOrEmpty(model.OrSeparators) ? "、,;" : model.OrSeparators;
+        if (model.RangeSeparator is not null) config.RangeSeparator = string.IsNullOrWhiteSpace(model.RangeSeparator) ? "-" : model.RangeSeparator;
+        if (model.StripLinePrefix.HasValue) config.StripLinePrefix = model.StripLinePrefix.Value;
         if (model.IsEnabled.HasValue) config.IsEnabled = model.IsEnabled.Value;
         if (model.SortOrder.HasValue) config.SortOrder = model.SortOrder.Value;
 
@@ -121,6 +131,16 @@ public class LevelConfigCreateModel
 
     public List<string>? LockOnAnswers { get; set; }
     public List<string>? BanOnAnswers { get; set; }
+    public bool? CaseSensitive { get; set; }
+    public bool? PathCaseSensitive { get; set; }
+
+    [MaxLength(32)]
+    public string? OrSeparators { get; set; }
+
+    [MaxLength(8)]
+    public string? RangeSeparator { get; set; }
+
+    public bool? StripLinePrefix { get; set; }
     public bool? IsEnabled { get; set; }
 
     [Range(0, int.MaxValue)]
@@ -140,6 +160,16 @@ public class LevelConfigUpdateModel
 
     public List<string>? LockOnAnswers { get; set; }
     public List<string>? BanOnAnswers { get; set; }
+    public bool? CaseSensitive { get; set; }
+    public bool? PathCaseSensitive { get; set; }
+
+    [MaxLength(32)]
+    public string? OrSeparators { get; set; }
+
+    [MaxLength(8)]
+    public string? RangeSeparator { get; set; }
+
+    public bool? StripLinePrefix { get; set; }
     public bool? IsEnabled { get; set; }
 
     [Range(0, int.MaxValue)]

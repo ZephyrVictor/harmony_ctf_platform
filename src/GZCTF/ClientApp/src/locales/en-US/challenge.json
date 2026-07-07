@@ -48,7 +48,8 @@
       "exact": "Exact",
       "single_line": "Single Line",
       "line_range": "Line Range",
-      "multi_line": "Multi Line"
+      "multi_line": "Multi Line",
+      "source_location": "Source Location"
     },
     "flag_status": {
       "completed": "Solved",
@@ -162,9 +163,21 @@
       },
       "wrong": "flag wrong",
       "trap": "Trap answer triggered",
-      "banned": "This level is banned",
-      "duplicate": "Duplicate wrong submission, no penalty",
-      "multi_level_track_required": "Context not yet recovered, please refresh the page"
+      "multi_level_track_required": "Context not yet recovered, please refresh the page",
+      "locked": {
+        "title": "Challenge locked",
+        "unlock_at": "Unlocks at",
+        "permanent": "Permanently locked"
+      },
+      "banned": {
+        "title": "Vulnerability banned",
+        "level": "Level",
+        "banned": "banned"
+      },
+      "duplicate": {
+        "title": "Already submitted",
+        "message": "This level has already been submitted. Continue with the next level."
+      }
     },
     "instance": {
       "copied": {
@@ -238,7 +251,19 @@
     "banned": "Banned",
     "unlock_at": "Unlocks at {{time}}",
     "solved_count": "Solved {{count}} vulnerabilities",
-    "submit_l1_to_start": "Submit L1 flag to start"
+    "submit_l1_to_start": "Submit L1 flag to start",
+    "select_track": "Select vulnerability track",
+    "track_fallback": "Track {{index}}",
+    "new_vulnerability": "+ New vulnerability",
+    "starting_new": "✓ Starting new",
+    "next_submission_l1": "Next submission will be treated as L1 of a new vulnerability chain."
+  },
+  "cooldown": {
+    "title": "Challenge cooling down",
+    "remaining": "Time remaining",
+    "hint": "Wrong-answer threshold reached. Please try again later.",
+    "counter_title": "Wrong-answer count",
+    "counter_hint": "Cooldown starts after the wrong-answer threshold"
   },
   "lock": {
     "title": "Challenge locked",

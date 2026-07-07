@@ -12,6 +12,23 @@ namespace GZCTF.Test.UnitTests.Scoring;
 public class ScoringServiceTests
 {
     [Fact]
+    public void CalculateWrongPenalty_LevelZeroPenalty_DoesNotFallbackToDefaultPenalty()
+    {
+        var config = new ChallengeLevelConfig { PenaltyScore = 0 };
+
+        var penalty = ScoringService.CalculateWrongPenaltyForTest(config, challengePenaltyScore: 2, defaultPenaltyScore: 2);
+
+        Assert.Equal(0, penalty);
+    }
+
+    [Fact]
+    public void CalculateWrongPenalty_NoLevelConfig_UsesChallengeOrDefaultPenalty()
+    {
+        Assert.Equal(3, ScoringService.CalculateWrongPenaltyForTest(null, challengePenaltyScore: 3, defaultPenaltyScore: 2));
+        Assert.Equal(2, ScoringService.CalculateWrongPenaltyForTest(null, challengePenaltyScore: null, defaultPenaltyScore: 2));
+    }
+
+    [Fact]
     public void NormalizeHybridLineAnswer_Exact_NumericReturnsNormalized()
     {
         // Exact answer type falls through to InferHybridLineAnswer which only parses line numbers/ranges.
@@ -82,6 +99,95 @@ public class ScoringServiceTests
         var ok = ScoringService.TryNormalizeHybridLineAnswer("not-a-number", ChallengeFlagAnswerType.SingleLine, out var normalized);
         Assert.False(ok);
         Assert.Equal(string.Empty, normalized);
+    }
+
+    [Theory]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:857")]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:856-863")]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:c:856-864")]
+    public void SourceLocation_Range_AcceptsLineOrSubRange(string submitted)
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            RawAnswer = "ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            AnswerType = ChallengeFlagAnswerType.SourceLocation
+        };
+        var config = new ChallengeLevelConfig { OrSeparators = "、,;", RangeSeparator = "-", StripLinePrefix = true };
+
+        Assert.True(ScoringService.TryMatchForTest(flag, submitted, config));
+    }
+
+    [Theory]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:855")]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:856-865")]
+    [InlineData("ecmascript/base/other.cpp:857")]
+    public void SourceLocation_Range_RejectsOutsideOrWrongPath(string submitted)
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            RawAnswer = "ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            AnswerType = ChallengeFlagAnswerType.SourceLocation
+        };
+        var config = new ChallengeLevelConfig { OrSeparators = "、,;", RangeSeparator = "-", StripLinePrefix = true };
+
+        Assert.False(ScoringService.TryMatchForTest(flag, submitted, config));
+    }
+
+    [Theory]
+    [InlineData("ecmascript/builtins/builtins.cpp:281")]
+    [InlineData("ecmascript/builtins/builtins.cpp:286")]
+    [InlineData("ecmascript/builtins/builtins.cpp:c:286")]
+    public void SourceLocation_OrLines_AcceptsAnyListedLine(string submitted)
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "ecmascript/builtins/builtins.cpp:281、286",
+            RawAnswer = "ecmascript/builtins/builtins.cpp:281、286",
+            AnswerType = ChallengeFlagAnswerType.SourceLocation
+        };
+        var config = new ChallengeLevelConfig { OrSeparators = "、,;", RangeSeparator = "-", StripLinePrefix = true };
+
+        Assert.True(ScoringService.TryMatchForTest(flag, submitted, config));
+    }
+
+    [Theory]
+    [InlineData("ecmascript/builtins/builtins.cpp:286")]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:857")]
+    [InlineData("ecmascript/base/json_stringifier_optimized.cpp:856-864")]
+    public void SourceLocation_OrFullLocations_AcceptsAnyListedLocation(string submitted)
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "ecmascript/builtins/builtins.cpp:286、ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            RawAnswer = "ecmascript/builtins/builtins.cpp:286、ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            AnswerType = ChallengeFlagAnswerType.SourceLocation
+        };
+        var config = new ChallengeLevelConfig { OrSeparators = "、,;", RangeSeparator = "-", StripLinePrefix = true };
+
+        Assert.True(ScoringService.TryMatchForTest(flag, submitted, config));
+    }
+
+    [Fact]
+    public void SourceLocation_CaseInsensitivePath_AcceptsDifferentPathCase()
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            RawAnswer = "ecmascript/base/json_stringifier_optimized.cpp:856-864",
+            AnswerType = ChallengeFlagAnswerType.SourceLocation
+        };
+        var config = new ChallengeLevelConfig
+        {
+            CaseSensitive = false,
+            PathCaseSensitive = false,
+            OrSeparators = "、,;",
+            RangeSeparator = "-",
+            StripLinePrefix = true
+        };
+
+        Assert.True(ScoringService.TryMatchForTest(flag, "ECMASCRIPT/BASE/JSON_STRINGIFIER_OPTIMIZED.CPP:857", config));
     }
 
     [Fact]

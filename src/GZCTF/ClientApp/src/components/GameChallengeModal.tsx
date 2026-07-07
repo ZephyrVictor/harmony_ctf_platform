@@ -68,6 +68,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
   const [disabled, setDisabled] = useState(false)
   const [submitId, setSubmitId] = useState(0)
   const [submitMessage, setSubmitMessage] = useState<string | undefined>(undefined)
+  const [submitImmediateResult, setSubmitImmediateResult] = useState<AnswerResult | null>(null)
   const [lastIsTrackComplete, setLastIsTrackComplete] = useState(false)
   const [flag, setFlag] = useInputState('')
   const [solvedChallengeId, setSolvedChallengeId] = useState<number | null>(null)
@@ -193,6 +194,14 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       })
       const submitId = res.data.id
       const message = res.data.message ?? undefined
+      const immediateResult =
+        message && (
+          message.toLowerCase().includes('already been submitted')
+          || message.includes('已提交过')
+          || message.includes('请继续提交下一 Level')
+        )
+          ? AnswerResult.FlagSubmitted
+          : null
       // D6+D8: 缓存响应返回的 trackId（= activeTrackId）用于 L2+ 提交
       if (res.data.trackId) {
         setCurrentTrackId(res.data.trackId)
@@ -204,10 +213,10 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       if (res.data.challengeLocked) {
         showNotification({
           color: 'red',
-          title: t('challenge.notification.flag.locked.title', { defaultValue: 'Challenge locked' }),
+          title: t('challenge.notification.flag.locked.title'),
           message: res.data.unlocksAt
-            ? `${t('challenge.notification.flag.locked.unlock_at', { defaultValue: 'Unlocks at' })}: ${new Date(res.data.unlocksAt).toLocaleString()}${res.data.triggerAnswer ? ` | ${res.data.triggerAnswer}` : ''}`
-            : t('challenge.notification.flag.locked.permanent', { defaultValue: 'Permanently locked' }),
+            ? `${t('challenge.notification.flag.locked.unlock_at')}: ${new Date(res.data.unlocksAt).toLocaleString()}${res.data.triggerAnswer ? ` | ${res.data.triggerAnswer}` : ''}`
+            : t('challenge.notification.flag.locked.permanent'),
           icon: <Icon path={mdiClose} size={1} />,
           autoClose: 10000,
         })
@@ -215,8 +224,8 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       if (res.data.bannedTrackId) {
         showNotification({
           color: 'red',
-          title: t('challenge.notification.flag.banned.title', { defaultValue: 'Vulnerability banned' }),
-          message: `${t('challenge.notification.flag.banned.level', { defaultValue: 'Level' })} L${res.data.bannedLevel ?? '-'} ${t('challenge.notification.flag.banned.banned', { defaultValue: 'banned' })}${res.data.triggerAnswer ? ` | ${res.data.triggerAnswer}` : ''}`,
+          title: t('challenge.notification.flag.banned.title'),
+          message: `${t('challenge.notification.flag.banned.level')} L${res.data.bannedLevel ?? '-'} ${t('challenge.notification.flag.banned.banned')}${res.data.triggerAnswer ? ` | ${res.data.triggerAnswer}` : ''}`,
           icon: <Icon path={mdiClose} size={1} />,
           autoClose: 10000,
         })
@@ -225,15 +234,14 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       if (message && message.toLowerCase().includes('already been submitted')) {
         showNotification({
           color: 'yellow',
-          title: t('challenge.notification.flag.duplicate.title', { defaultValue: 'Already solved' }),
-          message: t('challenge.notification.flag.duplicate.message', {
-            defaultValue: 'This level has already been solved. No additional points.',
-          }),
+          title: t('challenge.notification.flag.duplicate.title'),
+          message: t('challenge.notification.flag.duplicate.message'),
           autoClose: 6000,
         })
       }
       setSubmitId(submitId)
       setSubmitMessage(message)
+      setSubmitImmediateResult(immediateResult)
       notifications.clean()
       showNotification({
         id: 'flag-submitted',
@@ -269,14 +277,17 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         if (res.data !== AnswerResult.FlagSubmitted) {
           setDisabled(false)
           setFlag('')
+          setSubmitImmediateResult(null)
           checkDataFlag(submitId, res.data)
           clearInterval(polling)
-        } else {
-          // Issue #6: FlagSubmitted (duplicate) is also a final state — re-enable input
-          // and stop polling so the user can retry on another track/level.
+        } else if (submitImmediateResult === AnswerResult.FlagSubmitted) {
           setDisabled(false)
           setFlag('')
+          checkDataFlag(submitId, AnswerResult.FlagSubmitted)
+          setSubmitImmediateResult(null)
           clearInterval(polling)
+        } else {
+          return
         }
       } catch (err) {
         setDisabled(false)
@@ -287,7 +298,7 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
     }, 500)
 
     return () => clearInterval(polling)
-  }, [submitId])
+  }, [submitId, submitImmediateResult])
 
   useEffect(() => {
     if (challengeId !== solvedChallengeId) return
@@ -343,6 +354,19 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         autoClose: 8000,
         loading: false,
       })
+    } else if (data === AnswerResult.FlagSubmitted) {
+      updateNotification({
+        id: 'flag-submitted',
+        color: 'yellow',
+        title: t('challenge.notification.flag.duplicate.title'),
+        message: submitMessage ?? t('challenge.notification.flag.duplicate.message'),
+        icon: <Icon path={mdiCheck} size={1} />,
+        autoClose: 8000,
+        loading: false,
+      })
+      if (isHybridLine || isMultiLevel) {
+        await mutate()
+      }
     } else {
       updateNotification({
         id: 'flag-submitted',

@@ -268,6 +268,11 @@ namespace GZCTF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("CaseSensitive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");
 
@@ -281,14 +286,38 @@ namespace GZCTF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("OrSeparators")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("、,;");
+
+                    b.Property<bool>("PathCaseSensitive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<int>("PenaltyScore")
                         .HasColumnType("integer");
+
+                    b.Property<string>("RangeSeparator")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasDefaultValue("-");
 
                     b.Property<int>("Score")
                         .HasColumnType("integer");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("StripLinePrefix")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Title")
                         .HasMaxLength(64)

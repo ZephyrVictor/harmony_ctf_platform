@@ -46,6 +46,11 @@ const LevelEditModal: FC<{
           penaltyScore: config.penaltyScore,
           lockOnAnswers: config.lockOnAnswers ?? [],
           banOnAnswers: config.banOnAnswers ?? [],
+          caseSensitive: config.caseSensitive ?? true,
+          pathCaseSensitive: config.pathCaseSensitive ?? true,
+          orSeparators: config.orSeparators ?? '、,;',
+          rangeSeparator: config.rangeSeparator ?? '-',
+          stripLinePrefix: config.stripLinePrefix ?? true,
           isEnabled: config.isEnabled,
           sortOrder: config.sortOrder,
         }
@@ -56,6 +61,11 @@ const LevelEditModal: FC<{
           penaltyScore: 0,
           lockOnAnswers: [],
           banOnAnswers: [],
+          caseSensitive: true,
+          pathCaseSensitive: true,
+          orSeparators: '、,;',
+          rangeSeparator: '-',
+          stripLinePrefix: true,
           isEnabled: true,
           sortOrder: 1,
         }
@@ -131,6 +141,35 @@ const LevelEditModal: FC<{
             })
           }
         />
+        <Group grow>
+          <TextInput
+            label={t('admin.import.level.orSeparators', { defaultValue: 'OR separators' })}
+            value={model.orSeparators ?? '、,;'}
+            onChange={(e) => setModel({ ...model, orSeparators: e.target.value })}
+          />
+          <TextInput
+            label={t('admin.import.level.rangeSeparator', { defaultValue: 'Range separator' })}
+            value={model.rangeSeparator ?? '-'}
+            onChange={(e) => setModel({ ...model, rangeSeparator: e.target.value })}
+          />
+        </Group>
+        <Group>
+          <Switch
+            label={t('admin.import.level.caseSensitive', { defaultValue: 'Case sensitive' })}
+            checked={model.caseSensitive ?? true}
+            onChange={(e) => setModel({ ...model, caseSensitive: e.target.checked })}
+          />
+          <Switch
+            label={t('admin.import.level.pathCaseSensitive', { defaultValue: 'Path case sensitive' })}
+            checked={model.pathCaseSensitive ?? true}
+            onChange={(e) => setModel({ ...model, pathCaseSensitive: e.target.checked })}
+          />
+          <Switch
+            label={t('admin.import.level.stripLinePrefix', { defaultValue: 'Strip c: prefix' })}
+            checked={model.stripLinePrefix ?? true}
+            onChange={(e) => setModel({ ...model, stripLinePrefix: e.target.checked })}
+          />
+        </Group>
         <Switch
           label="IsEnabled"
           checked={model.isEnabled ?? true}
@@ -224,6 +263,17 @@ const AdminLevels: FC = () => {
                       <Group gap="xs">
                         <Badge variant="outline">Score: {cfg.score}</Badge>
                         <Badge variant="outline">Penalty: {cfg.penaltyScore}</Badge>
+                        <Badge variant="outline">
+                          {cfg.caseSensitive
+                            ? t('admin.import.level.caseSensitiveBadge')
+                            : t('admin.import.level.caseInsensitiveBadge')}
+                        </Badge>
+                        <Badge variant="outline">
+                          OR: {cfg.orSeparators || '、,;'}
+                        </Badge>
+                        <Badge variant="outline">
+                          Range: {cfg.rangeSeparator || '-'}
+                        </Badge>
                       </Group>
                       {cfg.lockOnAnswers && cfg.lockOnAnswers.length > 0 && (
                         <Text size="xs" c="orange">

@@ -118,7 +118,7 @@ public class ScoringService
                     ScoreChange = 0,
                     BannedTrackId = trackId,
                     BannedLevel = level,
-                    Message = "已被封禁，请联系管理员"
+                    Message = "该 Track 的当前 Level 已被封禁，请联系管理员"
                 };
             }
         }
@@ -173,9 +173,11 @@ public class ScoringService
             candidates = await _flagRepo.GetFlagsByTrackLevel(trackId.Value, level, token);
         }
 
+        var requestedLevelConfig = await _levelConfigRepo.GetConfig(challenge.Id, level, token);
+
         // 4. 找匹配的 flags
         var matchedFlags = candidates
-            .Where(f => TryMatch(f, answer))
+            .Where(f => TryMatch(f, answer, requestedLevelConfig))
             .ToList();
 
         if (matchedFlags.Count == 0)
@@ -199,7 +201,7 @@ public class ScoringService
                 ScoreChange = 0,
                 TrackId = matchedTrackId,
                 Level = matchedLevel,
-                Message = "Answer not acceptable at this time"
+                Message = "该级别已提交过，请继续提交下一 Level"
             };
         }
 
@@ -242,14 +244,25 @@ public class ScoringService
         return null;
     }
 
-    private static bool TryMatch(ChallengeFlag flag, string answer)
+    private static bool TryMatch(ChallengeFlag flag, string answer, ChallengeLevelConfig? levelConfig = null)
     {
+        if (flag.AnswerType == ChallengeFlagAnswerType.SourceLocation)
+        {
+            return TryMatchSourceLocation(flag, answer, levelConfig);
+        }
+
+        if (flag.AnswerType == ChallengeFlagAnswerType.Exact)
+        {
+            var comparison = levelConfig?.CaseSensitive == false
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            return string.Equals(flag.FlagValue, answer, comparison);
+        }
+
         var submitted = ParseHybridLineAnswer(answer, flag.AnswerType);
         if (submitted is null)
         {
             // 不能解析时尝试 Exact 字面比对
-            if (flag.AnswerType == ChallengeFlagAnswerType.Exact)
-                return string.Equals(flag.FlagValue, answer, StringComparison.Ordinal);
             return false;
         }
 
@@ -257,11 +270,14 @@ public class ScoringService
         var flagAnswer = ParseHybridLineAnswer(flagAnswerStr, flag.AnswerType);
         if (flagAnswer is null)
         {
-            return string.Equals(flag.FlagValue, answer, StringComparison.Ordinal);
+            return false;
         }
 
         return HybridLineMatches(flagAnswer.Value, submitted.Value);
     }
+
+    public static bool TryMatchForTest(ChallengeFlag flag, string answer, ChallengeLevelConfig? levelConfig = null) =>
+        TryMatch(flag, answer, levelConfig);
 
     private async Task<ScoreResult> HandleCorrectSubmission(
         GameChallenge challenge,
@@ -393,12 +409,15 @@ public class ScoringService
         var penaltyScore = 0;
         if (!duplicate)
         {
-            penaltyScore = levelConfig?.PenaltyScore ?? 0;
-            if (penaltyScore <= 0)
+            if (levelConfig is null)
             {
                 var penalty = await _penaltyRepo.GetPenalty(challenge.Id, token);
                 var defaultPenalty = await _settings.Get<int>("Scoring.DefaultPenaltyScore", token);
-                penaltyScore = penalty?.PenaltyScore ?? defaultPenalty;
+                penaltyScore = CalculateWrongPenalty(levelConfig, penalty?.PenaltyScore, defaultPenalty);
+            }
+            else
+            {
+                penaltyScore = CalculateWrongPenalty(levelConfig, null, 0);
             }
         }
 
@@ -498,7 +517,7 @@ public class ScoringService
             UnlocksAt = unlocksAt,
             Cooldown = cooldownInfo,
             Message = submissionType == "Trap" ? "Trap answer triggered"
-                : submissionType == "Ban" ? "Answer banned this track-level"
+                : submissionType == "Ban" ? "该 Track 的当前 Level 已被封禁，请联系管理员"
                 : duplicate ? "Duplicate wrong submission, no penalty"
                 : "Wrong answer"
         };
@@ -595,6 +614,18 @@ public class ScoringService
         var permissions = specific?.Permissions ?? division.DefaultPermissions;
         return permissions.HasFlag(GamePermission.GetBlood);
     }
+
+    private static int CalculateWrongPenalty(
+        ChallengeLevelConfig? levelConfig,
+        int? challengePenaltyScore,
+        int defaultPenaltyScore)
+        => Math.Max(0, levelConfig?.PenaltyScore ?? challengePenaltyScore ?? defaultPenaltyScore);
+
+    public static int CalculateWrongPenaltyForTest(
+        ChallengeLevelConfig? levelConfig,
+        int? challengePenaltyScore,
+        int defaultPenaltyScore)
+        => CalculateWrongPenalty(levelConfig, challengePenaltyScore, defaultPenaltyScore);
 
     /// <summary>
     /// Create a FirstSolves entry after the submission has been saved.
@@ -783,6 +814,174 @@ public class ScoringService
             _ => false
         };
 
+    private static bool TryMatchSourceLocation(ChallengeFlag flag, string answer, ChallengeLevelConfig? levelConfig)
+    {
+        var flagAnswerStr = string.IsNullOrWhiteSpace(flag.RawAnswer) ? flag.FlagValue : flag.RawAnswer;
+        var flagLocations = ParseSourceLocations(flagAnswerStr, levelConfig);
+        var submittedLocations = ParseSourceLocations(answer, levelConfig);
+
+        if (flagLocations.Count == 0 || submittedLocations.Count == 0)
+            return false;
+
+        var comparison = levelConfig?.PathCaseSensitive == false || levelConfig?.CaseSensitive == false
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        foreach (var submittedLocation in submittedLocations)
+        {
+            foreach (var flagLocation in flagLocations)
+            {
+                if (!string.Equals(flagLocation.Path, submittedLocation.Path, comparison))
+                    continue;
+
+                foreach (var submittedRange in submittedLocation.Ranges)
+                {
+                    foreach (var flagRange in flagLocation.Ranges)
+                    {
+                        if (submittedRange.Start >= flagRange.Start && submittedRange.End <= flagRange.End)
+                            return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static List<SourceLocationAnswer> ParseSourceLocations(string input, ChallengeLevelConfig? levelConfig)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return [];
+
+        var trimmed = NormalizeRawSourceLocation(input);
+        var orSeparators = string.IsNullOrEmpty(levelConfig?.OrSeparators)
+            ? "、,;"
+            : levelConfig.OrSeparators;
+        var parts = trimmed.Split(orSeparators.ToCharArray(),
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length > 1 && parts.All(part => TrySplitSourceLocation(part, out _, out _)))
+        {
+            var locations = new List<SourceLocationAnswer>();
+            foreach (var part in parts)
+            {
+                var location = ParseSourceLocation(part, levelConfig);
+                if (location is null)
+                    return [];
+                locations.Add(location.Value);
+            }
+
+            return locations;
+        }
+
+        var single = ParseSourceLocation(trimmed, levelConfig);
+        return single is null ? [] : [single.Value];
+    }
+
+    private static SourceLocationAnswer? ParseSourceLocation(string input, ChallengeLevelConfig? levelConfig)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return null;
+
+        var trimmed = NormalizeRawSourceLocation(input);
+        if (!TrySplitSourceLocation(trimmed, out var pathPart, out var lineExpr))
+            return null;
+
+        var path = NormalizeSourcePath(pathPart, levelConfig);
+        if (levelConfig?.StripLinePrefix != false)
+            lineExpr = StripLinePrefix(lineExpr).Trim();
+
+        var ranges = ParseSourceLineRanges(lineExpr, levelConfig);
+        return !string.IsNullOrWhiteSpace(path) && ranges.Count > 0
+            ? new SourceLocationAnswer(path, ranges)
+            : null;
+    }
+
+    private static bool TrySplitSourceLocation(string input, out string path, out string lineExpr)
+    {
+        path = string.Empty;
+        lineExpr = string.Empty;
+
+        var cPrefixIndex = input.LastIndexOf(":c:", StringComparison.OrdinalIgnoreCase);
+        if (cPrefixIndex > 0 && cPrefixIndex + 3 < input.Length)
+        {
+            path = input[..cPrefixIndex];
+            lineExpr = input[(cPrefixIndex + 1)..];
+            return true;
+        }
+
+        var separatorIndex = input.LastIndexOf(':');
+        if (separatorIndex <= 0 || separatorIndex == input.Length - 1)
+            return false;
+
+        path = input[..separatorIndex];
+        lineExpr = input[(separatorIndex + 1)..].Trim();
+        return true;
+    }
+
+    private static List<LineRange> ParseSourceLineRanges(string input, ChallengeLevelConfig? levelConfig)
+    {
+        var orSeparators = string.IsNullOrEmpty(levelConfig?.OrSeparators)
+            ? "、,;"
+            : levelConfig.OrSeparators;
+        var parts = input.Split(orSeparators.ToCharArray(),
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0)
+            parts = [input];
+
+        List<LineRange> ranges = [];
+        foreach (var part in parts)
+        {
+            var token = levelConfig?.StripLinePrefix == false ? part.Trim() : StripLinePrefix(part.Trim()).Trim();
+            var rangeSeparator = string.IsNullOrWhiteSpace(levelConfig?.RangeSeparator)
+                ? "-"
+                : levelConfig.RangeSeparator;
+            var rangeParts = token.Split(rangeSeparator, 2, StringSplitOptions.TrimEntries);
+
+            if (rangeParts.Length == 1)
+            {
+                if (!int.TryParse(rangeParts[0], out var line) || line <= 0)
+                    return [];
+                ranges.Add(new LineRange(line, line));
+                continue;
+            }
+
+            if (!int.TryParse(rangeParts[0], out var start)
+                || !int.TryParse(rangeParts[1], out var end)
+                || start <= 0
+                || end < start)
+            {
+                return [];
+            }
+
+            ranges.Add(new LineRange(start, end));
+        }
+
+        return ranges;
+    }
+
+    private static string NormalizeSourcePath(string path, ChallengeLevelConfig? levelConfig)
+    {
+        var normalized = path.Trim()
+            .Replace('\\', '/')
+            .Replace('＼', '/')
+            .Replace('∕', '/')
+            .Replace('／', '/');
+        while (normalized.Contains("//", StringComparison.Ordinal))
+            normalized = normalized.Replace("//", "/", StringComparison.Ordinal);
+        return levelConfig?.PathCaseSensitive == false || levelConfig?.CaseSensitive == false
+            ? normalized.ToUpperInvariant()
+            : normalized;
+    }
+
+    private static string NormalizeRawSourceLocation(string input)
+    {
+        var normalized = input.Trim().Replace('：', ':');
+        while (normalized.Contains("::", StringComparison.Ordinal))
+            normalized = normalized.Replace("::", ":", StringComparison.Ordinal);
+        return normalized;
+    }
+
     private static bool ContainsMultiLineSeparator(string input) =>
         input.Any(c => c is '、' or ',' or ';' or '\r' or '\n' or '\t' or ' ');
 
@@ -924,6 +1123,10 @@ internal enum HybridLineAnswerKind
     LineRange,
     MultiLine
 }
+
+internal readonly record struct LineRange(int Start, int End);
+
+internal readonly record struct SourceLocationAnswer(string Path, List<LineRange> Ranges);
 
 internal readonly record struct HybridLineAnswer(
     HybridLineAnswerKind Kind,

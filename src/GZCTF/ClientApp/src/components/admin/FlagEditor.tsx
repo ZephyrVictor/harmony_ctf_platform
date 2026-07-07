@@ -117,6 +117,10 @@ export const FlagEditor: FC<FlagEditorProps> = ({ challengeId, disabled, disable
       label: t('admin.flag.answer_type.multi_line'),
     },
     {
+      value: ChallengeFlagAnswerType.SourceLocation,
+      label: t('admin.flag.answer_type.source_location'),
+    },
+    {
       value: ChallengeFlagAnswerType.Exact,
       label: t('admin.flag.answer_type.exact'),
     },
