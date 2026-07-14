@@ -1,11 +1,15 @@
 {
-  "runId": "2026-07-07T11-21-29-388Z",
+  "runId": "2026-07-14T12-06-43-089Z",
   "baseUrl": "http://127.0.0.1:63000",
   "backendUrl": "http://127.0.0.1:8080",
   "screenshots": [
     "docs/e2e-contest-flow/screenshots/01-admin-challenges-list.png",
     "docs/e2e-contest-flow/screenshots/02-admin-import-flags-page.png",
     "docs/e2e-contest-flow/screenshots/03-admin-bans-empty.png",
+    "docs/e2e-contest-flow/screenshots/18-admin-zeroday-gate-config.png",
+    "docs/e2e-contest-flow/screenshots/15-admin-level-trap-disabled.png",
+    "docs/e2e-contest-flow/screenshots/14-admin-level-trap-enabled.png",
+    "docs/e2e-contest-flow/screenshots/16-admin-level-trap-restored.png",
     "docs/e2e-contest-flow/screenshots/04-player-game-home.png",
     "docs/e2e-contest-flow/screenshots/05-player-challenge-list.png",
     "docs/e2e-contest-flow/screenshots/06-player-challenge-modal-initial.png",
@@ -14,24 +18,25 @@
     "docs/e2e-contest-flow/screenshots/09-player-cooldown-notice.png",
     "docs/e2e-contest-flow/screenshots/10-player-submissions.png",
     "docs/e2e-contest-flow/screenshots/13-player-zeroday-info.png",
+    "docs/e2e-contest-flow/screenshots/17-player-zeroday-gate.png",
     "docs/e2e-contest-flow/screenshots/11-admin-bans-after-trap.png",
     "docs/e2e-contest-flow/screenshots/12-monitor-submissions.png"
   ],
   "traces": [
-    "docs/e2e-contest-flow/traces/2026-07-07T11-21-29-388Z-admin.zip",
-    "docs/e2e-contest-flow/traces/2026-07-07T11-21-29-388Z-player.zip"
+    "docs/e2e-contest-flow/traces/2026-07-14T12-06-43-089Z-admin.zip",
+    "docs/e2e-contest-flow/traces/2026-07-14T12-06-43-089Z-player.zip"
   ],
   "apiChecks": [
     {
       "answer": "ecmascript/builtins/builtins_arraybuffer.cpp:552",
       "level": 1,
       "response": {
-        "id": 1,
+        "id": 8,
         "message": "Accepted",
-        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "level": 1,
         "solvedCount": 0,
-        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -45,14 +50,14 @@
     {
       "answer": "af0534741d9990427700aa4c43f2080b42c0a93f",
       "level": 2,
-      "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+      "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
       "response": {
-        "id": 2,
+        "id": 9,
         "message": "Accepted",
-        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "level": 2,
         "solvedCount": 0,
-        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -67,12 +72,12 @@
       "answer": "ecmascript/builtins/builtins.cpp:286",
       "level": 1,
       "response": {
-        "id": 3,
+        "id": 10,
         "message": "Accepted",
-        "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "level": 1,
         "solvedCount": 0,
-        "activeTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -87,12 +92,12 @@
       "answer": "ecmascript/builtins/builtins_arraybuffer.cpp:552",
       "level": 1,
       "response": {
-        "id": 4,
+        "id": 11,
         "message": "该级别已提交过，请继续提交下一 Level",
-        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "level": 1,
         "solvedCount": 0,
-        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -106,14 +111,14 @@
     {
       "answer": "CWE-476",
       "level": 3,
-      "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+      "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
       "response": {
-        "id": 5,
+        "id": 12,
         "message": "Accepted",
-        "trackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "level": 3,
         "solvedCount": 1,
-        "activeTrackId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
+        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
         "isTrackComplete": true,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -127,14 +132,14 @@
     {
       "answer": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
       "level": 2,
-      "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
       "response": {
-        "id": 6,
+        "id": 13,
         "message": "Wrong answer",
-        "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "level": 2,
         "solvedCount": 1,
-        "activeTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -153,18 +158,18 @@
     {
       "answer": "hash(0)",
       "level": 2,
-      "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
       "response": {
-        "id": 7,
+        "id": 14,
         "message": "该 Track 的当前 Level 已被封禁，请联系管理员",
-        "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "level": 2,
         "solvedCount": 1,
-        "activeTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
-        "bannedTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "bannedTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "bannedLevel": 2,
         "triggerAnswer": "hash(0)",
         "cooldown": {
@@ -177,11 +182,32 @@
       "status": "WrongAnswer"
     },
     {
+      "answer": "CWE-787",
+      "level": 3,
+      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+      "response": {
+        "id": 15,
+        "message": "请先提交上一 Level",
+        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "level": 3,
+        "solvedCount": 1,
+        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "isTrackComplete": false,
+        "challengeLocked": false,
+        "unlocksAt": null,
+        "bannedTrackId": null,
+        "bannedLevel": null,
+        "triggerAnswer": null,
+        "cooldown": null
+      },
+      "status": "WrongAnswer"
+    },
+    {
       "answer": "0",
       "level": 2,
-      "trackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
       "response": {
-        "id": 8,
+        "id": 16,
         "message": "该 Track 的当前 Level 已被封禁，请联系管理员",
         "trackId": null,
         "level": null,
@@ -190,7 +216,7 @@
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
-        "bannedTrackId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a",
+        "bannedTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
         "bannedLevel": 2,
         "triggerAnswer": "0",
         "cooldown": null
@@ -198,10 +224,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-0-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-0-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 9,
+        "id": 17,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -223,10 +249,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-1-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-1-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 10,
+        "id": 18,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -248,10 +274,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-2-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-2-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 11,
+        "id": 19,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -273,10 +299,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-3-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-3-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 12,
+        "id": 20,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -298,10 +324,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-4-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-4-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 13,
+        "id": 21,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -323,10 +349,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-5-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-5-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 14,
+        "id": 22,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -348,10 +374,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-6-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-6-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 15,
+        "id": 23,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -373,10 +399,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-7-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-7-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 16,
+        "id": 24,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -392,16 +418,16 @@
           "wrongCount": 0,
           "wrongAnswerLimit": 10,
           "cooldownMinutes": 5,
-          "cooldownUntil": 1783423616069
+          "cooldownUntil": 1784031133004
         }
       },
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-8-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-8-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 17,
+        "id": 25,
         "message": "题目冷却中，剩 04:59",
         "trackId": null,
         "level": null,
@@ -417,16 +443,16 @@
           "wrongCount": 0,
           "wrongAnswerLimit": 10,
           "cooldownMinutes": 5,
-          "cooldownUntil": 1783423616069
+          "cooldownUntil": 1784031133004
         }
       },
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-during-cooldown-2026-07-07T11-21-29-388Z",
+      "answer": "wrong-during-cooldown-2026-07-14T12-06-43-089Z",
       "level": 1,
       "response": {
-        "id": 18,
+        "id": 26,
         "message": "题目冷却中，剩 04:59",
         "trackId": null,
         "level": null,
@@ -442,18 +468,29 @@
           "wrongCount": 0,
           "wrongAnswerLimit": 10,
           "cooldownMinutes": 5,
-          "cooldownUntil": 1783423616069
+          "cooldownUntil": 1784031133004
         }
       },
       "status": "WrongAnswer"
+    },
+    {
+      "type": "zeroday-gate",
+      "response": {
+        "status": 400,
+        "ok": false,
+        "data": {
+          "title": "0day submission requires at least 200 Nday points. Current Nday score: 15.",
+          "status": 400
+        }
+      }
     }
   ],
   "bugs": [],
   "entities": {
-    "gameId": 1,
-    "challengeId": 1,
-    "teamId": 1,
-    "trackNormalId": "498d686c-5ba3-42a3-b3fa-736ef3429cef",
-    "trackTrapId": "33bfc4d4-4a2a-4cb3-b3d4-24407b6f882a"
+    "gameId": 2,
+    "challengeId": 2,
+    "teamId": 2,
+    "trackNormalId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+    "trackTrapId": "c3761d6a-7545-4c62-93a1-00152cb492a5"
   }
 }

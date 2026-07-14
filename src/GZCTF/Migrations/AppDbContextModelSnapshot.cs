@@ -936,6 +936,9 @@ namespace GZCTF.Migrations
                         .HasMaxLength(8192)
                         .HasColumnType("character varying(8192)");
 
+                    b.Property<int>("ZeroDayNdayScoreRequirement")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("Games");

@@ -149,8 +149,40 @@
       "unsubmitted_note": "你的队伍尚未提交 Writeup"
     },
     "zeroday": {
+      "title": "0day 工单",
       "empty": "暂无 0day 工单",
-      "empty_hint": "提交你在比赛中发现的 0day 漏洞"
+      "empty_hint": "提交你在比赛中发现的 0day 漏洞",
+      "gate": "0day 提交需要至少 {{required}} 分 Nday 得分，当前 Nday 得分 {{current}} 分。",
+      "no_title": "未填写标题",
+      "review": "审核意见",
+      "bonus": "加分",
+      "reviewed": "已审核",
+      "status": {
+        "pending": "待审核",
+        "approved": "已通过",
+        "rejected": "已拒绝"
+      },
+      "severity": {
+        "none": "未选择",
+        "low": "低危",
+        "medium": "中危",
+        "high": "高危",
+        "critical": "严重"
+      },
+      "modal": {
+        "title": "提交 0day 工单",
+        "title_field": "标题（可选）",
+        "description": "描述（必填）",
+        "description_placeholder": "描述漏洞位置、触发方式和影响",
+        "challenge_id": "题目 ID（可选，关联到具体题目时填写）",
+        "severity": "严重度（加分梯度：严重 N×100，高危 N×60，中危 N×30，低危 N×10）",
+        "module": "模块（例如 ecmascript/base）",
+        "file_path": "文件路径（L1 key，例如 ecmascript/base/foo.cpp）",
+        "line_number": "行号（例如 c:1060、c:550-559、c:281、c:286）",
+        "commit_hash": "Commit Hash（40 位十六进制修复提交）",
+        "cwe": "CWE（例如 CWE-787，多个 CWE 可写 CWE-125; CWE-787）",
+        "poc": "PoC / 证据（可选）"
+      }
     }
   },
   "event": {

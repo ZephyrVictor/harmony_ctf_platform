@@ -1,4 +1,5 @@
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -32,9 +33,9 @@ const statusColor: Record<ZeroDayTicketStatus, string> = {
 }
 
 const statusLabel: Record<ZeroDayTicketStatus, string> = {
-  [ZeroDayTicketStatus.Pending]: 'Pending',
-  [ZeroDayTicketStatus.Approved]: 'Approved',
-  [ZeroDayTicketStatus.Rejected]: 'Rejected',
+  [ZeroDayTicketStatus.Pending]: 'game.content.zeroday.status.pending',
+  [ZeroDayTicketStatus.Approved]: 'game.content.zeroday.status.approved',
+  [ZeroDayTicketStatus.Rejected]: 'game.content.zeroday.status.rejected',
 }
 
 const ZeroDayTicketSubmitModal: FC<{
@@ -106,65 +107,65 @@ const ZeroDayTicketSubmitModal: FC<{
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Submit 0day Ticket" size="lg">
+    <Modal opened={opened} onClose={onClose} title={t('game.content.zeroday.modal.title')} size="lg">
       <Stack gap="sm">
         <TextInput
-          label="Title (optional)"
+          label={t('game.content.zeroday.modal.title_field')}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <Textarea
-          label="Description (required)"
-          placeholder="Describe the vulnerability: where, how, impact"
+          label={t('game.content.zeroday.modal.description')}
+          placeholder={t('game.content.zeroday.modal.description_placeholder')}
           value={description}
           autosize
           minRows={4}
           onChange={(e) => setDescription(e.target.value)}
         />
         <NumberInput
-          label="ChallengeId (optional - if tied to a specific challenge)"
+          label={t('game.content.zeroday.modal.challenge_id')}
           value={challengeId}
           onChange={(v) => setChallengeId(typeof v === 'number' ? v : undefined)}
         />
         <Select
-          label="Severity (bonus tier: Critical N×100, High N×60, Medium N×30, Low N×10)"
+          label={t('game.content.zeroday.modal.severity')}
           value={severity}
           onChange={(v) => setSeverity((v as ZeroDaySeverity) ?? ZeroDaySeverity.None)}
           data={[
-            { value: ZeroDaySeverity.None, label: 'None' },
-            { value: ZeroDaySeverity.Low, label: 'Low' },
-            { value: ZeroDaySeverity.Medium, label: 'Medium' },
-            { value: ZeroDaySeverity.High, label: 'High' },
-            { value: ZeroDaySeverity.Critical, label: 'Critical' },
+            { value: ZeroDaySeverity.None, label: t('game.content.zeroday.severity.none') },
+            { value: ZeroDaySeverity.Low, label: t('game.content.zeroday.severity.low') },
+            { value: ZeroDaySeverity.Medium, label: t('game.content.zeroday.severity.medium') },
+            { value: ZeroDaySeverity.High, label: t('game.content.zeroday.severity.high') },
+            { value: ZeroDaySeverity.Critical, label: t('game.content.zeroday.severity.critical') },
           ]}
         />
         <TextInput
-          label="Module (e.g. ecmascript/base)"
+          label={t('game.content.zeroday.modal.module')}
           value={mod}
           onChange={(e) => setMod(e.target.value)}
         />
         <TextInput
-          label="FilePath (L1 flag key, e.g. ecmascript/base/foo.cpp)"
+          label={t('game.content.zeroday.modal.file_path')}
           value={filePath}
           onChange={(e) => setFilePath(e.target.value)}
         />
         <TextInput
-          label="LineNumber (e.g. c:1060, c:550-559, c:281、c:286)"
+          label={t('game.content.zeroday.modal.line_number')}
           value={lineNumber}
           onChange={(e) => setLineNumber(e.target.value)}
         />
         <TextInput
-          label="CommitHash (40-char hex, fix commit)"
+          label={t('game.content.zeroday.modal.commit_hash')}
           value={commitHash}
           onChange={(e) => setCommitHash(e.target.value)}
         />
         <TextInput
-          label="CWE (e.g. CWE-787, or 'CWE-125; CWE-787' for multiple)"
+          label={t('game.content.zeroday.modal.cwe')}
           value={cwe}
           onChange={(e) => setCwe(e.target.value)}
         />
         <Textarea
-          label="PoC / evidence (optional)"
+          label={t('game.content.zeroday.modal.poc')}
           value={poc}
           autosize
           minRows={2}
@@ -189,7 +190,11 @@ const ZeroDayTickets: FC = () => {
   const { t } = useTranslation()
 
   const { data: tickets, mutate } = api.zeroDayTicket.useZeroDayTicketGetMyTickets({ gameId: numId })
+  const { data: detail } = api.game.useGameChallengesWithTeamInfo(numId)
   const [submitOpened, setSubmitOpened] = useState(false)
+  const ndayScore = detail?.ndayScore ?? 0
+  const zeroDayGate = detail?.zeroDayNdayScoreRequirement ?? 200
+  const canSubmitZeroDay = detail?.canSubmitZeroDay ?? (zeroDayGate <= 0 || ndayScore >= zeroDayGate)
 
   return (
     <WithNavBar width="100%" isLoading={!tickets} minWidth={0}>
@@ -197,22 +202,33 @@ const ZeroDayTickets: FC = () => {
         <Group justify="space-between">
           <Group>
             <Icon path={mdiBugCheckOutline} size={2} />
-            <Title>0day Tickets</Title>
+            <Title>{t('game.content.zeroday.title')}</Title>
           </Group>
-          <Button leftSection={<Icon path={mdiPlus} size={1} />} onClick={() => setSubmitOpened(true)}>
-            {t('game.button.zeroday.submit', { defaultValue: 'Submit New Ticket' })}
+          <Button
+            leftSection={<Icon path={mdiPlus} size={1} />}
+            onClick={() => setSubmitOpened(true)}
+            disabled={!canSubmitZeroDay}
+          >
+            {t('game.button.zeroday.submit')}
           </Button>
         </Group>
+        {!canSubmitZeroDay && (
+          <Alert color="yellow">
+            {t('game.content.zeroday.gate', {
+              current: ndayScore,
+              required: zeroDayGate,
+              defaultValue: `0day submission requires ${zeroDayGate} Nday points. Current Nday score: ${ndayScore}.`,
+            })}
+          </Alert>
+        )}
         {tickets && tickets.length === 0 ? (
           <Center h="40vh">
             <Stack align="center">
               <Title order={3} c="dimmed">
-                {t('game.content.zeroday.empty', { defaultValue: 'No 0day tickets yet' })}
+                {t('game.content.zeroday.empty')}
               </Title>
               <Text c="dimmed">
-                {t('game.content.zeroday.empty_hint', {
-                  defaultValue: 'Submit a 0day vulnerability to earn bonus points',
-                })}
+                {t('game.content.zeroday.empty_hint')}
               </Text>
             </Stack>
           </Center>
@@ -224,9 +240,9 @@ const ZeroDayTickets: FC = () => {
                   <Group justify="space-between" align="flex-start">
                     <Stack gap={4}>
                       <Group gap="xs">
-                        <Text fw={700}>{ticket.title || '(no title)'}</Text>
+                        <Text fw={700}>{ticket.title || t('game.content.zeroday.no_title')}</Text>
                         <Badge variant="light" color={statusColor[ticket.status ?? ZeroDayTicketStatus.Pending]}>
-                          {statusLabel[ticket.status ?? ZeroDayTicketStatus.Pending]}
+                          {t(statusLabel[ticket.status ?? ZeroDayTicketStatus.Pending])}
                         </Badge>
                       </Group>
                       <Text size="sm" lineClamp={3}>
@@ -234,17 +250,19 @@ const ZeroDayTickets: FC = () => {
                       </Text>
                       {ticket.reviewComment && (
                         <Text size="sm" c="dimmed">
-                          <strong>Review:</strong> {ticket.reviewComment}
+                          <strong>{t('game.content.zeroday.review')}:</strong> {ticket.reviewComment}
                         </Text>
                       )}
                       {ticket.bonusScore && ticket.bonusScore > 0 && (
                         <Badge variant="outline" color="teal">
-                          Bonus: +{ticket.bonusScore}
+                          {t('game.content.zeroday.bonus')}: +{ticket.bonusScore}
                         </Badge>
                       )}
                       <Text size="xs" c="dimmed">
                         {ticket.createdAt ? dayjs(ticket.createdAt).format('YYYY-MM-DD HH:mm') : ''}
-                        {ticket.reviewedAt ? ` | Reviewed: ${dayjs(ticket.reviewedAt).format('YYYY-MM-DD HH:mm')}` : ''}
+                        {ticket.reviewedAt
+                          ? ` | ${t('game.content.zeroday.reviewed')}: ${dayjs(ticket.reviewedAt).format('YYYY-MM-DD HH:mm')}`
+                          : ''}
                       </Text>
                     </Stack>
                   </Group>

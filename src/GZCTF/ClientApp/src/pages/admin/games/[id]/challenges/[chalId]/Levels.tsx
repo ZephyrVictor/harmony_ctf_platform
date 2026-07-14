@@ -17,16 +17,50 @@ import {
 import { showNotification } from '@mantine/notifications'
 import { mdiCheck, mdiDeleteOutline, mdiPlus, mdiPencilOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
-import { FC, useState } from 'react'
+import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { WithChallengeEdit } from '@Components/admin/WithChallengeEdit'
+import { COMMIT_TRAP_BAN_ANSWERS } from '@Utils/ChallengeLevelDefaults'
 import { showErrorMsg } from '@Utils/Shared'
 import api, {
   ChallengeLevelConfig,
   LevelConfigCreateModel,
   LevelConfigUpdateModel,
 } from '@Api'
+
+const createLevelEditModel = (config?: ChallengeLevelConfig): LevelConfigCreateModel =>
+  config
+    ? {
+        level: config.level,
+        title: config.title,
+        score: config.score,
+        penaltyScore: config.penaltyScore,
+        lockOnAnswers: config.lockOnAnswers ?? [],
+        banOnAnswers: config.banOnAnswers ?? [],
+        caseSensitive: config.caseSensitive ?? true,
+        pathCaseSensitive: config.pathCaseSensitive ?? true,
+        orSeparators: config.orSeparators ?? '、,;',
+        rangeSeparator: config.rangeSeparator ?? '-',
+        stripLinePrefix: config.stripLinePrefix ?? true,
+        isEnabled: config.isEnabled,
+        sortOrder: config.sortOrder,
+      }
+    : {
+        level: 1,
+        title: '',
+        score: 5,
+        penaltyScore: 0,
+        lockOnAnswers: [],
+        banOnAnswers: [],
+        caseSensitive: true,
+        pathCaseSensitive: true,
+        orSeparators: '、,;',
+        rangeSeparator: '-',
+        stripLinePrefix: true,
+        isEnabled: true,
+        sortOrder: 1,
+      }
 
 const LevelEditModal: FC<{
   opened: boolean
@@ -37,39 +71,16 @@ const LevelEditModal: FC<{
 }> = ({ opened, onClose, challengeId, config, onSaved }) => {
   const { t } = useTranslation()
   const [disabled, setDisabled] = useState(false)
-  const [model, setModel] = useState<LevelConfigCreateModel>(
-    config
-      ? {
-          level: config.level,
-          title: config.title,
-          score: config.score,
-          penaltyScore: config.penaltyScore,
-          lockOnAnswers: config.lockOnAnswers ?? [],
-          banOnAnswers: config.banOnAnswers ?? [],
-          caseSensitive: config.caseSensitive ?? true,
-          pathCaseSensitive: config.pathCaseSensitive ?? true,
-          orSeparators: config.orSeparators ?? '、,;',
-          rangeSeparator: config.rangeSeparator ?? '-',
-          stripLinePrefix: config.stripLinePrefix ?? true,
-          isEnabled: config.isEnabled,
-          sortOrder: config.sortOrder,
-        }
-      : {
-          level: 1,
-          title: '',
-          score: 5,
-          penaltyScore: 0,
-          lockOnAnswers: [],
-          banOnAnswers: [],
-          caseSensitive: true,
-          pathCaseSensitive: true,
-          orSeparators: '、,;',
-          rangeSeparator: '-',
-          stripLinePrefix: true,
-          isEnabled: true,
-          sortOrder: 1,
-        }
-  )
+  const [model, setModel] = useState<LevelConfigCreateModel>(() => createLevelEditModel(config))
+  const trapEnabled = (model.banOnAnswers ?? []).length > 0
+  const splitAnswers = (value: string) => value.split(',').map((s) => s.trim()).filter(Boolean)
+
+  useEffect(() => {
+    if (opened) {
+      setModel(createLevelEditModel(config))
+      setDisabled(false)
+    }
+  }, [opened, config])
 
   const onSave = async () => {
     setDisabled(true)
@@ -94,53 +105,92 @@ const LevelEditModal: FC<{
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title={config ? 'Edit Level' : 'Create Level'} size="lg">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={config ? t('admin.level.edit') : t('admin.level.create')}
+      size="lg"
+    >
       <Stack gap="sm">
         <Group grow>
           <NumberInput
-            label="Level"
+            label={t('admin.level.level')}
             value={model.level}
             onChange={(v) => setModel({ ...model, level: typeof v === 'number' ? v : 1 })}
             disabled={!!config}
           />
           <TextInput
-            label="Title"
+            label={t('admin.level.levelTitle')}
             value={model.title ?? ''}
             onChange={(e) => setModel({ ...model, title: e.target.value })}
           />
         </Group>
         <Group grow>
           <NumberInput
-            label="Score (default: L1=5 / L2=4 / L3=1)"
+            label={t('admin.level.score')}
+            description={t('admin.level.scoreDescription')}
             value={model.score ?? 0}
             onChange={(v) => setModel({ ...model, score: typeof v === 'number' ? v : 0 })}
           />
           <NumberInput
-            label="PenaltyScore"
+            label={t('admin.level.penaltyScore')}
+            description={t('admin.level.penaltyDescription')}
             value={model.penaltyScore ?? 0}
             onChange={(v) => setModel({ ...model, penaltyScore: typeof v === 'number' ? v : 0 })}
           />
         </Group>
         <TextInput
-          label="LockOnAnswers (comma-separated)"
+          label={t('admin.level.lockOnAnswers')}
+          description={t('admin.level.lockOnAnswersDescription')}
           value={(model.lockOnAnswers ?? []).join(',')}
           onChange={(e) =>
             setModel({
               ...model,
-              lockOnAnswers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+              lockOnAnswers: splitAnswers(e.target.value),
             })
           }
         />
-        <TextInput
-          label="BanOnAnswers (comma-separated)"
-          value={(model.banOnAnswers ?? []).join(',')}
-          onChange={(e) =>
-            setModel({
-              ...model,
-              banOnAnswers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-            })
-          }
-        />
+        <Card withBorder shadow="none" padding="sm">
+          <Stack gap="xs">
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <Stack gap={2}>
+                <Text fw={600} size="sm">
+                  {t('admin.level.trap.title')}
+                </Text>
+                <Text c="dimmed" size="xs">
+                  {t('admin.level.trap.description')}
+                </Text>
+              </Stack>
+              <Switch
+                label={t('admin.level.trap.enabled')}
+                checked={trapEnabled}
+                onChange={(e) => setModel({
+                  ...model,
+                  banOnAnswers: e.target.checked ? [...COMMIT_TRAP_BAN_ANSWERS] : [],
+                })}
+              />
+            </Group>
+            {trapEnabled && (
+              <>
+                <TextInput
+                  label={t('admin.level.banOnAnswers')}
+                  description={t('admin.level.banOnAnswersDescription')}
+                  value={(model.banOnAnswers ?? []).join(',')}
+                  onChange={(e) => setModel({ ...model, banOnAnswers: splitAnswers(e.target.value) })}
+                />
+                <Group justify="flex-end">
+                  <Button
+                    variant="light"
+                    size="xs"
+                    onClick={() => setModel({ ...model, banOnAnswers: [...COMMIT_TRAP_BAN_ANSWERS] })}
+                  >
+                    {t('admin.level.trap.restoreDefault')}
+                  </Button>
+                </Group>
+              </>
+            )}
+          </Stack>
+        </Card>
         <Group grow>
           <TextInput
             label={t('admin.import.level.orSeparators', { defaultValue: 'OR separators' })}
@@ -171,7 +221,7 @@ const LevelEditModal: FC<{
           />
         </Group>
         <Switch
-          label="IsEnabled"
+          label={t('admin.level.isEnabled')}
           checked={model.isEnabled ?? true}
           onChange={(e) => setModel({ ...model, isEnabled: e.target.checked })}
         />
@@ -218,7 +268,7 @@ const AdminLevels: FC = () => {
       backUrl={`/admin/games/${numId}/challenges/${numCId}`}
       head={
         <>
-          <Title>Level Configs</Title>
+          <Title>{t('admin.level.title')}</Title>
           <Button
             leftSection={<Icon path={mdiPlus} size={1} />}
             onClick={() => {
@@ -252,17 +302,17 @@ const AdminLevels: FC = () => {
                         <Text fw={700}>{cfg.title || '(no title)'}</Text>
                         {cfg.isEnabled ? (
                           <Badge variant="light" color="teal">
-                            enabled
+                            {t('admin.level.enabled')}
                           </Badge>
                         ) : (
                           <Badge variant="light" color="gray">
-                            disabled
+                            {t('admin.level.disabled')}
                           </Badge>
                         )}
                       </Group>
                       <Group gap="xs">
-                        <Badge variant="outline">Score: {cfg.score}</Badge>
-                        <Badge variant="outline">Penalty: {cfg.penaltyScore}</Badge>
+                        <Badge variant="outline">{t('admin.level.score')}: {cfg.score}</Badge>
+                        <Badge variant="outline">{t('admin.level.penaltyScore')}: {cfg.penaltyScore}</Badge>
                         <Badge variant="outline">
                           {cfg.caseSensitive
                             ? t('admin.import.level.caseSensitiveBadge')
@@ -277,12 +327,12 @@ const AdminLevels: FC = () => {
                       </Group>
                       {cfg.lockOnAnswers && cfg.lockOnAnswers.length > 0 && (
                         <Text size="xs" c="orange">
-                          LockOn: {cfg.lockOnAnswers.join(', ')}
+                          {t('admin.level.lockOnAnswers')}: {cfg.lockOnAnswers.join(', ')}
                         </Text>
                       )}
                       {cfg.banOnAnswers && cfg.banOnAnswers.length > 0 && (
                         <Text size="xs" c="red">
-                          BanOn: {cfg.banOnAnswers.join(', ')}
+                          {t('admin.level.banOnAnswers')}: {cfg.banOnAnswers.join(', ')}
                         </Text>
                       )}
                     </Stack>

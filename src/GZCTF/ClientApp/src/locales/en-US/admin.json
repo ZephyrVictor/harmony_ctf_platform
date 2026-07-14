@@ -320,6 +320,10 @@
           "label": "0day Bonus Base Score",
           "desc": "0day bonus = base × severity multiplier (Critical×100 / High×60 / Medium×30 / Low×10)",
           "hint": "e.g. base=1: Critical gives 100 pts; base=2: Critical gives 200 pts"
+        },
+        "zeroday_nday_score_requirement": {
+          "label": "0day Nday Score Gate",
+          "desc": "Teams can submit 0day tickets only after reaching this Nday level-score threshold. Set 0 to disable the gate"
         }
       },
       "notices": {
@@ -784,11 +788,24 @@
     "delete": "Delete Level",
     "level": "Level",
     "score": "Score",
+    "scoreDescription": "Default Nday scores are L1=5 / L2=4 / L3=1",
     "submissionLimit": "Submission Limit",
     "penaltyScore": "Penalty Score",
+    "penaltyDescription": "Wrong-answer deduction. Set 0 for no penalty",
     "lockOnAnswers": "Lock-on Answers",
+    "lockOnAnswersDescription": "Comma-separated answers that lock the whole challenge",
     "banOnAnswers": "Ban-on Answers",
-    "levelTitle": "Level Title"
+    "banOnAnswersDescription": "Comma-separated answers that ban the current Track/Level",
+    "levelTitle": "Level Title",
+    "isEnabled": "Enable this Level",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "trap": {
+      "title": "Trap Ban",
+      "description": "Used for commit-hash trap answers. Disabled by default. When disabled, 0, hash(0), or 40 zeroes will not automatically ban the Track/Level.",
+      "enabled": "Enable Trap Ban",
+      "restoreDefault": "Restore default traps"
+    }
   },
   "import": {
     "title": "Bulk Import",

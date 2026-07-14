@@ -189,20 +189,23 @@ public class ScoringService
 
         if (firstValid is null)
         {
-            // 所有匹配都不可计分（已解/已封禁/锁定）
-            // 不扣分，不泄漏具体原因
-            // 但返回匹配到的 TrackId 以便前端知道该 flag 属于哪个 track（幂等场景）
             var matchedTrackId = matchedFlags.FirstOrDefault()?.TrackId ?? trackId;
             var matchedLevel = matchedFlags.FirstOrDefault()?.Level ?? level;
+            var blockedReason = await GetMatchedFlagBlockedReason(challenge, participation, matchedFlags, token);
 
-            return new ScoreResult
+            if (blockedReason == MatchedFlagBlockedReason.AlreadySolved)
             {
-                Status = AnswerResult.FlagSubmitted,
-                ScoreChange = 0,
-                TrackId = matchedTrackId,
-                Level = matchedLevel,
-                Message = "该级别已提交过，请继续提交下一 Level"
-            };
+                return new ScoreResult
+                {
+                    Status = AnswerResult.FlagSubmitted,
+                    ScoreChange = 0,
+                    TrackId = matchedTrackId,
+                    Level = matchedLevel,
+                    Message = "该级别已提交过，请继续提交下一 Level"
+                };
+            }
+
+            return CreateBlockedMatchResult(blockedReason, matchedTrackId, matchedLevel);
         }
 
         return await HandleCorrectSubmission(challenge, participation, firstValid, token);
@@ -243,6 +246,82 @@ public class ScoringService
 
         return null;
     }
+
+    private async Task<MatchedFlagBlockedReason> GetMatchedFlagBlockedReason(
+        GameChallenge challenge,
+        Participation participation,
+        List<ChallengeFlag> matchedFlags,
+        CancellationToken token)
+    {
+        var hasLockedByPreviousLevel = false;
+        var hasBanned = false;
+        var hasAlreadySolved = false;
+
+        foreach (var flag in matchedFlags.OrderBy(f => f.Level).ThenBy(f => f.SortOrder))
+        {
+            if (flag.Level > 1)
+            {
+                var prevSolved = await _recordRepo.HasCorrectSubmission(
+                    challenge.Id, participation.Id, flag.TrackId, flag.Level - 1, token);
+                if (!prevSolved)
+                {
+                    hasLockedByPreviousLevel = true;
+                    continue;
+                }
+            }
+
+            var alreadySolved = await _recordRepo.HasCorrectSubmission(
+                challenge.Id, participation.Id, flag.TrackId, flag.Level, token);
+            if (alreadySolved)
+            {
+                hasAlreadySolved = true;
+                continue;
+            }
+
+            var isBanned = await _banStateRepo.IsBanned(
+                participation.Id, challenge.Id, flag.TrackId, flag.Level, token);
+            if (isBanned)
+            {
+                hasBanned = true;
+            }
+        }
+
+        if (hasLockedByPreviousLevel)
+            return MatchedFlagBlockedReason.PreviousLevelMissing;
+        if (hasBanned)
+            return MatchedFlagBlockedReason.Banned;
+        if (hasAlreadySolved)
+            return MatchedFlagBlockedReason.AlreadySolved;
+
+        return MatchedFlagBlockedReason.Unknown;
+    }
+
+    private static ScoreResult CreateBlockedMatchResult(
+        MatchedFlagBlockedReason blockedReason,
+        Guid? matchedTrackId,
+        int? matchedLevel)
+    {
+        var message = blockedReason == MatchedFlagBlockedReason.Banned
+            ? "该 Track 的当前 Level 已被封禁，请联系管理员"
+            : "请先提交上一 Level";
+
+        return new ScoreResult
+        {
+            Status = AnswerResult.WrongAnswer,
+            ScoreChange = 0,
+            TrackId = matchedTrackId,
+            Level = matchedLevel,
+            BannedTrackId = blockedReason == MatchedFlagBlockedReason.Banned ? matchedTrackId : null,
+            BannedLevel = blockedReason == MatchedFlagBlockedReason.Banned ? matchedLevel : null,
+            Message = message
+        };
+    }
+
+    public static ScoreResult CreateBlockedMatchResultForTest(
+        string blockedReason,
+        Guid? matchedTrackId,
+        int? matchedLevel)
+        => CreateBlockedMatchResult(Enum.Parse<MatchedFlagBlockedReason>(blockedReason), matchedTrackId, matchedLevel);
 
     private static bool TryMatch(ChallengeFlag flag, string answer, ChallengeLevelConfig? levelConfig = null)
     {
@@ -294,9 +373,7 @@ public class ScoringService
         var cooldownState = await _cooldownRepo.Get(participation.Id, challenge.Id, token);
         if (cooldownState is not null && (cooldownState.WrongCount != 0 || cooldownState.CooldownUntil is not null))
         {
-            cooldownState.WrongCount = 0;
-            cooldownState.CooldownUntil = null;
-            await _cooldownRepo.Upsert(cooldownState, token);
+            await _cooldownRepo.Clear(participation.Id, challenge.Id, token);
         }
 
         return new ScoreResult
@@ -427,30 +504,8 @@ public class ScoringService
         CooldownInfo? cooldownInfo = null;
         if (!duplicate && !triggerChallengeLock && cooldownMinutes > 0 && wrongAnswerLimit > 0)
         {
-            var state = cooldownState ?? new ChallengeCooldownState
-            {
-                ParticipationId = participation.Id,
-                ChallengeId = challenge.Id,
-                WrongCount = 0,
-                CooldownUntil = null
-            };
-
-            // 冷却已过期则清空 CooldownUntil（避免返回过期时间给前端）
-            if (state.CooldownUntil is not null && state.CooldownUntil <= DateTimeOffset.UtcNow)
-            {
-                state.CooldownUntil = null;
-            }
-
-            state.WrongCount += 1;
-            state.LastWrongAt = DateTimeOffset.UtcNow;
-
-            if (state.WrongCount >= wrongAnswerLimit)
-            {
-                state.CooldownUntil = DateTimeOffset.UtcNow.AddMinutes(cooldownMinutes);
-                state.WrongCount = 0;
-            }
-
-            await _cooldownRepo.Upsert(state, token);
+            var state = await _cooldownRepo.IncrementWrongCount(
+                participation.Id, challenge.Id, wrongAnswerLimit, cooldownMinutes, token);
 
             cooldownInfo = new CooldownInfo
             {
@@ -1116,6 +1171,14 @@ public class ScoringService
 }
 
 public class InvalidFlagSubmissionException(string message) : Exception(message);
+
+internal enum MatchedFlagBlockedReason
+{
+    Unknown,
+    AlreadySolved,
+    PreviousLevelMissing,
+    Banned
+}
 
 internal enum HybridLineAnswerKind
 {

@@ -48,8 +48,8 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | 编号 | 规则原文要点 | 测试 Phase |
 |---|---|---|
 | R5 | 每个有效发现满分 10 分, **动态分值, 根据完成度获得对应积分** | Phase 2.6 (部分完成: L1对+L2错 应得 5 而非 0) |
-| R6 | 4 级 flag 链: 文件路径+触发代码行 / Commit hash / CWE 类型 / (漏洞引入?) | Phase 1.8 + Phase 2.2-2.7 |
-| R7 | 4 级分值: 5 / 4 / 1 (合计 10) | Phase 1.8 (admin Levels 页) + Phase 2 加分验证 |
+| R6 | 规则文案提到 4 级 flag 链；当前默认办赛数据实际导入 3 级: 文件路径+触发代码行 / Commit hash / CWE 类型 | Phase 1.8 + Phase 2.2-2.7 |
+| R7 | 当前 3 级分值: 5 / 4 / 1 (合计 10)；若启用 L4 需重新配置分值仍合计 10 | Phase 1.8 (admin Levels 页) + Phase 2 加分验证 |
 | R8 | **"精确到代码行标记"** — L1 答案格式严格性 | Phase 2.11 (L1 格式边界: 缺 `c:`、缺行号、多余空格) |
 | R9 | "漏洞引入 commit" — 数据集 commit id 列的语义 (引入 vs 修复) | Phase 1.10 注明 + Phase 2 提交时使用数据集原值 |
 | R10 | 防爆破: 禁止爆破猜想, 违规**冻结当日提交资格** | Phase 2.10 (错答超限 → 锁定 unlocksAt) |
@@ -71,7 +71,7 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | R16 | **限定的审核工单数量限制内** — 每队工单配额 | Phase 4.6 (超量被拒) |
 | R17 | 严重 N×100 / 高危 N×60 / 中危 N×30 / 低危 N×10, N=对应数量 | Phase 4.1-4.4 (4 严重度各一单) + Phase 5.1 (accept 后加分) |
 | R18 | **针对模块漏洞被评估为 Flag 错误的误报进行申诉为 0day**, 审核通过可获 0day 积分 | Phase 4.5 (申诉) + Phase 5.2 (accept+升级) |
-| R19 | 初赛阶段获得 0day 附加分的团队 **Nday 得分不得少于 200 分** | Phase 7 (排行榜验证: TeamA Nday < 200 时, 0day 加成是否被扣减) |
+| R19 | 初赛阶段获得 0day 附加分的团队 **Nday 得分不得少于 200 分** | Phase 9 (前端禁用 + 后端 `POST /api/ext/zeroday-tickets` 拒绝; admin 可配置,0=关闭) |
 | R20 | 0day 提交但被审核为**未在预期数据集中的 Nday 或无效漏洞, 不获得积分** | Phase 5.3 (admin 把一个 0day 工单判定为"实为数据集已有 Nday" → 0 分) + Phase 5.4 (判为"无效漏洞" → 0 分) |
 
 ### 1.5 决赛规则 (R21–R26)
@@ -90,7 +90,7 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | 编号 | 规则来源 | 要点 | 测试 Phase |
 |---|---|---|---|
 | R27 | memo/round1 | 提交 `0` 错误后, 这个问题的 commit (这一级) **后续提交也不得分** (永久封禁) | Phase 2.3 + 2.4 (ban-trigger + post-ban 验证) |
-| R28 | 数据集 sheet2 | `hash(0)` 行的 commit = `0` — 这是 ban-trigger 数据驱动源 | Phase 1.10 (DB 查 IsBanTrigger) |
+| R28 | 数据集 sheet2 | `hash(0)` 行作为 trap 候选数据源；平台默认不启用 trap，需管理员显式配置 BanOnAnswers | Phase 1.10 (确认数据源) + Phase 2.3 (手动启用后验证) |
 | R29 | 数据集 sheet2 | 4 行"类别不符" + 12 行"可争议" — 误报申诉候选 | Phase 4.5 (选一个"类别不符" track) |
 | R30 | 数据集 | 组合 CWE 如 `CWE-125; CWE-787` — 多答案 case | Phase 2.6 (L3 顺序敏感性: `CWE-787; CWE-125` 是否也接受) |
 
@@ -173,7 +173,7 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | R3 0day 奖金 | N/A | — | — | N/A |
 | R4 Nday 已修复 | 1 | 导入数据集 (已修复漏洞) | 22 挑战入库 | 待测 |
 | R5 动态分值/完成度 | 2.6 | L1 对 + L2 错 → 排行榜 +5 而非 0 | +5 | 待测 |
-| R6 4 级 flag 链 | 1.8, 2.2-2.7 | admin Levels 页 + 玩家提交 | L1/L2/L3 三级可提交 | 待测 |
+| R6 flag 链 | 1.8, 2.2-2.7 | admin Levels 页 + 玩家提交 | 当前 L1/L2/L3 三级可提交；L4 需另配数据列 | 待测 |
 | R7 分值 5/4/1 | 1.8, 2.2-2.6 | admin 配置 + 玩家加分 | L1=5, L2=4, L3=1 | 待测 |
 | R8 精确到代码行标记 | 2.11 | L1 格式边界测试 | 缺 `c:` / 缺行号 / 多空格 → 拒 | 待测 |
 | R9 commit 语义 | 1.10, 2.5 | 注明数据集 commit = 引入还是修复 | 注明 | 待测 |
@@ -184,7 +184,7 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | R16 工单配额 | 4.6 | 持续提交到超限 | 第 N+1 单被拒 | 待测 |
 | R17 4 严重度加分 | 4.1-4.4, 5.1 | 4 单 accept → 排行榜 +100/+60/+30/+10 | 加成正确 | 待测 |
 | R18 误报申诉转 0day | 4.5, 5.2 | "类别不符" track L3 错 → 申诉 → accept | +100 (升级 Critical) | 待测 |
-| R19 Nday ≥ 200 才能Keep 0day 加成 | 7 | TeamA Nday < 200 时排行榜 | 0day 加成扣减 (若实现) | 待测 (TBD) |
+| R19 Nday ≥ 200 才能提交 0day | 9 | TeamA Nday < 200 时打开 0day 页并直调接口 | 前端禁用提交按钮,后端 400 拒绝 | 已测 |
 | R20 0day 判为数据集 Nday/无效 | 5.3, 5.4 | admin 把 0day 工单判为"实为 Nday" 或 "无效" | 0 分 | 待测 |
 | R21 决赛指定仓库 | 4.7 | 0day 工单提交不在指定仓库的文件 | 应被拒 | 待测 |
 | R22 不在仓库范围不得分 | 4.7, 5.5 | admin reject "not in dataset" | 0 分 | 待测 |
@@ -193,7 +193,7 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | R25 F1 Score | 7.3 | 排行榜/挑战页是否展示 F1 | 展示与否注明 | 待测 |
 | R26 AI 使用 < 50% 不计分 | N/A | — | 评审主观, 平台不实现 | N/A |
 | R27 提交 0 永久封禁 | 2.3, 2.4 | ban-trigger + post-ban | 永久封禁 | 待测 |
-| R28 hash(0) 数据源 | 1.10 | DB 查 IsBanTrigger | 标记为 ban-trigger | 待测 |
+| R28 hash(0) 数据源 | 1.10, 2.3 | 确认数据源存在；管理员启用 BanOnAnswers 后提交 `hash(0)` | 默认不封禁；启用后封禁 | 待测 |
 | R29 类别不符申诉候选 | 4.5 | 选 sheet2 "类别不符" track | 申诉可提 | 待测 |
 | R30 组合 CWE 顺序 | 2.6.扩展 | `CWE-787; CWE-125` 反序提交 | 看是否接受 | 待测 |
 
@@ -232,7 +232,7 @@ GZCTF OpenHarmony CTF 平台的比赛流程,覆盖:
 | 1.7 | `/admin/games/$GAME_ID/challenges` | 列表 22 项 | R4 |
 | 1.8 | 抽查 3 个挑战 (单行/范围/多行 L1 各一) 的 Levels 页 | 每条 track L1=5/L2=4/L3=1, flag 值与 xlsx 一致 | R6, R7 |
 | 1.9 | 抽查 1 个组合 CWE track | L3 flag = `CWE-125; CWE-787` | R30 |
-| 1.10 | 抽查 `hash(0)` track (commit=0) | L2 flag = `0`, DB 查 `"ChallengeFlags" where "Flag"='0'` 的 `IsBanTrigger` 字段 | R9, R28 |
+| 1.10 | 抽查 `hash(0)` track | L2 flag 保留数据集原值；默认 BanOnAnswers 为空,不自动封禁 | R9, R28 |
 | 1.11 | 抽查 1 个 `无法验证` commit 的 track | L2 为空或特殊值, 导入未崩 | R9 |
 | 1.12 | 抽查 1 个 `占位假号` PR 的 track | 导入未崩, PR URL 字段为占位值 | — |
 | 1.13 | 回 Info 页 → 比赛 Publish | 玩家侧 `/games/$GAME_ID` 可见 | — |
@@ -454,7 +454,7 @@ playerA / playerB daemon 分别进 `/games/$GAME_ID/zeroday-tickets`, 确认每�
 |---|---|---|
 | xlsx 上传 UI 选择器变化 | 用 cookie-reuse 脚本调 setInputFiles, 失败则直接调 preview API | — |
 | L1 答案实际格式 (是否拼接 file:line) | Phase 1.8 抽查确认, 若不拼接则 Phase 2 的 L1 答案相应调整 | R6, R8 |
-| `hash(0)` 行未被后端标记为 ban-trigger | Phase 1.10 DB 查 `IsBanTrigger`, 若未标记则 Phase 2.3 用 admin 配置一个 ban-trigger, 或跳过 2.3 并在报告标 PARTIAL | R27, R28 |
+| `hash(0)` 行默认不触发封禁 | 这是当前设计。Phase 2.3 先由 admin 显式启用 BanOnAnswers,再验证封禁链路 | R27, R28 |
 | 0day accept 不自动入数据集 | Phase 5.1 DB 查新 Track, 若未自动入则 0day→Nday 闭环标 FAIL, Phase 6 跳过 | R18 |
 | 防爆破次数限制未配置 | Phase 2.12 若无锁定反应, 跳过并在报告注明 | R10 |
 | 3 次冻结取消资格未实现 | Phase 2.14 跳过, 报告标 N/A | R11 |
@@ -484,7 +484,7 @@ playerA / playerB daemon 分别进 `/games/$GAME_ID/zeroday-tickets`, 确认每�
 - [ ] 1.7 22 挑战列表
 - [ ] 1.8 三种 L1 格式抽查
 - [ ] 1.9 组合 CWE 抽查
-- [ ] 1.10 hash(0) + IsBanTrigger DB 查
+- [ ] 1.10 hash(0) 数据源 + 默认 BanOnAnswers 为空
 - [ ] 1.11 无法验证 commit 抽查
 - [ ] 1.12 占位假号 PR 抽查
 - [ ] 1.13-1.14 启动比赛 + 截图
@@ -574,7 +574,7 @@ playerA / playerB daemon 分别进 `/games/$GAME_ID/zeroday-tickets`, 确认每�
 - Imported: 59/59 (CreatedChallenges=22, Failed=0)
 - L1 format coverage: single ✓ / range ✓ / multi ✓
 - Combined CWE track verified: yes/no
-- hash(0) ban-trigger source: IsBanTrigger=yes/no (DB query result)
+- hash(0) trap source: data exists; default BanOnAnswers empty; admin-enabled BanOnAnswers works: yes/no
 - 无法验证 commit track: imported without crash ✓
 - 占位假号 PR track: imported without crash ✓
 - Game started: yes/no
@@ -648,7 +648,7 @@ playerA / playerB daemon 分别进 `/games/$GAME_ID/zeroday-tickets`, 确认每�
 | R3 0day 奖金 | N/A | N/A | 资金流平台不实现 |
 | R4 Nday 已修复 | 1 | ✓ | 59 行已修复漏洞导入 |
 | R5 动态分值/完成度 | 2.6 | ? | L1对L2错→+5保留 |
-| R6 4 级 flag 链 | 1.8, 2.2-2.7 | ? | L1/L2/L3 可提交 |
+| R6 flag 链 | 1.8, 2.2-2.7 | ? | 当前 L1/L2/L3 可提交；L4 未默认配置 |
 | R7 分值 5/4/1 | 1.8, 2.x | ? | 加分验证 |
 | R8 精确到代码行 | 2.11 | ? | 格式严格性 |
 | R9 commit 语义 | 1.10 | ? | 注明引入vs修复 |
@@ -668,7 +668,7 @@ playerA / playerB daemon 分别进 `/games/$GAME_ID/zeroday-tickets`, 确认每�
 | R25 F1 Score | 7.3 | ? | 展示与否 |
 | R26 AI<50% 不计分 | N/A | N/A | 评审主观 |
 | R27 提交0永久封禁 | 2.3, 2.4 | ? | ban+post-ban |
-| R28 hash(0) 数据源 | 1.10 | ? | IsBanTrigger |
+| R28 hash(0) 数据源 | 1.10, 2.3 | ? | 默认关闭；管理员启用后生效 |
 | R29 类别不符申诉 | 4.3 | ? | 候选已选 |
 | R30 组合 CWE 顺序 | 2.9 | ? | 反序行为 |
 

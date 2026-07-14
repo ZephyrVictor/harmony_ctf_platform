@@ -275,3 +275,4 @@ pgbackrest/pgbackrest.conf
 # iter2 test artifacts
 gzctf-gameflow-report.md
 trace-shots/
+docs/e2e-contest-flow/traces/*.zip

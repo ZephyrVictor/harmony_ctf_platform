@@ -460,6 +460,14 @@ const GameInfoEdit: FC = () => {
             value={game?.zeroDayBaseScore ?? 1}
             onChange={(e) => game && setGame({ ...game, zeroDayBaseScore: getInputNumber(e) })}
           />
+          <NumberInput
+            label={t('admin.content.games.info.zeroday_nday_score_requirement.label')}
+            description={t('admin.content.games.info.zeroday_nday_score_requirement.desc')}
+            disabled={disabled}
+            min={0}
+            value={game?.zeroDayNdayScoreRequirement ?? 200}
+            onChange={(e) => game && setGame({ ...game, zeroDayNdayScoreRequirement: getInputNumber(e) })}
+          />
           <Text size="xs" c="dimmed">
             {t('admin.content.games.info.zeroday_base_score.hint')}
           </Text>

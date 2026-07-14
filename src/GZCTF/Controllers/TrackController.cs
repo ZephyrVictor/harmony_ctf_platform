@@ -127,7 +127,7 @@ public class TrackController(
                         Score = lvl.Score,
                         PenaltyScore = lvl.PenaltyScore,
                         LockOnAnswers = lvl.LockOnAnswers,
-                        BanOnAnswers = DefaultBanOnAnswers(lvl.Level, lvl.BanOnAnswers),
+                        BanOnAnswers = lvl.BanOnAnswers,
                         CaseSensitive = lvl.CaseSensitive,
                         PathCaseSensitive = lvl.PathCaseSensitive,
                         OrSeparators = string.IsNullOrEmpty(lvl.OrSeparators) ? "、,;" : lvl.OrSeparators,
@@ -198,10 +198,6 @@ public class TrackController(
         return NoContent();
     }
 
-    static List<string> DefaultBanOnAnswers(int level, List<string> configured) =>
-        configured.Count > 0 || level != 2
-            ? configured
-            : ["0", "hash(0)", "0000000000000000000000000000000000000000"];
 }
 
 public class TrackCreateModel

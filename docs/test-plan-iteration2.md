@@ -20,7 +20,7 @@
 |---|---|
 | 最新测试计划 | `docs/e2e-contest-flow/TEST_PLAN.md` |
 | 结构化断言结果 | `docs/e2e-contest-flow/e2e-results.json` |
-| 13 张关键截图 | `docs/e2e-contest-flow/screenshots/` |
+| 18 张关键截图 | `docs/e2e-contest-flow/screenshots/` |
 | admin/player trace | `docs/e2e-contest-flow/traces/` |
 
 当前最终验证命令:
@@ -35,10 +35,10 @@ TMPDIR=/dev/shm/gz-e2e corepack pnpm check
 
 已通过:
 
-- 后端全量单元测试: 208 passed。
+- 后端全量单元测试: 212 passed。
 - 前端 TypeScript strict check: passed。
 - `git diff --check`: passed。
-- 最新 E2E 结构化结果: `bugs: []`, `screenshots=13`, `traces=2`, `apiChecks=18`。
+- 最新 E2E 结构化结果: `bugs: []`, `screenshots=18`, `traces=2`, `apiChecks=20`。
 
 ---
 

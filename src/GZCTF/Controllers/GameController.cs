@@ -786,6 +786,14 @@ public class GameController(
                 Id = context.Participation!.TeamId
             };
 
+        var ndayScore = await dbContext.SubmissionRecords
+            .AsNoTracking()
+            .Where(r => r.ParticipationId == context.Participation.Id
+                && r.GameId == context.Game!.Id
+                && r.MatchedFlagId != null
+                && r.ScoreChange > 0)
+            .SumAsync(r => (int?)r.ScoreChange, token) ?? 0;
+
         return Ok(new GameDetailModel
         {
             ScoreboardItem = boardItem,
@@ -796,6 +804,10 @@ public class GameController(
             WriteupDeadline = context.Game!.WriteupDeadline,
             ZeroDayInfoMarkdown = context.Game!.ZeroDayInfoMarkdown,
             ZeroDayBaseScore = context.Game!.ZeroDayBaseScore,
+            ZeroDayNdayScoreRequirement = context.Game!.ZeroDayNdayScoreRequirement,
+            NdayScore = ndayScore,
+            CanSubmitZeroDay = context.Game!.ZeroDayNdayScoreRequirement <= 0
+                || ndayScore >= context.Game!.ZeroDayNdayScoreRequirement,
             CooldownMinutes = context.Game!.CooldownMinutes
         });
     }
@@ -988,18 +1000,19 @@ public class GameController(
         // 计算 CurrentLevel：基于 ActiveTrackId
         // - ActiveTrackId == null → 1
         // - 该 track 全解 → 1（准备开新漏洞）
-        // - 否则 → 该 track 下一个未解且未封禁的 level
+        // - 否则 → 该 track 第一个未解 level。即使该 level 已封禁，也不能跳到后续 level。
         int currentLevel = 1;
         if (activeTrackId is not null)
         {
             var activeTrack = tracks.FirstOrDefault(t => t.Id == activeTrackId.Value);
             if (activeTrack is not null)
             {
-                var activeLevels = levelConfigs.Where(c => c.IsEnabled).OrderBy(c => c.Level).ToList();
-                var nextUnsolved = activeLevels.FirstOrDefault(lc =>
-                    !solvedSet.Contains((activeTrack.Id, lc.Level))
-                    && !bans.Any(b => b.TrackId == activeTrack.Id && b.Level == lc.Level));
-                currentLevel = nextUnsolved?.Level ?? 1;
+                var activeLevels = levelConfigs.Where(c => c.IsEnabled).Select(c => c.Level);
+                var solvedLevels = solvedSet
+                    .Where(s => s.Item1 == activeTrack.Id)
+                    .Select(s => s.Item2)
+                    .ToHashSet();
+                currentLevel = ResolveCurrentLevel(activeLevels, solvedLevels);
             }
         }
 
@@ -1323,6 +1336,14 @@ public class GameController(
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: PositiveFlagUniqueIndexName
         };
+
+    private static int ResolveCurrentLevel(IEnumerable<int> enabledLevels, ISet<int> solvedLevels)
+        => enabledLevels
+            .Order()
+            .FirstOrDefault(level => !solvedLevels.Contains(level), 1);
+
+    public static int ResolveCurrentLevelForTest(IEnumerable<int> enabledLevels, ISet<int> solvedLevels)
+        => ResolveCurrentLevel(enabledLevels, solvedLevels);
 
     /// <summary>
     /// Queries flag status

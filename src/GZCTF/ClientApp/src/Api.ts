@@ -1030,6 +1030,8 @@ export interface GameInfoModel {
   zeroDayInfoMarkdown?: string;
   /** 0day 加分基础倍数 */
   zeroDayBaseScore?: number;
+  /** 0day 提交所需 Nday Level 分数门槛。0 = 不限制 */
+  zeroDayNdayScoreRequirement?: number;
   /** 题目冷却分钟数。0 = 不限流 */
   cooldownMinutes?: number;
 }
@@ -3006,6 +3008,12 @@ export interface GameDetailModel {
   zeroDayInfoMarkdown?: string;
   /** 0day 加分基础倍数 */
   zeroDayBaseScore?: number;
+  /** 0day 提交所需 Nday Level 分数门槛。0 = 不限制 */
+  zeroDayNdayScoreRequirement?: number;
+  /** 当前队伍 Nday Level 正分 */
+  ndayScore?: number;
+  /** 当前队伍是否达到 0day 提交门槛 */
+  canSubmitZeroDay?: boolean;
   /** 题目冷却分钟数。0 = 不限流 */
   cooldownMinutes?: number;
 }

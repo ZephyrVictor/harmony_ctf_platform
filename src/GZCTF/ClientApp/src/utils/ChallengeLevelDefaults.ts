@@ -26,7 +26,6 @@ export const createDefaultLevelColumnMappings = (): LevelColumnMapping[] => [
     penaltyScore: 0,
     levelTitle: '漏洞引入',
     caseSensitive: false,
-    banOnAnswers: [...COMMIT_TRAP_BAN_ANSWERS],
   },
   {
     level: 3,
@@ -54,7 +53,6 @@ export const createDefaultTrackFullLevels = (): TrackFullLevelModel[] => [
     score: 4,
     levelTitle: '漏洞引入',
     caseSensitive: false,
-    banOnAnswers: [...COMMIT_TRAP_BAN_ANSWERS],
   },
   {
     level: 3,

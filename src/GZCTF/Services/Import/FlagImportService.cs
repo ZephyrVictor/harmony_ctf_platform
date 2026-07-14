@@ -722,18 +722,13 @@ public class FlagImportService(
         config.Score = lc.Score;
         config.PenaltyScore = lc.PenaltyScore;
         config.LockOnAnswers = lc.LockOnAnswers;
-        config.BanOnAnswers = DefaultBanOnAnswers(lc.Level, lc.BanOnAnswers);
+        config.BanOnAnswers = lc.BanOnAnswers;
         config.CaseSensitive = lc.CaseSensitive;
         config.PathCaseSensitive = lc.PathCaseSensitive;
         config.OrSeparators = string.IsNullOrEmpty(lc.OrSeparators) ? "、,;" : lc.OrSeparators;
         config.RangeSeparator = string.IsNullOrWhiteSpace(lc.RangeSeparator) ? "-" : lc.RangeSeparator;
         config.StripLinePrefix = lc.StripLinePrefix;
     }
-
-    private static List<string> DefaultBanOnAnswers(int level, List<string> configured) =>
-        configured.Count > 0 || level != 2
-            ? configured
-            : ["0", "hash(0)", "0000000000000000000000000000000000000000"];
 
     /// <summary>
     /// 计算 L1 flag 值（含 ExtraColumns 拼接），用于 "L1" MatchBy。

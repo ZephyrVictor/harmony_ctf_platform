@@ -50,6 +50,21 @@ public class GameDetailModel
     public int ZeroDayBaseScore { get; set; } = 1;
 
     /// <summary>
+    /// 0day 提交所需 Nday Level 分数门槛。0 = 不限制
+    /// </summary>
+    public int ZeroDayNdayScoreRequirement { get; set; } = 200;
+
+    /// <summary>
+    /// 当前队伍 Nday Level 正分
+    /// </summary>
+    public int NdayScore { get; set; }
+
+    /// <summary>
+    /// 当前队伍是否达到 0day 提交门槛
+    /// </summary>
+    public bool CanSubmitZeroDay { get; set; }
+
+    /// <summary>
     /// 题目冷却分钟数。0 = 不限流
     /// </summary>
     public int CooldownMinutes { get; set; } = 5;

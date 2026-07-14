@@ -16,9 +16,12 @@
 - 管理员视角: 题目列表、导入页、封禁页、监控提交页。
 - 参赛者视角: 比赛首页、题目列表、题目弹窗、正常提交、trap 封禁、cooldown、提交记录。
 - 提交流程: L1 `SourceLocation`, L2 commit hash, L3 CWE。
-- trap: `hash(0)` 触发对应 Track L2 封禁, 封禁后提交返回 `已被封禁，请联系管理员`。
+- trap: 默认关闭。管理员可在 Level 配置页启用 Trap 封禁后,`hash(0)` 才会触发对应 Track L2 封禁,封禁后提交返回 `已被封禁，请联系管理员`。
+- trap 配置: 管理员可通过 i18n 化开关启用/关闭 Trap 封禁,并一键填入推荐 trap 值 `0/hash(0)/40 个 0`。
 - cooldown: 2 个 Track 时错误阈值为 `2 * 5 = 10`, 触发后约 5 分钟冷却。
 - 计分: 题目级 solve marker 仅用于展示,默认 `score=0`;总分只汇总 Level 提交分与显式调分。导入默认 `PenaltyScore=0` 的 Level 答错不回退到全局默认扣分。
+- R19 gate: 比赛可配置 0day 提交所需 Nday Level 分数门槛,默认 200;未达标时前端禁用提交,后端接口拒绝。
+- 稳定性: L2 trap 后提交 L3 CWE 不再误判为已提交;L3 保持 Locked,currentLevel 停留在被封禁的 L2。Trap ban 创建与 cooldown 错误计数做了并发加固。
 - 0day: 比赛内 `/games/{id}/zeroday-info` 入口已修复为小写路由并纳入 Chrome E2E 截图,不再 404。
 - UI/i18n: 最新 E2E 固定中文界面并断言不再出现历史截图中的英文 fallback/乱码;所有截图保存前均断言页面不是 404。
 
@@ -28,13 +31,15 @@
 |---|---|
 | 完整测试计划与截图清单 | `docs/e2e-contest-flow/TEST_PLAN.md` |
 | 结构化断言结果 | `docs/e2e-contest-flow/e2e-results.json` |
-| Chrome 截图 | `docs/e2e-contest-flow/screenshots/` |
-| Playwright trace | `docs/e2e-contest-flow/traces/` |
+| Chrome 截图 (18 张) | `docs/e2e-contest-flow/screenshots/` |
+| Playwright trace | 本地生成,不提交 zip；trace 可能包含测试会话请求数据 |
 
 本轮发现并修复了 `SourceLocation` 完整位置 OR 匹配问题:
 `path1.cpp:286、path2.cpp:856-864` 现在可按任一完整位置匹配;原有 `path.cpp:281、286` 同路径多行 OR 语义保持不变。
 
 本轮也修复了 Level 计分回归:配置 `PenaltyScore=0` 时不再回退到全局 `Scoring.DefaultPenaltyScore`,避免错误提交把 Level-only 计分拉偏。
+
+最新 E2E run: `2026-07-14T12-06-43-089Z`, `bugs=[]`, `screenshots=18`, `traces=2`, `apiChecks=20`。
 
 ---
 
@@ -322,9 +327,9 @@ Admin 审核通过 0day 工单时:
 
 #### 3.3.3 R28 ban-trigger 数据驱动
 
-数据集中 `hash(0)` 行 (arkweb_scheme_handler.cc) 的 commit id 列值是字面 `hash(0)`,平台导入时:
+数据集中 `hash(0)` 行 (arkweb_scheme_handler.cc) 的 commit id 列值是字面 `hash(0)`。平台现在默认不启用 trap 封禁:
 - L2 flag 值 = `hash(0)` (literal)
-- L2 BanOnAnswers = `["0"]` — 玩家提交 `0` 触发**永久封禁**该级 (R27)
+- L2 BanOnAnswers 默认 `[]`;只有管理员在导入映射或 Level 配置页显式启用/填写后,玩家提交 `0` / `hash(0)` / 40 个 `0` 才会触发当前 Track/Level 永久封禁 (R27)
 
 #### 3.3.4 导入边界 case 支持
 
@@ -335,7 +340,7 @@ Admin 审核通过 0day 工单时:
 | 多解格式 `c:281、c:286` | L1 = `path:281、286`, AnswerType=SourceLocation;选手提交其中任意一个 OR 项均命中 |
 | 组合 CWE `CWE-125; CWE-787` | L3 = `CWE-125; CWE-787`, AnswerType=Exact (顺序敏感) |
 | `无法验证` L3 | L3 = `无法验证` (literal, 数据集语义问题) |
-| `hash(0)` 行 | L2 = `hash(0)` + BanOnAnswers=`["0"]` |
+| `hash(0)` 行 | L2 = `hash(0)`;BanOnAnswers 默认空,可由管理员显式开启 |
 
 ### 3.4 防爆破与封禁机制 — R10/R11/R27
 
@@ -773,8 +778,8 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 | **R3** | 0day 奖金由奖励计划提供 | N/A (资金流) | — |
 | **R4** | Nday = 真实已修复漏洞 | ✅ Excel 导入数据集 | Phase 1 |
 | **R5** | 满分 10 分,动态分值,部分完成 | ✅ L1/L2/L3 独立计分 | Phase 2.6 |
-| **R6** | 4 级 flag 链 (file:line/commit/CWE/引入) | ✅ 3 级实现 (L4 未实现) | Phase 1/2 |
-| **R7** | 4 级分值 5/4/1 | ✅ ChallengeLevelConfig | Phase 1.8 |
+| **R6** | 规则文案提到 4 级 flag 链 | ⚠️ 当前办赛默认使用 3 级链: file:line / commit / CWE。底层 LevelConfig 支持继续添加 L4,但当前 Excel 与导入配置没有第 4 个答案列 | Phase 1/2 |
+| **R7** | Nday 满分 10 分 | ✅ 当前 3 级分值 5/4/1,合计 10；如启用 L4 需重新配置各级分值仍合计 10 | Phase 1.8 |
 | **R8** | 精确到代码行标记 | ✅ L1 `SourceLocation` 支持路径、单行、范围、OR 与子区间匹配 | Phase 2.11 |
 | **R9** | commit 语义 (引入 vs 修复) | ✅ 数据集 commit 列直接用作 L2 | Phase 1.10 |
 | **R10** | 防爆破冻结当日 | ✅ ChallengeLockStates | Phase 2.12 |
@@ -786,7 +791,7 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 | **R16** | 工单数量限制 | ⚠️ 未实现 (每队配额) | — |
 | **R17** | 严重度加分 N×100/60/30/10 | ✅ Severity enum + BonusScore | Phase 4/5 |
 | **R18** | 误报申诉转 0day | ✅ Admin Approve 时可升级 | Phase 5.2 |
-| **R19** | 0day 加成需 Nday ≥200 | ❌ 未实现 (用户同意不修) | — |
+| **R19** | 0day 加成需 Nday ≥200 | ✅ 可配置 Nday 分数 gate,默认 200 | Phase 9 |
 | **R20** | 未在数据集/无效漏洞 0 分 | ✅ Admin Reject | Phase 5.3/5.4 |
 | **R21** | 决赛 0day 须在指定仓库 | ⚠️ 未实现仓库白名单 | — |
 | **R22** | 不在指定仓库不得分 | ⚠️ 同上 | — |
@@ -795,14 +800,15 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 | **R25** | F1 Score 指标 | ❌ 未实现 (用户同意不修) | — |
 | **R26** | AI 工具使用 <50% 不积分 | N/A (评审主观) | — |
 | **R27** | ban-trigger 永久封禁 | ✅ BanOnAnswers + BanState | Phase 2.3 |
-| **R28** | hash(0) 数据源 | ✅ 导入/建题默认 BanOnAnswers=["0","hash(0)",40 个 0] | Phase 1.10 |
+| **R28** | hash(0) 数据源 | ✅ 数据源保留;Trap 封禁默认关闭,管理员可显式开启 BanOnAnswers=["0","hash(0)",40 个 0] | Phase 1.10 |
 | **R29** | 类别不符/可争议 误报申诉 | ✅ 工单系统支持 | Phase 4.5 |
 | **R30** | 组合 CWE 顺序 | ✅ Exact 强制顺序 | Phase 2.9 |
 
 ### 8.1 已实现规则统计
 
-- **完全实现**: R2, R4, R5, R6 (3级), R7, R8, R9, R10, R11, R15, R17, R18, R20, R24, R27, R28, R29, R30 — **18 条**
-- **未实现**: R16 (工单配额), R19 (Nday≥200 gate), R21/R22 (仓库白名单), R25 (F1 Score) — **5 条**
+- **完全实现**: R2, R4, R5, R7, R8, R9, R10, R11, R15, R17, R18, R19, R20, R24, R27, R28, R29, R30 — **18 条**
+- **部分实现/需赛制确认**: R6 当前按实际数据集和导入配置采用 3 级链；平台支持新增 Level 4,但没有默认 L4 数据列
+- **未实现**: R16 (工单配额), R21/R22 (仓库白名单), R25 (F1 Score) — **4 条**
 - **N/A (外部赛事/资金/评审)**: R1, R3, R12, R13, R14, R23, R26 — **7 条**
 
 ---
@@ -879,10 +885,9 @@ docker exec <gzctf-container> dotnet ef database update
 | 规则 | 描述 | 状态 | 备注 |
 |---|---|---|---|
 | **R16** | 每队工单配额 | ❌ 未实现 | 0day 工单无数量限制 |
-| **R19** | 0day 加成需 Nday≥200 | ❌ 未实现 | 用户明确同意不修 |
 | **R21/R22** | 决赛指定仓库白名单 | ❌ 未实现 | 0day 工单不校验 FilePath 是否在指定仓库 |
 | **R25** | F1 Score 指标 | ❌ 未实现 | 用户明确同意不修 |
-| **R6 L4** | 漏洞引入 commit (第 4 级) | ❌ 未实现 | 当前仅 3 级 (file:line/commit/CWE) |
+| **R6 L4** | 第 4 级答案列 | ⚠️ 未配置默认导入列 | 引擎支持任意 Level,当前办赛默认三段 (file:line/commit/CWE)。如果赛事规则必须四段,需要明确 L4 的答案来源列、标题、答案类型与分值 |
 
 ### 10.2 已知 UX 改进点
 
@@ -898,7 +903,7 @@ docker exec <gzctf-container> dotnet ef database update
 ### 10.4 数据集语义问题
 
 - **`无法验证` L3**: 数据集中 5 行的 L3 是 `无法验证` 字面字符串,玩家若提交该字面值会得分。这是数据集维护者的语义问题,非平台 bug。
-- **`hash(0)` 行**: 数据集中 commit id 列值是 `hash(0)` 而非 `0`,平台导入与手工建题默认设置 L2 BanOnAnswers=`["0","hash(0)","0000000000000000000000000000000000000000"]`,玩家提交任一 trap 值都会封禁对应 Track/Level (R27/R28)。
+- **`hash(0)` 行**: 数据集中 commit id 列值是 `hash(0)` 而非 `0`。平台导入与手工建题默认不启用 L2 BanOnAnswers;管理员可在 Level 配置页启用 Trap 并填入 `["0","hash(0)","0000000000000000000000000000000000000000"]`,之后玩家提交任一 trap 值才会封禁对应 Track/Level (R27/R28)。
 
 ---
 
@@ -923,6 +928,7 @@ docker exec <gzctf-container> dotnet ef database update
 | `Services/Import/FlagImportService.cs` | Excel 导入服务 |
 | `Services/Scoring/ScoringService.cs` | 计分服务 (多级 flag、SourceLocation、trap/cooldown、Level-only 计分) |
 | `Migrations/20260706193000_LevelAnswerStrategies.cs` | Level 答案策略最新迁移 |
+| `Migrations/20260710153000_ZeroDayNdayScoreGate.cs` | 0day Nday 分数门槛迁移 |
 
 ### 前端 (React/TypeScript)
 
@@ -952,8 +958,8 @@ docker exec <gzctf-container> dotnet ef database update
 | `docs/e2e-contest-flow/e2e-results.json` | 最新结构化 E2E 断言结果 |
 | `docs/test.md` | 历史测试计划 (R1–R30 映射) |
 | `docs/OH_CTF_ADAPTATION.md` | 本文档 |
-| `docs/e2e-contest-flow/screenshots/` | 最新 Chrome E2E 截图 (13 张) |
-| `docs/e2e-contest-flow/traces/` | 最新 Playwright trace (admin/player) |
+| `docs/e2e-contest-flow/screenshots/` | 最新 Chrome E2E 截图 (18 张) |
+| `docs/e2e-contest-flow/traces/` | 本地 Playwright trace 目录,zip 不提交 |
 
 ---
 

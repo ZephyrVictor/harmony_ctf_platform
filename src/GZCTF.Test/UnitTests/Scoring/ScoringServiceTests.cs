@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using GZCTF.Controllers;
 using GZCTF.Models.Data;
 using GZCTF.Services.Scoring;
 using GZCTF.Utils;
@@ -11,6 +14,51 @@ namespace GZCTF.Test.UnitTests.Scoring;
 /// </summary>
 public class ScoringServiceTests
 {
+    [Fact]
+    public void ResolveCurrentLevel_DoesNotSkipUnsolvedBannedLevel()
+    {
+        var currentLevel = GameController.ResolveCurrentLevelForTest([1, 2, 3], new HashSet<int> { 1 });
+
+        Assert.Equal(2, currentLevel);
+    }
+
+    [Fact]
+    public void ResolveCurrentLevel_AllLevelsSolved_ReturnsLevelOneForNewTrack()
+    {
+        var currentLevel = GameController.ResolveCurrentLevelForTest([1, 2, 3], new HashSet<int> { 1, 2, 3 });
+
+        Assert.Equal(1, currentLevel);
+    }
+
+    [Fact]
+    public void CreateBlockedMatchResult_PreviousLevelMissing_IsWrongAnswerNotDuplicate()
+    {
+        var trackId = Guid.NewGuid();
+
+        var result = ScoringService.CreateBlockedMatchResultForTest("PreviousLevelMissing", trackId, 3);
+
+        Assert.Equal(AnswerResult.WrongAnswer, result.Status);
+        Assert.Equal(0, result.ScoreChange);
+        Assert.Equal(trackId, result.TrackId);
+        Assert.Equal(3, result.Level);
+        Assert.Equal("请先提交上一 Level", result.Message);
+        Assert.Null(result.BannedTrackId);
+        Assert.Null(result.BannedLevel);
+    }
+
+    [Fact]
+    public void CreateBlockedMatchResult_Banned_ReturnsBanMessageAndBanFields()
+    {
+        var trackId = Guid.NewGuid();
+
+        var result = ScoringService.CreateBlockedMatchResultForTest("Banned", trackId, 2);
+
+        Assert.Equal(AnswerResult.WrongAnswer, result.Status);
+        Assert.Equal(trackId, result.BannedTrackId);
+        Assert.Equal(2, result.BannedLevel);
+        Assert.Equal("该 Track 的当前 Level 已被封禁，请联系管理员", result.Message);
+    }
+
     [Fact]
     public void CalculateWrongPenalty_LevelZeroPenalty_DoesNotFallbackToDefaultPenalty()
     {

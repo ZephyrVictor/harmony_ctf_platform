@@ -320,6 +320,10 @@
           "label": "0day 加分基础倍数",
           "desc": "0day 奖励 = 基础倍数 × 级别系数（Critical×100 / High×60 / Medium×30 / Low×10）",
           "hint": "例如 base=1：Critical 加 100 分；base=2：Critical 加 200 分"
+        },
+        "zeroday_nday_score_requirement": {
+          "label": "0day 提交 Nday 分数门槛",
+          "desc": "队伍 Nday Level 得分达到该值后才允许提交 0day 工单；0 表示不限制"
         }
       },
       "notices": {
@@ -784,11 +788,24 @@
     "delete": "删除 Level",
     "level": "层级",
     "score": "分值",
+    "scoreDescription": "默认 Nday 分值为 L1=5 / L2=4 / L3=1",
     "submissionLimit": "提交次数限制",
     "penaltyScore": "错误扣分",
+    "penaltyDescription": "答错扣分，0 表示不扣分",
     "lockOnAnswers": "触发锁定答案",
+    "lockOnAnswersDescription": "用英文逗号分隔；命中后触发全题锁定",
     "banOnAnswers": "触发封禁答案",
-    "levelTitle": "Level 标题"
+    "banOnAnswersDescription": "用英文逗号分隔；命中后封禁当前 Track/Level",
+    "levelTitle": "Level 标题",
+    "isEnabled": "启用该 Level",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "trap": {
+      "title": "Trap 封禁",
+      "description": "用于 commit hash 等陷阱答案，默认关闭。关闭后不会因 0、hash(0) 或 40 个 0 自动封禁。",
+      "enabled": "启用 Trap 封禁",
+      "restoreDefault": "恢复默认 Trap"
+    }
   },
   "import": {
     "title": "批量导入",

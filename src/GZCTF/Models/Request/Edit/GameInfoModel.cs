@@ -119,6 +119,11 @@ public class GameInfoModel
     public int ZeroDayBaseScore { get; set; } = 1;
 
     /// <summary>
+    /// 0day 提交所需 Nday Level 分数门槛。0 = 不限制
+    /// </summary>
+    public int ZeroDayNdayScoreRequirement { get; set; } = 200;
+
+    /// <summary>
     /// 题目冷却分钟数。0 = 不限流
     /// </summary>
     public int CooldownMinutes { get; set; } = 5;
@@ -146,6 +151,7 @@ public class GameInfoModel
             BloodBonusValue = game.BloodBonus.Val,
             ZeroDayInfoMarkdown = game.ZeroDayInfoMarkdown,
             ZeroDayBaseScore = game.ZeroDayBaseScore,
+            ZeroDayNdayScoreRequirement = game.ZeroDayNdayScoreRequirement,
             CooldownMinutes = game.CooldownMinutes
         };
 }
