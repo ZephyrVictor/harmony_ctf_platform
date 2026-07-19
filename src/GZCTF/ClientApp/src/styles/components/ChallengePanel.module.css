@@ -1,23 +1,55 @@
-.tabRoot {
+.sidebar {
+  flex: 0 0 10.5rem;
+  width: 10.5rem;
   min-width: 10.5rem;
+  max-width: 10.5rem;
+}
+
+.tabRoot {
   width: 100%;
+  min-width: 0;
 }
 
 .tabList {
   width: 100%;
+  min-width: 0;
 }
 
 .tabLabel {
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tab {
+  width: 100%;
+  min-width: 0;
+
   &:not([data-active='true']) {
     span[data-position='left'] {
       color: var(--tabs-color);
       filter: saturate(0.8);
     }
   }
+}
+
+.tabInner {
+  width: 100%;
+  min-width: 0;
+}
+
+.tabText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabCount {
+  flex: 0 0 auto;
+  margin-left: var(--mantine-spacing-xs);
+  white-space: nowrap;
 }
 
 .switch {

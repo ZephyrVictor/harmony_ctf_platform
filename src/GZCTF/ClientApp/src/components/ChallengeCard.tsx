@@ -55,17 +55,17 @@ export const ChallengeCard: FC<ChallengeCardProps> = (props: ChallengeCardProps)
       data-faded={solved || isFaded || undefined}
       data-no-move
     >
-      <Stack gap="xs" pos="relative" style={{ zIndex: 99 }}>
-        <Group h="30px" wrap="nowrap" justify="space-between" gap={2}>
+      <Stack gap="xs" pos="relative" className={classes.content}>
+        <Group className={classes.titleRow} wrap="nowrap" justify="space-between" gap={2}>
           <ScrollingText text={challenge.title || ''} size="lg" />
         </Group>
         <Divider size="sm" color={cateData?.color} />
-        <Group wrap="nowrap" justify="space-between" align="center" gap={2}>
-          <Text ta="center" fw="bold" fz="lg" ff="monospace">
+        <Group className={classes.metaRow} wrap="nowrap" justify="space-between" align="flex-start" gap="xs">
+          <Text className={classes.score} fw="bold" fz="lg" ff="monospace">
             {challenge.score}&nbsp;pts
           </Text>
-          <Stack gap="xs">
-            <Title order={6} ta="center" mt={`calc(${theme.spacing.xs} / 2)`}>
+          <Stack className={classes.solveBox} gap={4}>
+            <Title order={6} className={classes.solveText}>
               <Trans
                 i18nKey={'challenge.content.solved'}
                 values={{

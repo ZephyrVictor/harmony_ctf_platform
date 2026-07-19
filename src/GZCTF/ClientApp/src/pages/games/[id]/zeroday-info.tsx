@@ -1,4 +1,4 @@
-import { Alert, Card, Center, Container, Group, Loader, Stack, Text, Title } from '@mantine/core'
+import { Alert, Card, Center, Group, Loader, Stack, Title } from '@mantine/core'
 import { mdiAlertCircleOutline, mdiBugCheck } from '@mdi/js'
 import { Icon } from '@mdi/react'
 import { FC, useMemo } from 'react'
@@ -7,10 +7,9 @@ import { useParams } from 'react-router'
 import { Markdown } from '@Components/MarkdownRenderer'
 import { WithGameTab } from '@Components/WithGameTab'
 import { WithNavBar } from '@Components/WithNavbar'
+import { WithRole } from '@Components/WithRole'
 import { useGame } from '@Hooks/useGame'
-import api from '@Api'
-
-const BUGBOUNTY_URL = 'https://bugbounty.openharmony.cn/bugbounty/leak'
+import api, { Role } from '@Api'
 
 const ZeroDayInfo: FC = () => {
   const { t } = useTranslation()
@@ -22,6 +21,9 @@ const ZeroDayInfo: FC = () => {
   const { data: detail } = api.game.useGameChallengesWithTeamInfo(numId, {
     revalidateOnFocus: false,
   })
+  const ndayScore = detail?.ndayScore ?? 0
+  const zeroDayGate = detail?.zeroDayNdayScoreRequirement ?? 200
+  const canSubmitZeroDay = detail?.canSubmitZeroDay ?? (zeroDayGate <= 0 || ndayScore >= zeroDayGate)
 
   const renderedMarkdown = useMemo(() => {
     const md = detail?.zeroDayInfoMarkdown ?? ''
@@ -31,12 +33,11 @@ const ZeroDayInfo: FC = () => {
     return md
       .replaceAll('{{teamToken}}', teamToken)
       .replaceAll('{{teamName}}', teamName)
-      .replaceAll('{{bugbounty_url}}', BUGBOUNTY_URL)
   }, [detail?.zeroDayInfoMarkdown, detail?.teamToken, detail?.rank?.name])
 
   if (!game) {
     return (
-      <WithNavBar>
+      <WithNavBar width="90%" minWidth={0}>
         <Center h="50vh">
           <Loader />
         </Center>
@@ -45,10 +46,10 @@ const ZeroDayInfo: FC = () => {
   }
 
   return (
-    <WithNavBar>
-      <WithGameTab>
-        <Container size="lg">
-          <Stack gap="md">
+    <WithNavBar width="90%" minWidth={0}>
+      <WithRole requiredRole={Role.User}>
+        <WithGameTab>
+          <Stack gap="md" pb="2rem">
             <Card withBorder shadow="sm" p="lg">
               <Group justify="space-between" mb="md">
                 <Group gap="sm">
@@ -57,7 +58,15 @@ const ZeroDayInfo: FC = () => {
                 </Group>
               </Group>
 
-              {renderedMarkdown ? (
+              {!canSubmitZeroDay ? (
+                <Alert color="yellow" icon={<Icon path={mdiAlertCircleOutline} size={1} />}>
+                  {t('game.content.zeroday.gate', {
+                    current: ndayScore,
+                    required: zeroDayGate,
+                    defaultValue: `0day submission requires ${zeroDayGate} Nday points. Current Nday score: ${ndayScore}.`,
+                  })}
+                </Alert>
+              ) : renderedMarkdown ? (
                 <Markdown source={renderedMarkdown} />
               ) : (
                 <Alert color="yellow" icon={<Icon path={mdiAlertCircleOutline} size={1} />}>
@@ -65,25 +74,9 @@ const ZeroDayInfo: FC = () => {
                 </Alert>
               )}
             </Card>
-
-            <Card withBorder shadow="sm" p="lg">
-              <Group justify="space-between">
-                <Stack gap={0}>
-                  <Text size="sm" c="dimmed">
-                    {t('game.zeroday_info.platform_label')}
-                  </Text>
-                  <Text fw={700}>{BUGBOUNTY_URL}</Text>
-                </Stack>
-                <a href={BUGBOUNTY_URL} target="_blank" rel="noopener noreferrer">
-                  <Text c="blue" fw={600}>
-                    {t('game.zeroday_info.open_platform')} →
-                  </Text>
-                </a>
-              </Group>
-            </Card>
           </Stack>
-        </Container>
-      </WithGameTab>
+        </WithGameTab>
+      </WithRole>
     </WithNavBar>
   )
 }

@@ -163,7 +163,7 @@ export const ChallengePanel: FC = () => {
 
   return (
     <>
-      <Stack miw="10.5rem">
+      <Stack className={classes.sidebar}>
         {game?.writeupRequired && (
           <>
             <Button
@@ -202,11 +202,11 @@ export const ChallengePanel: FC = () => {
         >
           <Tabs.List>
             <Tabs.Tab value={'All'} leftSection={<Icon path={mdiPuzzle} size={1} />}>
-              <Group justify="space-between" wrap="nowrap" gap={2}>
-                <Text fz="sm" fw="bold">
+              <Group className={classes.tabInner} justify="space-between" wrap="nowrap" gap={2}>
+                <Text className={classes.tabText} fz="sm" fw="bold">
                   All
                 </Text>
-                <Text fz="sm" fw="bold">
+                <Text className={classes.tabCount} fz="sm" fw="bold">
                   {allChallenges.length}
                 </Text>
               </Group>
@@ -214,11 +214,11 @@ export const ChallengePanel: FC = () => {
             {hasRepo && groupedByRepo
               ? repoKeys.map((tab) => (
                   <Tabs.Tab key={tab} value={tab}>
-                    <Group justify="space-between" wrap="nowrap" gap={2}>
-                      <Text fz="sm" fw="bold" lineClamp={1}>
+                    <Group className={classes.tabInner} justify="space-between" wrap="nowrap" gap={2}>
+                      <Text className={classes.tabText} fz="sm" fw="bold" title={tab}>
                         {tab}
                       </Text>
-                      <Text fz="sm" fw="bold">
+                      <Text className={classes.tabCount} fz="sm" fw="bold">
                         {groupedByRepo[tab].length}
                       </Text>
                     </Group>
@@ -228,11 +228,11 @@ export const ChallengePanel: FC = () => {
                   const data = challengeCategoryLabelMap.get(tab as ChallengeCategory)!
                   return (
                     <Tabs.Tab key={tab} value={tab} leftSection={<Icon path={data?.icon} size={1} />} color={data?.color}>
-                      <Group justify="space-between" wrap="nowrap" gap={2}>
-                        <Text fz="sm" fw="bold">
+                      <Group className={classes.tabInner} justify="space-between" wrap="nowrap" gap={2}>
+                        <Text className={classes.tabText} fz="sm" fw="bold">
                           {data?.name}
                         </Text>
-                        <Text fz="sm" fw="bold">
+                        <Text className={classes.tabCount} fz="sm" fw="bold">
                           {challenges && challenges[tab].length}
                         </Text>
                       </Group>

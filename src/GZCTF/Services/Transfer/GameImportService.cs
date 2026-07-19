@@ -2,6 +2,7 @@ using System.IO.Compression;
 using GZCTF.Models.Request.Edit;
 using GZCTF.Models.Transfer;
 using GZCTF.Repositories.Interface;
+using GZCTF.Services.Scoring;
 using GZCTF.Storage.Interface;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,7 @@ public class GameImportService(
     IBlobRepository blobRepository,
     IBlobStorage blobStorage,
     AppDbContext dbContext,
+    ChallengeScoreService challengeScoreService,
     ILogger<GameImportService> logger)
 {
     /// <summary>
@@ -432,6 +434,7 @@ public class GameImportService(
 
         // Import flags
         await ImportFlagsAsync(challenge, transferChallenge.Flags, context, ct);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challenge.Id, ct, flushScoreboard: false);
 
         return challenge;
     }

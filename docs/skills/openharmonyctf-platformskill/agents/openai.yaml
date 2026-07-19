@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenHarmonyCTF-PlatformSKill"
+  short_description: "Join contests and submit CTF answers"
+  default_prompt: "Use $openharmonyctf-platformskill to log in, list contests for selection, join a selected OpenHarmony CTF game, submit answers, and report 0day tickets through the backend API."

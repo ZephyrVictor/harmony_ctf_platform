@@ -27,4 +27,7 @@ public class TeamSearchResultDto
     public string TeamName { get; set; } = string.Empty;
     public string TeamToken { get; set; } = string.Empty;
     public string[] Members { get; set; } = Array.Empty<string>();
+    public int NdayScore { get; set; }
+    public int ZeroDayNdayScoreRequirement { get; set; }
+    public bool CanReceiveZeroDayBonus { get; set; }
 }

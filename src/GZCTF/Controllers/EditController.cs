@@ -8,6 +8,7 @@ using GZCTF.Models.Request.Info;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using GZCTF.Services.Container.Manager;
+using GZCTF.Services.Scoring;
 using GZCTF.Services.Transfer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +38,7 @@ public class EditController(
     IGameRepository gameRepository,
     IContainerManager containerService,
     IBlobRepository blobService,
+    ChallengeScoreService challengeScoreService,
     GameExportService exportService,
     GameImportService importService,
     IDivisionRepository divisionRepository,
@@ -590,6 +592,8 @@ public class EditController(
     public async Task<IActionResult> GetGameChallenges([FromRoute] int id, CancellationToken token)
     {
         var challenges = await challengeRepository.GetChallenges(id, token);
+        var configuredScores = await challengeScoreService.GetConfiguredScores(
+            challenges.Select(c => c.Id), token);
 
         var game = await gameRepository.GetGameById(id, token);
         var scoreboard = game is not null
@@ -600,7 +604,15 @@ public class EditController(
         {
             var model = ChallengeInfoModel.FromChallenge(c);
             if (scoreboard is not null && scoreboard.ChallengeMap.TryGetValue(c.Id, out var challengeInfo))
+            {
                 model.Score = challengeInfo.Score;
+            }
+            if (configuredScores.TryGetValue(c.Id, out var configuredScore))
+            {
+                model.Score = configuredScore;
+                model.OriginalScore = configuredScore;
+                model.MinScore = configuredScore;
+            }
             return model;
         });
 
@@ -650,7 +662,13 @@ public class EditController(
         var scoreboard = await gameRepository.TryGetScoreboard(id, token);
 
         if (scoreboard is not null && scoreboard.ChallengeMap.TryGetValue(cId, out var challengeInfo))
+        {
             result.AcceptedCount = challengeInfo.SolvedCount;
+        }
+
+        var configuredScore = await challengeScoreService.GetConfiguredScore(cId, token);
+        if (configuredScore is int score)
+            result.OriginalScore = score;
 
         return Ok(result);
     }
@@ -736,6 +754,10 @@ public class EditController(
                 token);
 
         await challengeRepository.SaveAsync(token);
+
+        var configuredScore = await challengeScoreService.SyncOriginalScoreFromLevels(cId, token, flushScoreboard: false);
+        if (configuredScore is int score)
+            res.OriginalScore = score;
 
         await transaction.CommitAsync(token);
 

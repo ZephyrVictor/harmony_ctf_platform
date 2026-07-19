@@ -1,5 +1,5 @@
 import {
-  Button, Card, Code, Group, Modal, NumberInput, Select, SimpleGrid,
+  Alert, Badge, Button, Card, Code, Group, Modal, NumberInput, Select, SimpleGrid,
   Stack, Table, Text, Textarea, TextInput,
 } from '@mantine/core'
 import { FC, useCallback, useState } from 'react'
@@ -121,6 +121,7 @@ const ScoreAdjustment: FC = () => {
             <Table.Tr>
               <Table.Th>{t('admin.score.team_name')}</Table.Th>
               <Table.Th>{t('admin.score.members')}</Table.Th>
+              <Table.Th>{t('admin.score.nday_score')}</Table.Th>
               <Table.Th>{t('admin.score.token')}</Table.Th>
               <Table.Th>{t('admin.score.actions')}</Table.Th>
             </Table.Tr>
@@ -128,7 +129,7 @@ const ScoreAdjustment: FC = () => {
           <Table.Tbody>
             {teams.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={4} align="center" style={{ opacity: 0.6 }}>
+                <Table.Td colSpan={5} align="center" style={{ opacity: 0.6 }}>
                   {t('admin.score.no_results')}
                 </Table.Td>
               </Table.Tr>
@@ -137,6 +138,19 @@ const ScoreAdjustment: FC = () => {
               <Table.Tr key={tm.teamId}>
                 <Table.Td>{tm.teamName}</Table.Td>
                 <Table.Td>{tm.members.join(', ') || '-'}</Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    <Text size="sm">
+                      {tm.ndayScore}
+                      {tm.zeroDayNdayScoreRequirement > 0 ? ` / ${tm.zeroDayNdayScoreRequirement}` : ''}
+                    </Text>
+                    <Badge color={tm.canReceiveZeroDayBonus ? 'teal' : 'yellow'} variant="light">
+                      {tm.canReceiveZeroDayBonus
+                        ? t('admin.score.zeroday_gate_passed')
+                        : t('admin.score.zeroday_gate_unmet')}
+                    </Badge>
+                  </Group>
+                </Table.Td>
                 <Table.Td><Code>{tm.teamToken}</Code></Table.Td>
                 <Table.Td>
                   <Group gap="xs">
@@ -188,6 +202,14 @@ const ScoreAdjustment: FC = () => {
           <Text size="sm" c="dimmed">
             {t('admin.score.team')}: <b>{selectedTeam?.teamName}</b>
           </Text>
+          {selectedTeam && !selectedTeam.canReceiveZeroDayBonus && (
+            <Alert color="yellow">
+              {t('admin.score.zeroday_bonus_gate_warning', {
+                current: selectedTeam.ndayScore,
+                required: selectedTeam.zeroDayNdayScoreRequirement,
+              })}
+            </Alert>
+          )}
           <Select
             label={t('admin.score.severity')}
             data={['Critical', 'High', 'Medium', 'Low']}

@@ -29,7 +29,8 @@ public class ExtController(
     AppDbContext context,
     CacheHelper cacheHelper,
     IChallengeTrackRepository trackRepository,
-    IChallengeLevelConfigRepository levelConfigRepository) : ControllerBase
+    IChallengeLevelConfigRepository levelConfigRepository,
+    ChallengeScoreService challengeScoreService) : ControllerBase
 {
     private async Task FlushScoreboardForChallenge(int challengeId, CancellationToken token)
     {
@@ -143,7 +144,7 @@ public class ExtController(
             return BadRequest(new RequestResponse("This normalized answer already exists for this challenge"));
 
         flag = await flagRepository.CreateFlag(flag, token);
-        await FlushScoreboardForChallenge(challengeId, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return CreatedAtAction(nameof(GetFlags), new { challengeId }, flag);
     }
 

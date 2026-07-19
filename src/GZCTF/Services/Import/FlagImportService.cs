@@ -12,12 +12,14 @@ public class FlagImportService(
     IChallengeFlagRepository flagRepo,
     IChallengeLevelConfigRepository levelConfigRepo,
     IGameChallengeRepository challengeRepo,
-    IGameRepository gameRepo)
+    IGameRepository gameRepo,
+    ChallengeScoreService challengeScoreService)
 {
     public async Task<FlagImportFilePreview> PreviewFileAsync(
-        Stream fileStream, string contentType, FlagImportColumnMapping? mapping, CancellationToken token)
+        Stream fileStream, string contentType, string? fileName, FlagImportColumnMapping? mapping,
+        CancellationToken token)
     {
-        var rows = ParseFile(fileStream, contentType);
+        var rows = ParseFile(fileStream, contentType, fileName);
         if (rows.Count == 0)
             return new FlagImportFilePreview();
 
@@ -58,14 +60,16 @@ public class FlagImportService(
 
                 foreach (var lc in mapping.LevelColumns)
                 {
-                    var combinedValue = BuildFlagValue(row, lc);
-                    if (string.IsNullOrWhiteSpace(combinedValue))
+                    var rawValue = BuildRawFlagValue(row, lc);
+                    if (string.IsNullOrWhiteSpace(rawValue))
                         continue;
 
+                    var combinedValue = NormalizeImportedFlagValue(rawValue, lc);
+                    var validationError = ValidateImportedFlagValue(rawValue, combinedValue, lc);
                     trackPreview.Levels.Add(new FlagImportLevelPreview
                     {
                         Level = lc.Level,
-                        FlagValue = combinedValue,
+                        FlagValue = validationError is null ? combinedValue : $"{combinedValue} [INVALID: {validationError}]",
                         AnswerType = lc.AnswerType.ToString(),
                         Score = lc.Score
                     });
@@ -87,11 +91,12 @@ public class FlagImportService(
         int challengeId,
         Stream fileStream,
         string contentType,
+        string? fileName,
         FlagImportColumnMapping mapping,
         ImportMode mode,
         CancellationToken token)
     {
-        var rows = ParseFile(fileStream, contentType);
+        var rows = ParseFile(fileStream, contentType, fileName);
         var result = new FlagImportResult { TotalRows = rows.Count };
 
         foreach (var (row, idx) in rows.Select((r, i) => (r, i)))
@@ -115,6 +120,15 @@ public class FlagImportService(
                 if (string.IsNullOrWhiteSpace(matchValue))
                 {
                     result.Errors.Add(new FlagImportError { Row = idx + 1, Error = $"MatchBy column '{mapping.MatchBy}' is empty" });
+                    result.Failed++;
+                    await transaction.RollbackAsync(token);
+                    continue;
+                }
+
+                var rowValidationError = ValidateRowFlagValues(row, mapping);
+                if (rowValidationError is not null)
+                {
+                    result.Errors.Add(new FlagImportError { Row = idx + 1, Error = rowValidationError });
                     result.Failed++;
                     await transaction.RollbackAsync(token);
                     continue;
@@ -248,6 +262,7 @@ public class FlagImportService(
             }
         }
 
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return result;
     }
 
@@ -262,6 +277,7 @@ public class FlagImportService(
         int gameId,
         Stream fileStream,
         string contentType,
+        string? fileName,
         FlagImportColumnMapping mapping,
         ImportMode mode,
         CancellationToken token)
@@ -269,7 +285,7 @@ public class FlagImportService(
         if (string.IsNullOrWhiteSpace(mapping.RepositoryColumn) || string.IsNullOrWhiteSpace(mapping.SubmoduleColumn))
             throw new ArgumentException("RepositoryColumn and SubmoduleColumn are required for game-level import");
 
-        var rows = ParseFile(fileStream, contentType);
+        var rows = ParseFile(fileStream, contentType, fileName);
         var result = new FlagImportResult { TotalRows = rows.Count };
 
         var game = await gameRepo.GetGameById(gameId, token);
@@ -328,7 +344,7 @@ public class FlagImportService(
                             Category = ChallengeCategory.Pwn,
                             Type = ChallengeType.StaticAttachment,
                             IsEnabled = false,
-                            OriginalScore = 100,
+                            OriginalScore = ChallengeScoreService.CalculateImportLevelScoreSum(mapping.LevelColumns),
                             MinScoreRate = 0.25,
                             Difficulty = 3,
                             GameId = gameId
@@ -350,6 +366,7 @@ public class FlagImportService(
             }
         }
 
+        await challengeScoreService.SyncOriginalScoresFromLevels(challengeMap.Values, token);
         return result;
     }
 
@@ -384,6 +401,15 @@ public class FlagImportService(
             if (string.IsNullOrWhiteSpace(matchValue))
             {
                 result.Errors.Add(new FlagImportError { Row = idx + 1, Error = $"MatchBy column '{mapping.MatchBy}' is empty" });
+                result.Failed++;
+                await transaction.RollbackAsync(token);
+                return;
+            }
+
+            var rowValidationError = ValidateRowFlagValues(row, mapping);
+            if (rowValidationError is not null)
+            {
+                result.Errors.Add(new FlagImportError { Row = idx + 1, Error = rowValidationError });
                 result.Failed++;
                 await transaction.RollbackAsync(token);
                 return;
@@ -535,9 +561,12 @@ public class FlagImportService(
                && Empty(row, mapping.TrackFlawNoColumn);
     }
 
-    private List<Dictionary<string, string>> ParseFile(Stream stream, string contentType)
+    private List<Dictionary<string, string>> ParseFile(Stream stream, string contentType, string? fileName)
     {
-        if (contentType.Contains("csv", StringComparison.OrdinalIgnoreCase)
+        var extension = Path.GetExtension(fileName ?? string.Empty);
+        if (extension.Equals(".csv", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".txt", StringComparison.OrdinalIgnoreCase)
+            || contentType.Contains("csv", StringComparison.OrdinalIgnoreCase)
             || contentType.Contains("text/plain", StringComparison.OrdinalIgnoreCase))
             return ParseCsv(stream);
 
@@ -635,7 +664,7 @@ public class FlagImportService(
         };
     }
 
-    private static string? BuildFlagValue(Dictionary<string, string> row, LevelColumnMapping lc)
+    private static string? BuildRawFlagValue(Dictionary<string, string> row, LevelColumnMapping lc)
     {
         if (!row.TryGetValue(lc.ColumnName, out var answer) || string.IsNullOrWhiteSpace(answer))
             return null;
@@ -651,12 +680,79 @@ public class FlagImportService(
             }
         }
 
-        return NormalizeImportedFlagValue(flagValue, lc);
+        return flagValue;
     }
+
+    private static string? BuildFlagValue(Dictionary<string, string> row, LevelColumnMapping lc)
+    {
+        var flagValue = BuildRawFlagValue(row, lc);
+        return string.IsNullOrWhiteSpace(flagValue)
+            ? null
+            : NormalizeImportedFlagValue(flagValue, lc);
+    }
+
+    internal static string? ValidateImportedFlagValueForTest(string value, LevelColumnMapping lc) =>
+        ValidateImportedFlagValue(value, lc);
+
+    internal static string? BuildFlagValueForTest(Dictionary<string, string> row, LevelColumnMapping lc) =>
+        BuildFlagValue(row, lc);
+
+    internal static string? BuildRawFlagValueForTest(Dictionary<string, string> row, LevelColumnMapping lc) =>
+        BuildRawFlagValue(row, lc);
+
+    internal static string? ValidateRowFlagValuesForTest(Dictionary<string, string> row, FlagImportColumnMapping mapping) =>
+        ValidateRowFlagValues(row, mapping);
+
+    private static string? ValidateRowFlagValues(Dictionary<string, string> row, FlagImportColumnMapping mapping)
+    {
+        foreach (var lc in mapping.LevelColumns)
+        {
+            var rawValue = BuildRawFlagValue(row, lc);
+            if (string.IsNullOrWhiteSpace(rawValue))
+                continue;
+
+            var normalizedValue = NormalizeImportedFlagValue(rawValue, lc);
+            var validationError = ValidateImportedFlagValue(rawValue, normalizedValue, lc);
+            if (validationError is not null)
+                return $"Invalid Level {lc.Level} value '{rawValue}': {validationError}";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateImportedFlagValue(string value, LevelColumnMapping lc) =>
+        ValidateImportedFlagValue(value, NormalizeImportedFlagValue(value, lc), lc);
+
+    private static string? ValidateImportedFlagValue(string rawValue, string normalizedValue, LevelColumnMapping lc)
+    {
+        var trimmed = rawValue.Trim();
+        if (trimmed.Equals("无法验证", StringComparison.OrdinalIgnoreCase))
+            return "placeholder value '无法验证' is not a valid player-answer flag";
+
+        var normalizedRaw = trimmed.Replace('：', ':');
+        if (lc.AnswerType == ChallengeFlagAnswerType.SourceLocation
+            && normalizedRaw.Contains("::", StringComparison.Ordinal))
+            return "SourceLocation contains malformed '::'; fix the Excel line expression";
+
+        if (lc.AnswerType == ChallengeFlagAnswerType.SourceLocation
+            && !ScoringService.CanParseSourceLocationForImport(normalizedValue.Trim(), ToLevelConfig(lc)))
+            return "SourceLocation cannot be parsed by the scorer";
+
+        return null;
+    }
+
+    private static ChallengeLevelConfig ToLevelConfig(LevelColumnMapping lc) => new()
+    {
+        CaseSensitive = lc.CaseSensitive,
+        PathCaseSensitive = lc.PathCaseSensitive,
+        OrSeparators = string.IsNullOrEmpty(lc.OrSeparators) ? "、,;" : lc.OrSeparators,
+        RangeSeparator = string.IsNullOrWhiteSpace(lc.RangeSeparator) ? "-" : lc.RangeSeparator,
+        StripLinePrefix = lc.StripLinePrefix
+    };
 
     private static string NormalizeImportedFlagValue(string value, LevelColumnMapping lc)
     {
-        var normalized = value.Trim().Replace('：', ':').Replace("::", ":", StringComparison.Ordinal);
+        var normalized = value.Trim().Replace('：', ':');
 
         if (lc is { AnswerType: ChallengeFlagAnswerType.SourceLocation, NormalizeSourceLocation: true })
         {
@@ -672,7 +768,7 @@ public class FlagImportService(
 
     private static string NormalizeImportedSourceLocation(string value, LevelColumnMapping lc)
     {
-        var cPrefixIndex = value.LastIndexOf(":c:", StringComparison.OrdinalIgnoreCase);
+        var cPrefixIndex = value.IndexOf(":c:", StringComparison.OrdinalIgnoreCase);
         string path;
         string lineExpr;
         if (cPrefixIndex > 0 && cPrefixIndex + 3 < value.Length)

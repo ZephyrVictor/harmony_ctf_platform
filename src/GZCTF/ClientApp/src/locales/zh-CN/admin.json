@@ -315,7 +315,7 @@
           "label": "需要 Writeup"
         },
         "zeroday_info_markdown": "0day 提交说明（Markdown）",
-        "zeroday_info_markdown_desc": "显示在比赛中 0day 提交 tab 的文案，支持占位符 {{teamToken}}、{{teamName}}、{{bugbounty_url}}",
+        "zeroday_info_markdown_desc": "显示在比赛中 0day 提交 tab 的文案，支持占位符 {{teamToken}}、{{teamName}}",
         "zeroday_base_score": {
           "label": "0day 加分基础倍数",
           "desc": "0day 奖励 = 基础倍数 × 级别系数（Critical×100 / High×60 / Medium×30 / Low×10）",
@@ -892,6 +892,7 @@
     "search": "搜索",
     "team_name": "队伍",
     "members": "成员",
+    "nday_score": "Nday 得分",
     "token": "Token",
     "actions": "操作",
     "adjust": "调整分数",
@@ -908,6 +909,9 @@
     "adjust_success": "调分成功",
     "error_delta_zero": "分值不能为 0",
     "error_reason_required": "理由不能为空",
+    "zeroday_gate_passed": "已达门槛",
+    "zeroday_gate_unmet": "未达门槛",
+    "zeroday_bonus_gate_warning": "当前队伍尚未达到 {{required}} 分 Nday 得分门槛，当前为 {{current}} 分。根据比赛规则，不应予以 0day 加分；如确需处理，可继续提交。",
     "zero_day_reason_placeholder": "如：0day 奖励 - CVE-2024-XXXX - Critical"
   },
   "score_ledger": {

@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Repositories;
 
-public class ZeroDayTicketRepository(AppDbContext context) : RepositoryBase(context), IZeroDayTicketRepository
+public class ZeroDayTicketRepository(
+    AppDbContext context,
+    ChallengeScoreService challengeScoreService) : RepositoryBase(context), IZeroDayTicketRepository
 {
     public async Task<ZeroDayTicket> CreateTicket(ZeroDayTicket ticket, CancellationToken token = default)
     {
@@ -177,6 +179,8 @@ public class ZeroDayTicketRepository(AppDbContext context) : RepositoryBase(cont
         // L3 = CWE
         await CreateFlagAndLevelConfig(challengeId, track.Id, 3, ticket.CWE!,
             ChallengeFlagAnswerType.Exact, 1, token);
+
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
 
         return track.Id;
     }

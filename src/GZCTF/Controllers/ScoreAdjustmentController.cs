@@ -5,6 +5,7 @@ using GZCTF.Models.Data;
 using GZCTF.Models.Request.Edit;
 using GZCTF.Models.Response;
 using GZCTF.Services.Cache;
+using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,7 +20,10 @@ namespace GZCTF.Controllers;
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status403Forbidden)]
-public class ScoreAdjustmentController(AppDbContext context, CacheHelper cacheHelper) : ControllerBase
+public class ScoreAdjustmentController(
+    AppDbContext context,
+    CacheHelper cacheHelper,
+    ChallengeScoreService challengeScoreService) : ControllerBase
 {
     /// <summary>创建调分记录（手动或 0day 加分）</summary>
     [RequireAdmin]
@@ -184,6 +188,17 @@ public class ScoreAdjustmentController(AppDbContext context, CacheHelper cacheHe
             })
             .Take(20)
             .ToListAsync(token);
+
+        foreach (var team in teams)
+        {
+            var gate = await challengeScoreService.GetZeroDayGateStatusForTeam(gameId, team.TeamId, token);
+            if (gate is null)
+                continue;
+
+            team.NdayScore = gate.Value.NdayScore;
+            team.ZeroDayNdayScoreRequirement = gate.Value.RequiredScore;
+            team.CanReceiveZeroDayBonus = gate.Value.CanSubmit;
+        }
 
         return Ok(teams);
     }

@@ -19,6 +19,7 @@ public class TrackController(
     IChallengeTrackRepository trackRepository,
     IChallengeFlagRepository flagRepository,
     IChallengeLevelConfigRepository levelConfigRepository,
+    ChallengeScoreService challengeScoreService,
     AppDbContext dbContext) : ControllerBase
 {
     [RequireAdmin]
@@ -52,6 +53,7 @@ public class TrackController(
         };
 
         track = await trackRepository.CreateTrack(track, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return CreatedAtAction(nameof(GetTrack), new { challengeId, trackId = track.Id }, track);
     }
 
@@ -140,6 +142,7 @@ public class TrackController(
             }
 
             await transaction.CommitAsync(token);
+            await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
             return CreatedAtAction(nameof(GetTrack), new { challengeId, trackId = track.Id },
                 new TrackFullCreateResult { Track = track, Flags = createdFlags });
         }
@@ -182,6 +185,7 @@ public class TrackController(
         if (model.SortOrder.HasValue) track.SortOrder = model.SortOrder.Value;
 
         track = await trackRepository.UpdateTrack(track, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return Ok(track);
     }
 
@@ -195,6 +199,7 @@ public class TrackController(
             return NotFound(new RequestResponse("Track not found"));
 
         await trackRepository.DeleteTrack(trackId, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return NoContent();
     }
 

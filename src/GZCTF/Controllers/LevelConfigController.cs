@@ -3,6 +3,7 @@ using System.Net.Mime;
 using GZCTF.Middlewares;
 using GZCTF.Models;
 using GZCTF.Repositories.Interface;
+using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GZCTF.Controllers;
@@ -13,7 +14,9 @@ namespace GZCTF.Controllers;
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status403Forbidden)]
-public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRepository) : ControllerBase
+public class LevelConfigController(
+    IChallengeLevelConfigRepository levelConfigRepository,
+    ChallengeScoreService challengeScoreService) : ControllerBase
 {
     [RequireAdmin]
     [HttpGet]
@@ -53,6 +56,7 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
         };
 
         config = await levelConfigRepository.CreateConfig(config, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return CreatedAtAction(nameof(GetLevel), new { challengeId, levelId = config.Id }, config);
     }
 
@@ -91,6 +95,7 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
         if (model.SortOrder.HasValue) config.SortOrder = model.SortOrder.Value;
 
         config = await levelConfigRepository.UpdateConfig(config, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return Ok(config);
     }
 
@@ -111,6 +116,7 @@ public class LevelConfigController(IChallengeLevelConfigRepository levelConfigRe
             return Conflict(new RequestResponse("Cannot delete level with existing flags"));
 
         await levelConfigRepository.DeleteConfig(levelId, token);
+        await challengeScoreService.SyncOriginalScoreFromLevels(challengeId, token);
         return NoContent();
     }
 }

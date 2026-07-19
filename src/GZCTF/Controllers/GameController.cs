@@ -55,6 +55,7 @@ public class GameController(
     IOptionsSnapshot<ContainerPolicy> containerPolicy,
     IStringLocalizer<Program> localizer,
     AppDbContext dbContext,
+    ChallengeScoreService challengeScoreService,
     ScoringService scoringService,
     IChallengeTrackRepository trackRepository,
     IChallengeLevelConfigRepository levelConfigRepository,
@@ -786,13 +787,8 @@ public class GameController(
                 Id = context.Participation!.TeamId
             };
 
-        var ndayScore = await dbContext.SubmissionRecords
-            .AsNoTracking()
-            .Where(r => r.ParticipationId == context.Participation.Id
-                && r.GameId == context.Game!.Id
-                && r.MatchedFlagId != null
-                && r.ScoreChange > 0)
-            .SumAsync(r => (int?)r.ScoreChange, token) ?? 0;
+        var zeroDayGate = await challengeScoreService.GetZeroDayGateStatus(
+            context.Game!.Id, context.Participation.Id, token);
 
         return Ok(new GameDetailModel
         {
@@ -804,10 +800,9 @@ public class GameController(
             WriteupDeadline = context.Game!.WriteupDeadline,
             ZeroDayInfoMarkdown = context.Game!.ZeroDayInfoMarkdown,
             ZeroDayBaseScore = context.Game!.ZeroDayBaseScore,
-            ZeroDayNdayScoreRequirement = context.Game!.ZeroDayNdayScoreRequirement,
-            NdayScore = ndayScore,
-            CanSubmitZeroDay = context.Game!.ZeroDayNdayScoreRequirement <= 0
-                || ndayScore >= context.Game!.ZeroDayNdayScoreRequirement,
+            ZeroDayNdayScoreRequirement = zeroDayGate.RequiredScore,
+            NdayScore = zeroDayGate.NdayScore,
+            CanSubmitZeroDay = zeroDayGate.CanSubmit,
             CooldownMinutes = context.Game!.CooldownMinutes
         });
     }

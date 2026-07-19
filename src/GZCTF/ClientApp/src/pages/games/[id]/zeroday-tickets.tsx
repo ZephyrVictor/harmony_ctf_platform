@@ -42,8 +42,10 @@ const ZeroDayTicketSubmitModal: FC<{
   opened: boolean
   onClose: () => void
   gameId: number
+  canSubmit: boolean
+  gateHint: string
   onSubmitted: () => void
-}> = ({ opened, onClose, gameId, onSubmitted }) => {
+}> = ({ opened, onClose, gameId, canSubmit, gateHint, onSubmitted }) => {
   const { t } = useTranslation()
   const [disabled, setDisabled] = useState(false)
   const [title, setTitle] = useState('')
@@ -58,6 +60,13 @@ const ZeroDayTicketSubmitModal: FC<{
   const [poc, setPoc] = useState('')
 
   const onSubmit = async () => {
+    if (!canSubmit) {
+      showNotification({
+        color: 'red',
+        message: gateHint,
+      })
+      return
+    }
     if (!description.trim()) {
       showNotification({
         color: 'red',
@@ -175,7 +184,7 @@ const ZeroDayTicketSubmitModal: FC<{
           <Button variant="default" onClick={onClose}>
             {t('common.button.cancel', { defaultValue: 'Cancel' })}
           </Button>
-          <Button disabled={disabled} onClick={onSubmit}>
+          <Button disabled={disabled || !canSubmit} onClick={onSubmit}>
             {t('common.button.submit', { defaultValue: 'Submit' })}
           </Button>
         </Group>
@@ -206,7 +215,7 @@ const ZeroDayTickets: FC = () => {
           </Group>
           <Button
             leftSection={<Icon path={mdiPlus} size={1} />}
-            onClick={() => setSubmitOpened(true)}
+            onClick={() => canSubmitZeroDay && setSubmitOpened(true)}
             disabled={!canSubmitZeroDay}
           >
             {t('game.button.zeroday.submit')}
@@ -276,6 +285,12 @@ const ZeroDayTickets: FC = () => {
         opened={submitOpened}
         onClose={() => setSubmitOpened(false)}
         gameId={numId}
+        canSubmit={canSubmitZeroDay}
+        gateHint={t('game.content.zeroday.gate', {
+          current: ndayScore,
+          required: zeroDayGate,
+          defaultValue: `0day submission requires ${zeroDayGate} Nday points. Current Nday score: ${ndayScore}.`,
+        })}
         onSubmitted={() => mutate()}
       />
     </WithNavBar>

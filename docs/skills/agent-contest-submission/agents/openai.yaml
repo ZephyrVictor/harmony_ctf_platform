@@ -1,4 +1,0 @@
-interface:
-  display_name: "Agent Contest Submission"
-  short_description: "Log in and submit CTF levels"
-  default_prompt: "Use $agent-contest-submission to log in and submit OpenHarmony CTF challenge levels through the backend API."

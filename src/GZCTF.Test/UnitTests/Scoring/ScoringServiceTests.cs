@@ -15,6 +15,67 @@ namespace GZCTF.Test.UnitTests.Scoring;
 public class ScoringServiceTests
 {
     [Fact]
+    public void ChallengeScoreService_LevelScoreSumOverridesDynamicDecay()
+    {
+        var score = ChallengeScoreService.CalculateDisplayScore(
+            originalScore: 100,
+            minScoreRate: 0.25,
+            difficulty: 3,
+            acceptedCount: 10,
+            configuredScore: 21);
+
+        Assert.Equal(21, score);
+    }
+
+    [Theory]
+    [InlineData(10, 0, 10)]
+    [InlineData(10, 1, 10)]
+    [InlineData(10, 6, 60)]
+    [InlineData(21, 2, 42)]
+    public void ChallengeScoreService_ConfiguredScoreMultipliesByEnabledTrackCount(
+        int levelScoreSum, int trackCount, int expected)
+    {
+        var score = ChallengeScoreService.CalculateConfiguredScore(levelScoreSum, trackCount);
+
+        Assert.Equal(expected, score);
+    }
+
+    [Fact]
+    public void ChallengeScoreService_ConfiguredScoreAbsentWithoutLevelConfig()
+    {
+        var score = ChallengeScoreService.CalculateConfiguredScore(null, 6);
+
+        Assert.Null(score);
+    }
+
+    [Fact]
+    public void ChallengeScoreService_NoLevelConfigKeepsDynamicScoring()
+    {
+        var score = ChallengeScoreService.CalculateDisplayScore(
+            originalScore: 100,
+            minScoreRate: 0.25,
+            difficulty: 3,
+            acceptedCount: 10,
+            configuredScore: null);
+
+        Assert.Equal(GameChallenge.CalculateChallengeScore(100, 0.25, 3, 10), score);
+        Assert.NotEqual(100, score);
+    }
+
+    [Fact]
+    public void ChallengeScoreService_EnabledLevelScoreSumSkipsDisabledLevels()
+    {
+        var score = ChallengeScoreService.GetEnabledLevelScoreSum(
+            [
+                new ChallengeLevelConfig { Level = 1, Score = 5, IsEnabled = true },
+                new ChallengeLevelConfig { Level = 2, Score = 4, IsEnabled = true },
+                new ChallengeLevelConfig { Level = 3, Score = 1, IsEnabled = false }
+            ]);
+
+        Assert.Equal(9, score);
+    }
+
+    [Fact]
     public void ResolveCurrentLevel_DoesNotSkipUnsolvedBannedLevel()
     {
         var currentLevel = GameController.ResolveCurrentLevelForTest([1, 2, 3], new HashSet<int> { 1 });

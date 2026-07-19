@@ -3,6 +3,7 @@ using GZCTF.Models.Request.Game;
 using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using GZCTF.Services.Config;
+using GZCTF.Services.Scoring;
 using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Repositories;
@@ -344,13 +345,33 @@ public class GameRepository(
                 .Where(c => c.GameId == game.Id && c.IsEnabled)
                 .OrderBy(c => c.Category)
                 .ThenBy(c => c.Title)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.OriginalScore,
+                    c.MinScoreRate,
+                    c.Difficulty,
+                    c.Title,
+                    c.Category,
+                    c.DeadlineUtc,
+                    c.DisableBloodBonus,
+                    c.Repository,
+                    EnabledLevelCount = c.LevelConfigs.Count(l => l.IsEnabled),
+                    EnabledTrackCount = c.Tracks.Count(t => t.IsEnabled),
+                    LevelScoreSum = c.LevelConfigs
+                        .Where(l => l.IsEnabled)
+                        .Sum(l => l.Score)
+                })
                 .Select(c => new ChallengeRecord
                 (
                     c.Id,
                     new ChallengeScoreMeta(
                         c.OriginalScore,
                         c.MinScoreRate,
-                        c.Difficulty),
+                        c.Difficulty,
+                        ChallengeScoreService.CalculateConfiguredScore(
+                            c.EnabledLevelCount > 0 ? c.LevelScoreSum : null,
+                            c.EnabledTrackCount)),
                     new ChallengeInfo
                     {
                         Id = c.Id,
@@ -452,8 +473,8 @@ public class GameRepository(
             var meta = challengeMetas[challengeId];
             var solvedCount = challengeAcceptedCounts.GetValueOrDefault(challengeId);
             info.SolvedCount = solvedCount;
-            info.Score = GameChallenge.CalculateChallengeScore(meta.OriginalScore,
-                meta.MinScoreRate, meta.Difficulty, solvedCount);
+            info.Score = ChallengeScoreService.CalculateDisplayScore(
+                meta.OriginalScore, meta.MinScoreRate, meta.Difficulty, solvedCount, meta.ConfiguredScore);
         }
 
         // 5. Sort challenge-level solve markers by submit time.
@@ -707,7 +728,8 @@ public class GameRepository(
     private readonly record struct ChallengeScoreMeta(
         int OriginalScore,
         double MinScoreRate,
-        double Difficulty);
+        double Difficulty,
+        int? ConfiguredScore);
 
     private readonly record struct SolveSnapshot(
         int ChallengeId,

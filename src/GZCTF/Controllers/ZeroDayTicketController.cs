@@ -2,6 +2,7 @@ using System.Net.Mime;
 using System.Security.Claims;
 using GZCTF.Middlewares;
 using GZCTF.Repositories.Interface;
+using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,10 @@ namespace GZCTF.Controllers;
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status403Forbidden)]
-public class ZeroDayTicketController(IZeroDayTicketRepository ticketRepository, AppDbContext dbContext) : ControllerBase
+public class ZeroDayTicketController(
+    IZeroDayTicketRepository ticketRepository,
+    AppDbContext dbContext,
+    ChallengeScoreService challengeScoreService) : ControllerBase
 {
     /// <summary>
     /// Create a zero-day vulnerability ticket
@@ -38,22 +42,11 @@ public class ZeroDayTicketController(IZeroDayTicketRepository ticketRepository, 
         if (participation is null)
             return BadRequest(new RequestResponse("Team has not joined this game"));
 
-        var gate = await dbContext.Games
-            .AsNoTracking()
-            .Where(g => g.Id == model.GameId)
-            .Select(g => g.ZeroDayNdayScoreRequirement)
-            .FirstOrDefaultAsync(token);
-        if (gate > 0)
+        var gate = await challengeScoreService.GetZeroDayGateStatus(model.GameId, participation.Id, token);
+        if (!gate.CanSubmit)
         {
-            var ndayScore = await dbContext.SubmissionRecords
-                .AsNoTracking()
-                .Where(r => r.ParticipationId == participation.Id
-                    && r.GameId == model.GameId
-                    && r.MatchedFlagId != null
-                    && r.ScoreChange > 0)
-                .SumAsync(r => (int?)r.ScoreChange, token) ?? 0;
-            if (ndayScore < gate)
-                return BadRequest(new RequestResponse($"0day submission requires at least {gate} Nday points. Current Nday score: {ndayScore}."));
+            return BadRequest(new RequestResponse(
+                $"0day submission requires at least {gate.RequiredScore} Nday points. Current Nday score: {gate.NdayScore}."));
         }
 
         var ticket = new ZeroDayTicket

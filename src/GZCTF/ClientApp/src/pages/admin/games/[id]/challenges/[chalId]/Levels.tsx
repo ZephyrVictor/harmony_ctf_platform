@@ -17,7 +17,7 @@ import {
 import { showNotification } from '@mantine/notifications'
 import { mdiCheck, mdiDeleteOutline, mdiPlus, mdiPencilOutline } from '@mdi/js'
 import { Icon } from '@mdi/react'
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { WithChallengeEdit } from '@Components/admin/WithChallengeEdit'
@@ -74,12 +74,17 @@ const LevelEditModal: FC<{
   const [model, setModel] = useState<LevelConfigCreateModel>(() => createLevelEditModel(config))
   const trapEnabled = (model.banOnAnswers ?? []).length > 0
   const splitAnswers = (value: string) => value.split(',').map((s) => s.trim()).filter(Boolean)
+  const wasOpen = useRef(false)
 
+  // Only (re)initialize the form when the modal transitions closed -> open.
+  // Reacting to `config` identity would let a background SWR revalidation
+  // replace in-progress edits (e.g. Trap answers) mid-interaction.
   useEffect(() => {
-    if (opened) {
+    if (opened && !wasOpen.current) {
       setModel(createLevelEditModel(config))
       setDisabled(false)
     }
+    wasOpen.current = opened
   }, [opened, config])
 
   const onSave = async () => {
@@ -164,10 +169,10 @@ const LevelEditModal: FC<{
               <Switch
                 label={t('admin.level.trap.enabled')}
                 checked={trapEnabled}
-                onChange={(e) => setModel({
-                  ...model,
+                onChange={(e) => setModel((m) => ({
+                  ...m,
                   banOnAnswers: e.target.checked ? [...COMMIT_TRAP_BAN_ANSWERS] : [],
-                })}
+                }))}
               />
             </Group>
             {trapEnabled && (
@@ -176,13 +181,13 @@ const LevelEditModal: FC<{
                   label={t('admin.level.banOnAnswers')}
                   description={t('admin.level.banOnAnswersDescription')}
                   value={(model.banOnAnswers ?? []).join(',')}
-                  onChange={(e) => setModel({ ...model, banOnAnswers: splitAnswers(e.target.value) })}
+                  onChange={(e) => setModel((m) => ({ ...m, banOnAnswers: splitAnswers(e.target.value) }))}
                 />
                 <Group justify="flex-end">
                   <Button
                     variant="light"
                     size="xs"
-                    onClick={() => setModel({ ...model, banOnAnswers: [...COMMIT_TRAP_BAN_ANSWERS] })}
+                    onClick={() => setModel((m) => ({ ...m, banOnAnswers: [...COMMIT_TRAP_BAN_ANSWERS] }))}
                   >
                     {t('admin.level.trap.restoreDefault')}
                   </Button>

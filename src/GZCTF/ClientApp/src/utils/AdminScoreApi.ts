@@ -20,6 +20,9 @@ export interface TeamSearchResult {
   teamName: string
   teamToken: string
   members: string[]
+  ndayScore: number
+  zeroDayNdayScoreRequirement: number
+  canReceiveZeroDayBonus: boolean
 }
 
 export interface ScoreAdjustmentListResponse {

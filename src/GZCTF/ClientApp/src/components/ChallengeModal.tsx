@@ -76,21 +76,26 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
 
   return (
     <Stack gap="xs" pt="sm">
-      <Group justify="space-between" gap="xs">
+      <Group justify="space-between" gap="xs" wrap="wrap">
         <Text fw={700} size="sm">
           {t('challenge.level.progress')}
         </Text>
-        <Group gap="xs">
+        <Group gap="xs" wrap="wrap" style={{ minWidth: 0 }}>
           <Badge variant="light" color="teal">
             {t('challenge.level.solved_count', { count: displaySolvedCount })}
           </Badge>
-          {currentLevel !== undefined && (
-            <Badge variant="light" color="indigo">
-              {t('challenge.level.current')}: {activeLevels.find((l) => l.level === currentLevel)?.title
-                ? `L${currentLevel} - ${activeLevels.find((l) => l.level === currentLevel)?.title}`
-                : `L${currentLevel}`}
-            </Badge>
-          )}
+          {currentLevel !== undefined &&
+            (() => {
+              const currentTitle = activeLevels.find((l) => l.level === currentLevel)?.title
+              const currentLabel = `${t('challenge.level.current')}: ${
+                currentTitle ? `L${currentLevel} - ${currentTitle}` : `L${currentLevel}`
+              }`
+              return (
+                <Badge variant="light" color="indigo" className={classes.levelBadge} title={currentLabel}>
+                  {currentLabel}
+                </Badge>
+              )
+            })()}
         </Group>
       </Group>
       {hasMultipleTracks && (
@@ -110,8 +115,10 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
                   key={trackId || idx}
                   variant={isActive ? 'filled' : 'light'}
                   color={allSolved ? 'teal' : isActive ? 'blue' : 'gray'}
+                  className={classes.trackBadge}
                   style={{ cursor: onSelectTrack ? 'pointer' : 'default' }}
                   onClick={() => onSelectTrack?.(trackId)}
+                  title={`${label}${allSolved ? ' ✓' : ''}`}
                 >
                   {label}{allSolved ? ' ✓' : ''}
                 </Badge>
@@ -142,7 +149,7 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
           {t('challenge.level.submit_l1_to_start')}
         </Text>
       ) : (
-        <Group gap="xs" wrap="nowrap">
+        <Group gap="xs" wrap="wrap" className={classes.levelRow}>
           {activeLevels.map((levelInfo, idx) => {
             const level = levelInfo.level ?? idx + 1
             const status = levelInfo.status ?? 'Unsolved'
@@ -166,11 +173,18 @@ const MultiLevelProgress: FC<MultiLevelProgressProps> = ({ tracks, currentLevel,
               icon = ' 🔒'
             }
 
+            const badgeLabel = levelInfo.title ? `L${level} - ${levelInfo.title}` : `L${level}`
+
             return (
               <React.Fragment key={level}>
                 {idx > 0 && <Text size="sm" c="dimmed">→</Text>}
-                <Badge variant={isCurrent ? 'filled' : 'light'} color={color}>
-                  {levelInfo.title ? `L${level} - ${levelInfo.title}` : `L${level}`}{icon}
+                <Badge
+                  variant={isCurrent ? 'filled' : 'light'}
+                  color={color}
+                  className={classes.levelBadge}
+                  title={`${badgeLabel}${icon}`}
+                >
+                  {badgeLabel}{icon}
                 </Badge>
               </React.Fragment>
             )

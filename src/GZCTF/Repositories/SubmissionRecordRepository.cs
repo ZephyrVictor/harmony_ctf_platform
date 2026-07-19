@@ -1,4 +1,5 @@
 using GZCTF.Repositories.Interface;
+using GZCTF.Services.Scoring;
 using Microsoft.EntityFrameworkCore;
 
 namespace GZCTF.Repositories;
@@ -165,7 +166,12 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
                 c.Id,
                 c.OriginalScore,
                 c.MinScoreRate,
-                c.Difficulty
+                c.Difficulty,
+                EnabledLevelCount = c.LevelConfigs.Count(l => l.IsEnabled),
+                EnabledTrackCount = c.Tracks.Count(t => t.IsEnabled),
+                LevelScoreSum = c.LevelConfigs
+                    .Where(l => l.IsEnabled)
+                    .Sum(l => l.Score)
             })
             .ToArrayAsync(token);
 
@@ -182,8 +188,11 @@ public class SubmissionRecordRepository(AppDbContext context) : RepositoryBase(c
         foreach (var chal in challenges)
         {
             var solvedCount = solveCounts.GetValueOrDefault(chal.Id);
-            var score = GameChallenge.CalculateChallengeScore(
-                chal.OriginalScore, chal.MinScoreRate, chal.Difficulty, solvedCount);
+            var score = ChallengeScoreService.CalculateDisplayScore(
+                chal.OriginalScore, chal.MinScoreRate, chal.Difficulty, solvedCount,
+                ChallengeScoreService.CalculateConfiguredScore(
+                    chal.EnabledLevelCount > 0 ? chal.LevelScoreSum : null,
+                    chal.EnabledTrackCount));
             totalScore += score;
         }
 

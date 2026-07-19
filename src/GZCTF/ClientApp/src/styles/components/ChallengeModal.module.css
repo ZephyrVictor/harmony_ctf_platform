@@ -42,3 +42,30 @@
   background: var(--mantine-color-body);
   padding: var(--mantine-spacing-xs);
 }
+
+.levelRow {
+  width: 100%;
+  row-gap: var(--mantine-spacing-xs);
+}
+
+.levelBadge {
+  max-width: 100%;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.levelBadge :global(.mantine-Badge-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackBadge {
+  max-width: 220px;
+}
+
+.trackBadge :global(.mantine-Badge-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

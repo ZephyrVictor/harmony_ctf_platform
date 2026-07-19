@@ -903,6 +903,9 @@ public class ScoringService
         return false;
     }
 
+    internal static bool CanParseSourceLocationForImport(string input, ChallengeLevelConfig? levelConfig = null) =>
+        ParseSourceLocations(input, levelConfig).Count > 0;
+
     private static List<SourceLocationAnswer> ParseSourceLocations(string input, ChallengeLevelConfig? levelConfig)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -915,7 +918,10 @@ public class ScoringService
         var parts = trimmed.Split(orSeparators.ToCharArray(),
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        if (parts.Length > 1 && parts.All(part => TrySplitSourceLocation(part, out _, out _)))
+        if (parts.Length > 1
+            && parts.All(part =>
+                TrySplitSourceLocation(part, out var path, out _)
+                && !IsLinePrefixOnlyPath(path)))
         {
             var locations = new List<SourceLocationAnswer>();
             foreach (var part in parts)
@@ -957,7 +963,7 @@ public class ScoringService
         path = string.Empty;
         lineExpr = string.Empty;
 
-        var cPrefixIndex = input.LastIndexOf(":c:", StringComparison.OrdinalIgnoreCase);
+        var cPrefixIndex = input.IndexOf(":c:", StringComparison.OrdinalIgnoreCase);
         if (cPrefixIndex > 0 && cPrefixIndex + 3 < input.Length)
         {
             path = input[..cPrefixIndex];
@@ -973,6 +979,9 @@ public class ScoringService
         lineExpr = input[(separatorIndex + 1)..].Trim();
         return true;
     }
+
+    private static bool IsLinePrefixOnlyPath(string path) =>
+        path.Equals("c", StringComparison.OrdinalIgnoreCase);
 
     private static List<LineRange> ParseSourceLineRanges(string input, ChallengeLevelConfig? levelConfig)
     {
@@ -1030,12 +1039,7 @@ public class ScoringService
     }
 
     private static string NormalizeRawSourceLocation(string input)
-    {
-        var normalized = input.Trim().Replace('：', ':');
-        while (normalized.Contains("::", StringComparison.Ordinal))
-            normalized = normalized.Replace("::", ":", StringComparison.Ordinal);
-        return normalized;
-    }
+        => input.Trim().Replace('：', ':');
 
     private static bool ContainsMultiLineSeparator(string input) =>
         input.Any(c => c is '、' or ',' or ';' or '\r' or '\n' or '\t' or ' ');

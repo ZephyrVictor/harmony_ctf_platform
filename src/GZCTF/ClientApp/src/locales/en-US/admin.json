@@ -315,7 +315,7 @@
           "label": "Writeup Required"
         },
         "zeroday_info_markdown": "0day Submission Info (Markdown)",
-        "zeroday_info_markdown_desc": "Displayed in the in-game 0day Submission tab. Supports placeholders {{teamToken}}, {{teamName}}, {{bugbounty_url}}",
+        "zeroday_info_markdown_desc": "Displayed in the in-game 0day Submission tab. Supports placeholders {{teamToken}}, {{teamName}}",
         "zeroday_base_score": {
           "label": "0day Bonus Base Score",
           "desc": "0day bonus = base × severity multiplier (Critical×100 / High×60 / Medium×30 / Low×10)",
@@ -892,6 +892,7 @@
     "search": "Search",
     "team_name": "Team",
     "members": "Members",
+    "nday_score": "Nday Score",
     "token": "Token",
     "actions": "Actions",
     "adjust": "Adjust Score",
@@ -908,6 +909,9 @@
     "adjust_success": "Score adjusted",
     "error_delta_zero": "Delta cannot be zero",
     "error_reason_required": "Reason is required",
+    "zeroday_gate_passed": "Gate met",
+    "zeroday_gate_unmet": "Gate unmet",
+    "zeroday_bonus_gate_warning": "This team has not reached the {{required}} Nday score gate. Current Nday score: {{current}}. According to the contest rules, 0day bonus should not be awarded; continue only if you intentionally override this.",
     "zero_day_reason_placeholder": "e.g. 0day bonus - CVE-2024-XXXX - Critical"
   },
   "score_ledger": {

@@ -45,7 +45,7 @@ public class FlagImportController(FlagImportService importService) : ControllerB
         }
 
         await using var stream = file.OpenReadStream();
-        var preview = await importService.PreviewFileAsync(stream, file.ContentType, mappingObj, token);
+        var preview = await importService.PreviewFileAsync(stream, file.ContentType, file.FileName, mappingObj, token);
         return Ok(preview);
     }
 
@@ -85,7 +85,8 @@ public class FlagImportController(FlagImportService importService) : ControllerB
                 $"Invalid mode '{mode}'. Valid values: {string.Join(", ", Enum.GetNames<ImportMode>())}"));
 
         await using var stream = file.OpenReadStream();
-        var result = await importService.ImportFlagsAsync(challengeId, stream, file.ContentType, mappingObj, modeEnum, token);
+        var result = await importService.ImportFlagsAsync(
+            challengeId, stream, file.ContentType, file.FileName, mappingObj, modeEnum, token);
         return Ok(result);
     }
 
@@ -115,7 +116,7 @@ public class FlagImportController(FlagImportService importService) : ControllerB
         }
 
         await using var stream = file.OpenReadStream();
-        var preview = await importService.PreviewFileAsync(stream, file.ContentType, mappingObj, token);
+        var preview = await importService.PreviewFileAsync(stream, file.ContentType, file.FileName, mappingObj, token);
         return Ok(preview);
     }
 
@@ -158,7 +159,8 @@ public class FlagImportController(FlagImportService importService) : ControllerB
                 $"Invalid mode '{mode}'. Valid values: {string.Join(", ", Enum.GetNames<ImportMode>())}"));
 
         await using var stream = file.OpenReadStream();
-        var result = await importService.ImportFlagsToGameAsync(gameId, stream, file.ContentType, mappingObj, modeEnum, token);
+        var result = await importService.ImportFlagsToGameAsync(
+            gameId, stream, file.ContentType, file.FileName, mappingObj, modeEnum, token);
         return Ok(result);
     }
 }
