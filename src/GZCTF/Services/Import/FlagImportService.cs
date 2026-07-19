@@ -135,7 +135,7 @@ public class FlagImportService(
                 }
 
                 var existingTrack = mapping.MatchBy == "L1"
-                    ? await FindTrackByL1Flag(challengeId, matchValue, token)
+                    ? await FindTrackByL1Flag(challengeId, matchValue, row, mapping, token)
                     : await FindTrackByMatch(challengeId, mapping.MatchBy, matchValue, token);
 
                 if (existingTrack is not null)
@@ -157,6 +157,14 @@ public class FlagImportService(
                     var hasSubmissions = await trackRepo.HasSubmissions(existingTrack.Id, token);
                     if (hasSubmissions)
                     {
+                        var oldFlags = await flagRepo.GetFlagsByTrack(existingTrack.Id, token);
+                        if (FlagsEquivalent(oldFlags, row, mapping))
+                        {
+                            result.Updated++;
+                            await transaction.CommitAsync(token);
+                            continue;
+                        }
+
                         await trackRepo.DeleteTrack(existingTrack.Id, token);
                         existingTrack = null;
                     }
@@ -370,14 +378,31 @@ public class FlagImportService(
         return result;
     }
 
-    private async Task<ChallengeTrack?> FindTrackByL1Flag(int challengeId, string l1FlagValue, CancellationToken token)
+    private async Task<ChallengeTrack?> FindTrackByL1Flag(
+        int challengeId,
+        string l1FlagValue,
+        Dictionary<string, string> row,
+        FlagImportColumnMapping mapping,
+        CancellationToken token)
     {
-        // L1 flag value 唯一标识一个 track（因为 L1 匹配是 per-challenge）
         var flags = await flagRepo.GetFlagsByLevel(challengeId, 1, token);
-        var matchingFlag = flags.FirstOrDefault(f => f.FlagValue == l1FlagValue);
-        if (matchingFlag is null)
-            return null;
-        return await trackRepo.GetTrack(matchingFlag.TrackId, token);
+        var matchingTrackIds = flags
+            .Where(f => f.FlagValue == l1FlagValue)
+            .Select(f => f.TrackId)
+            .Distinct()
+            .ToArray();
+
+        foreach (var trackId in matchingTrackIds)
+        {
+            var trackFlags = await flagRepo.GetFlagsByTrack(trackId, token);
+            if (FlagsEquivalent(trackFlags, row, mapping))
+                return await trackRepo.GetTrack(trackId, token);
+        }
+
+        var firstTrackId = matchingTrackIds.FirstOrDefault();
+        return firstTrackId == Guid.Empty
+            ? null
+            : await trackRepo.GetTrack(firstTrackId, token);
     }
 
     private async Task ImportSingleRowAsync(
@@ -417,7 +442,7 @@ public class FlagImportService(
 
             // 查找已存在的 track，排除本批次新建的（同批次内 L1 重复行应各自创建独立 track）
             var found = mapping.MatchBy == "L1"
-                ? await FindTrackByL1Flag(challengeId, matchValue, token)
+                ? await FindTrackByL1Flag(challengeId, matchValue, row, mapping, token)
                 : await FindTrackByMatch(challengeId, mapping.MatchBy, matchValue, token);
             var existingTrack = (found is not null && !batchCreatedTrackIds.Contains(found.Id)) ? found : null;
 
@@ -439,6 +464,14 @@ public class FlagImportService(
                 var hasSubmissions = await trackRepo.HasSubmissions(existingTrack.Id, token);
                 if (hasSubmissions)
                 {
+                    var oldFlags = await flagRepo.GetFlagsByTrack(existingTrack.Id, token);
+                    if (FlagsEquivalent(oldFlags, row, mapping))
+                    {
+                        result.Updated++;
+                        await transaction.CommitAsync(token);
+                        return;
+                    }
+
                     await trackRepo.DeleteTrack(existingTrack.Id, token);
                     existingTrack = null;
                 }
@@ -662,6 +695,49 @@ public class FlagImportService(
             "Title" => tracks.FirstOrDefault(t => t.Title == value),
             _ => tracks.FirstOrDefault(t => t.FilePath == value)
         };
+    }
+
+    private static bool FlagsEquivalent(
+        IEnumerable<ChallengeFlag> existingFlags,
+        Dictionary<string, string> row,
+        FlagImportColumnMapping mapping)
+    {
+        var expected = mapping.LevelColumns
+            .Select(lc => new
+            {
+                lc.Level,
+                FlagValue = BuildFlagValue(row, lc),
+                lc.AnswerType
+            })
+            .Where(f => !string.IsNullOrWhiteSpace(f.FlagValue))
+            .OrderBy(f => f.Level)
+            .ThenBy(f => f.FlagValue)
+            .ToArray();
+
+        var actual = existingFlags
+            .Where(f => f.IsEnabled)
+            .Select(f => new
+            {
+                f.Level,
+                f.FlagValue,
+                f.AnswerType
+            })
+            .OrderBy(f => f.Level)
+            .ThenBy(f => f.FlagValue)
+            .ToArray();
+
+        if (actual.Length != expected.Length)
+            return false;
+
+        for (var i = 0; i < actual.Length; i++)
+        {
+            if (actual[i].Level != expected[i].Level
+                || actual[i].AnswerType != expected[i].AnswerType
+                || actual[i].FlagValue != expected[i].FlagValue)
+                return false;
+        }
+
+        return true;
     }
 
     private static string? BuildRawFlagValue(Dictionary<string, string> row, LevelColumnMapping lc)
