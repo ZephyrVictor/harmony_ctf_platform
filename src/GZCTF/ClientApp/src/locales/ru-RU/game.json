@@ -189,7 +189,8 @@
   "notice": {
     "blood": "Команда {{team}} получила достижение \"{{blood}}\" на задании [{{chal}}].",
     "new_challenge": "Появилось новое задание [{{title}}].",
-    "new_hint": "Подсказки для задания [{{title}}] обновлены."
+    "new_hint": "Подсказки для задания [{{title}}] обновлены.",
+    "score_adjustment": "Admin {{operator}} adjusted {{team}} by {{delta}}: {{reason}}"
   },
   "notification": {
     "connected": {

@@ -189,7 +189,8 @@
   "notice": {
     "blood": "恭喜 {{team}} 獲得 [{{chal}}] {{blood}}",
     "new_challenge": "題目 [{{title}}] 已開放",
-    "new_hint": "題目 [{{title}}] 更新了提示"
+    "new_hint": "題目 [{{title}}] 更新了提示",
+    "score_adjustment": "管理員 {{operator}} 為隊伍 {{team}} 調整分數 {{delta}}：{{reason}}"
   },
   "notification": {
     "connected": {

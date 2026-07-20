@@ -189,7 +189,8 @@
   "notice": {
     "blood": "チーム {{team}} は「{{chal}}」の{{blood}}を取りました。おめでとうございます！",
     "new_challenge": "チャレンジ「{{title}}」が開放されました",
-    "new_hint": "チャレンジ「{{title}}」のヒントが更新されました"
+    "new_hint": "チャレンジ「{{title}}」のヒントが更新されました",
+    "score_adjustment": "Admin {{operator}} adjusted {{team}} by {{delta}}: {{reason}}"
   },
   "notification": {
     "connected": {

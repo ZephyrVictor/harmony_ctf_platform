@@ -189,7 +189,8 @@
   "notice": {
     "blood": "Chúc mừng đội {{team}} đã {{blood}} thử thách {{chal}}.",
     "new_challenge": "Challenge mới [{{title}}] đã được mở.",
-    "new_hint": "Gợi ý cho [{{title}}] đã được cập nhật."
+    "new_hint": "Gợi ý cho [{{title}}] đã được cập nhật.",
+    "score_adjustment": "Admin {{operator}} adjusted {{team}} by {{delta}}: {{reason}}"
   },
   "notification": {
     "connected": {

@@ -189,7 +189,8 @@
   "notice": {
     "blood": "{{team}} 팀이 {{chal}} 의 {{blood}}  를 가져갔습니다!",
     "new_challenge": "새로운 문제 [{{title}}] 가 생성되었습니다.",
-    "new_hint": "[{{title}}] 문제 힌트가 업데이트되었습니다."
+    "new_hint": "[{{title}}] 문제 힌트가 업데이트되었습니다.",
+    "score_adjustment": "Admin {{operator}} adjusted {{team}} by {{delta}}: {{reason}}"
   },
   "notification": {
     "connected": {

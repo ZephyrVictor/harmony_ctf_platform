@@ -12,10 +12,12 @@ Use this skill when acting as a contest participant through backend APIs. The pl
 Use the bundled client unless you have a strong reason to call the API manually:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py --base-url "$HARMONY_CTF_BASE_URL" <command>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py --base-url "$HARMONY_CTF_BASE_URL" <command>
 ```
 
 The contest platform is available at `https://thuctf.tsinghua.edu.cn/harmonyctf/`, but always ask the user for the real backend base URL when it is not already provided.
+
+This skill is intended for contestant-side operation only. It must not contain or infer challenge answers, hidden trap answers, imported dataset rows, admin endpoints, or privileged workflows. Treat every answer value as user-supplied competition work.
 
 ## Required User Interaction
 
@@ -45,7 +47,7 @@ export HARMONY_CTF_COOKIE_JAR="$HOME/.cache/harmony_ctf_platform/agent.cookies"
 Check encryption/captcha:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py config
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py config
 ```
 
 The client automatically handles:
@@ -54,11 +56,12 @@ The client automatically handles:
 - `GET /api/config` and `apiPublicKey` encryption for password and answer fields.
 - `GET /api/captcha` and HashPow captcha solving.
 - Cloudflare Turnstile detection; request a browser token from the user if enabled.
+- Default compact output that avoids printing raw answer-bearing fields. Use `--raw` only for debugging after confirming the response does not expose sensitive data.
 
 Log in:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py login \
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py login \
   --username "$HARMONY_CTF_USERNAME" \
   --password-env HARMONY_CTF_PASSWORD
 ```
@@ -66,7 +69,7 @@ python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py login \
 Verify current user:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py whoami
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py whoami
 ```
 
 If this returns `401 Unauthorized` or `Please log in first`, immediately ask the user for the account username and password, or ask for a cookie jar exported from an already logged-in browser/session. After credentials are supplied, run `login` and then `whoami` again before continuing.
@@ -74,33 +77,33 @@ If this returns `401 Unauthorized` or `Please log in first`, immediately ask the
 List contests for user selection:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py games --count 50
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py games --count 50
 ```
 
 Get selected contest detail:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py game <gameId>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py game <gameId>
 ```
 
 List current user's teams:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py teams
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py teams
 ```
 
 Create or join a team only after user confirmation:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py create-team --name '<team name>' --bio '<optional bio>'
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py accept-team --invite-code '<teamName:teamId:token>'
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py create-team --name '<team name>' --bio '<optional bio>'
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py accept-team --invite-code '<teamName:teamId:token>'
 ```
 
 Check and join a contest:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py check-game <gameId>
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py join-game <gameId> \
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py check-game <gameId>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py join-game <gameId> \
   --team-id <teamId> \
   --division-id <divisionId-if-needed> \
   --invite-code '<invite-if-needed>' \
@@ -123,7 +126,7 @@ Use `--accept-commitment` only after the user explicitly confirms joining. The b
 After the selected contest is joined and accepted, list playable challenges:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py details <gameId>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py details <gameId>
 ```
 
 Important fields:
@@ -137,7 +140,7 @@ Important fields:
 Inspect a challenge before every answer submission:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py challenge <gameId> <challengeId>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py challenge <gameId> <challengeId>
 ```
 
 Important fields:
@@ -148,6 +151,8 @@ Important fields:
 - `tracks[].levels[].status`: `Unsolved`, `Solved`, `Banned`, or `Locked`.
 - `cooldown.cooldownUntil`: pause submissions if present and in the future.
 - `challengeLock.isLocked`: stop until `unlocksAt` if locked.
+
+The compact `challenge` command intentionally returns only safe challenge-state summaries. It does not print raw visible flag objects, trap trigger answers, or any answer-bearing fields by default.
 
 ## Answer Submission
 
@@ -170,7 +175,7 @@ Backend body:
 Client command:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py submit <gameId> <challengeId> \
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py submit <gameId> <challengeId> \
   --level 1 \
   --answer '<answer>' \
   --poll
@@ -191,7 +196,7 @@ The platform supports multiple vulnerability chains in one challenge. A partiall
 If the user says they want to submit a new vulnerability, do **not** continue with the current `activeTrackId`. Run a fresh Level 1 submission and omit `--track-id`:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py submit <gameId> <challengeId> \
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py submit <gameId> <challengeId> \
   --level 1 \
   --answer '<new-vulnerability-L1-answer>' \
   --poll
@@ -208,7 +213,7 @@ Do not infer from `currentLevel: 2` or `activeTrackId` that Level 1 submissions 
 Level 2/3 example:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py submit <gameId> <challengeId> \
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py submit <gameId> <challengeId> \
   --level 2 \
   --track-id '<trackId-from-level-1>' \
   --answer '<answer>' \
@@ -260,7 +265,7 @@ Cooldown behavior:
 Before creating a 0day ticket, run:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py details <gameId>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py details <gameId>
 ```
 
 Only create a ticket if `canSubmitZeroDay` is true. If false, explain the current `ndayScore` and `zeroDayNdayScoreRequirement` to the user.
@@ -268,7 +273,7 @@ Only create a ticket if `canSubmitZeroDay` is true. If false, explain the curren
 Create a ticket only after user confirmation:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-create \
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-create \
   --game-id <gameId> \
   --challenge-id <challengeId-if-known> \
   --title '<short title>' \
@@ -276,8 +281,8 @@ python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-
   --severity High \
   --module '<module/submodule>' \
   --file-path '<source file>' \
-  --line-number 'c:550-559' \
-  --commit-hash '<fix commit>' \
+  --line-number '<line-or-range>' \
+  --commit-hash '<commit-hash>' \
   --cwe '<cwe-id>' \
   --poc '<proof or reproduction notes>'
 ```
@@ -287,7 +292,7 @@ Severity must be one of `None`, `Low`, `Medium`, `High`, or `Critical`.
 List current user's tickets:
 
 ```bash
-python3 docs/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-mine --game-id <gameId>
+python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-mine --game-id <gameId>
 ```
 
 ## Manual API Reference

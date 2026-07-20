@@ -34,7 +34,8 @@ const ApplyFilter = (notices: GameNotice[], filter: NoticeFilter) => {
         (notice) =>
           notice.type === NoticeType.FirstBlood ||
           notice.type === NoticeType.SecondBlood ||
-          notice.type === NoticeType.ThirdBlood
+          notice.type === NoticeType.ThirdBlood ||
+          notice.type === NoticeType.ScoreAdjustment
       )
     case NoticeFilter.Game:
       return notices.filter((notice) => notice.type === NoticeType.Normal)
@@ -54,6 +55,13 @@ const formatNotice = (t: TFunction, notice: GameNotice) => {
     case NoticeType.NewHint:
       return t('game.notice.new_hint', {
         title: notice.values.at(0),
+      })
+    case NoticeType.ScoreAdjustment:
+      return t('game.notice.score_adjustment', {
+        team: notice.values.at(0),
+        delta: notice.values.at(1),
+        reason: notice.values.at(2),
+        operator: notice.values.at(3),
       })
     case NoticeType.FirstBlood:
       return t('game.notice.blood', {
@@ -92,8 +100,15 @@ export const GameNoticePanel: FC = () => {
   const { t } = useTranslation()
   const { locale } = useLanguage()
   const theme = useMantineTheme()
+  const tRef = useRef(t)
+  const primaryColorRef = useRef(theme.primaryColor)
 
   const { data: notices } = api.game.useGameNotices(numId, {}, OnceSWRConfig)
+
+  useEffect(() => {
+    tRef.current = t
+    primaryColorRef.current = theme.primaryColor
+  }, [t, theme.primaryColor])
 
   useEffect(() => {
     newNotices.current = []
@@ -116,15 +131,15 @@ export const GameNoticePanel: FC = () => {
         if (message.type === NoticeType.NewChallenge || message.type === NoticeType.NewHint) {
           showNotification({
             color: 'yellow',
-            message: formatNotice(t, message),
+            message: formatNotice(tRef.current, message),
             autoClose: 5000,
           })
         }
 
-        if (message.type === NoticeType.Normal) {
+        if (message.type === NoticeType.Normal || message.type === NoticeType.ScoreAdjustment) {
           showNotification({
-            color: theme.primaryColor,
-            message: formatNotice(t, message),
+            color: primaryColorRef.current,
+            message: formatNotice(tRef.current, message),
             autoClose: 5000,
           })
         }
@@ -142,7 +157,7 @@ export const GameNoticePanel: FC = () => {
         })
       }
     }
-  })
+  }, [id, numId])
 
   const allNotices = [...newNotices.current, ...(notices ?? [])]
   const filteredNotices = ApplyFilter(allNotices, filter)

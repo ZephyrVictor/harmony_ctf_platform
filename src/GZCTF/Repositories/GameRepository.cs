@@ -490,6 +490,12 @@ public class GameRepository(
             if (!challenges.TryGetValue(solve.ChallengeId, out var challenge))
                 continue;
 
+            // Practice mode may accept submissions after the game ends. Those
+            // should remain visible in submission history, but not in the
+            // official ranked scoreboard solve columns.
+            if (!solve.ScoreEligible && !solve.BloodEligible)
+                continue;
+
             var item = new ChallengeItem
             {
                 Id = solve.ChallengeId,
@@ -542,7 +548,28 @@ public class GameRepository(
 
         // D8: SolvedCount = distinct (TrackId, Level) pairs with positive ScoreChange
         var solvedTrackLevelCounts = submissionRecordsDetail
-            .Where(r => r.ScoreChange > 0 && r.TrackId is not null && r.Level is not null)
+            .Where(r => r.MatchedFlagId is not null
+                && r.ScoreChange > 0
+                && r.TrackId is not null
+                && r.Level is not null)
+            .Where(r =>
+            {
+                if (!items.TryGetValue(r.ParticipationId, out var item))
+                    return false;
+
+                if (!challenges.TryGetValue(r.ChallengeId, out var challenge))
+                    return false;
+
+                var division = item.DivisionId is { } div ? divisions.GetValueOrDefault(div) : null;
+                var withinGameWindow = r.SubmitTimeUtc >= game.StartTimeUtc &&
+                                       r.SubmitTimeUtc < game.EndTimeUtc;
+                var withinDeadline = !challenge.DeadlineUtc.HasValue ||
+                                     r.SubmitTimeUtc <= challenge.DeadlineUtc.Value;
+
+                return withinGameWindow
+                    && withinDeadline
+                    && CheckDivisionPermission(division, GamePermission.GetScore, r.ChallengeId);
+            })
             .Select(r => (r.ParticipationId, TrackId: r.TrackId!.Value, Level: r.Level!.Value))
             .Distinct()
             .GroupBy(x => x.ParticipationId)
@@ -612,12 +639,20 @@ public class GameRepository(
 
         // 5.7. 应用 ScoreAdjustment（手动调分 + 0day 加分）
         // items 当前以 ParticipantId 为键，每个 item.Id 是 TeamId
-        var adjustmentsByTeam = await Context.ScoreAdjustments
+        var adjustments = await Context.ScoreAdjustments
             .AsNoTracking()
             .Where(a => a.GameId == game.Id)
+            .Select(a => new
+            {
+                a.TeamId,
+                a.Delta,
+                a.CreatedAt
+            })
+            .ToListAsync(token);
+
+        var adjustmentsByTeam = adjustments
             .GroupBy(a => a.TeamId)
-            .Select(g => new { TeamId = g.Key, Total = g.Sum(a => a.Delta) })
-            .ToDictionaryAsync(g => g.TeamId, g => g.Total, token);
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.Delta));
 
         foreach (var item in items.Values)
         {
@@ -625,6 +660,18 @@ public class GameRepository(
             {
                 item.Score += delta;
             }
+        }
+
+        var participationIdByTeamId = items.Values.ToDictionary(i => i.Id, i => i.ParticipantId);
+        foreach (var adjustment in adjustments)
+        {
+            if (!participationIdByTeamId.TryGetValue(adjustment.TeamId, out var participantId))
+                continue;
+
+            scoredTimelineEvents.Add(new ScoreTimelineEvent(
+                participantId,
+                adjustment.CreatedAt,
+                adjustment.Delta));
         }
 
         // group actually-scored FirstSolve and SubmissionRecord events for timeline generation

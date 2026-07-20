@@ -229,7 +229,8 @@
   "notice": {
     "blood": "Congratulations to {{team}} for the {{blood}} on {{chal}}.",
     "new_challenge": "New challenge [{{title}}] has been released.",
-    "new_hint": "Hints for [{{title}}] has been updated."
+    "new_hint": "Hints for [{{title}}] has been updated.",
+    "score_adjustment": "Admin {{operator}} adjusted {{team}} by {{delta}}: {{reason}}"
   },
   "notification": {
     "connected": {

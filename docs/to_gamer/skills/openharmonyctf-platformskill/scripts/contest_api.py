@@ -25,6 +25,26 @@ except ImportError as exc:  # pragma: no cover - environment guard
 
 
 DEFAULT_COOKIE_JAR = Path.home() / ".cache" / "harmony_ctf_platform" / "agent.cookies"
+SENSITIVE_EXACT_KEYS = {
+    "answer",
+    "banonanswers",
+    "bantriggeranswer",
+    "flag",
+    "flags",
+    "flagvalue",
+    "lockonanswers",
+    "rawanswer",
+    "triggeranswer",
+}
+SENSITIVE_KEY_PARTS = (
+    "cookie",
+    "invitecode",
+    "password",
+    "privatekey",
+    "secret",
+    "teamtoken",
+    "token",
+)
 
 
 class ApiError(RuntimeError):
@@ -32,7 +52,24 @@ class ApiError(RuntimeError):
 
 
 def dump(data: Any) -> None:
-    print(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps(redact_sensitive(data), ensure_ascii=False, indent=2, sort_keys=True))
+
+
+def redact_sensitive(data: Any) -> Any:
+    if isinstance(data, dict):
+        redacted: dict[str, Any] = {}
+        for key, value in data.items():
+            normalized = key.replace("_", "").replace("-", "").lower()
+            if normalized in SENSITIVE_EXACT_KEYS or any(part in normalized for part in SENSITIVE_KEY_PARTS):
+                redacted[key] = "<redacted>"
+            else:
+                redacted[key] = redact_sensitive(value)
+        return redacted
+
+    if isinstance(data, list):
+        return [redact_sensitive(item) for item in data]
+
+    return data
 
 
 def leading_zero_bits(data: bytes) -> int:
@@ -137,7 +174,7 @@ class ContestApi:
             body = response.json()
         except ValueError:
             body = response.text
-        return f"HTTP {response.status_code} {response.reason}: {json.dumps(body, ensure_ascii=False)}"
+        return f"HTTP {response.status_code} {response.reason}: {json.dumps(redact_sensitive(body), ensure_ascii=False)}"
 
     def get_json(self, path: str, **params: Any) -> Any:
         response = self.request("GET", path, params={k: v for k, v in params.items() if v is not None})
@@ -191,9 +228,7 @@ class ContestApi:
         challenge = self.captcha_challenge(captcha_token)
         if challenge:
             payload["challenge"] = challenge
-        response = self.request("POST", "/api/account/login", json=payload)
-        if response.content:
-            print(response.text)
+        self.request("POST", "/api/account/login", json=payload)
 
     def encrypted_flag_payload(self, flag: str, level: int, track_id: str | None) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -264,13 +299,48 @@ def compact_details(payload: Any) -> dict[str, Any]:
 def compact_challenge(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {"raw": payload}
+
+    def compact_level(level: Any) -> dict[str, Any]:
+        if not isinstance(level, dict):
+            return {"rawType": type(level).__name__}
+        return {
+            "level": level.get("level"),
+            "title": level.get("title"),
+            "status": level.get("status"),
+            "attemptsUsed": level.get("attemptsUsed"),
+            "solvedAt": level.get("solvedAt"),
+            "unlocksAt": level.get("unlocksAt"),
+        }
+
     tracks = []
     for track in payload.get("tracks") or []:
         tracks.append({
             "trackId": track.get("trackId"),
             "title": track.get("title"),
-            "levels": track.get("levels"),
+            "levels": [compact_level(level) for level in track.get("levels") or []],
         })
+
+    visible_flags = []
+    for flag in payload.get("flags") or []:
+        if not isinstance(flag, dict):
+            continue
+        visible_flags.append({
+            "level": flag.get("level"),
+            "trackId": flag.get("trackId"),
+            "answerType": flag.get("answerType"),
+            "isSolved": flag.get("isSolved"),
+        })
+
+    challenge_lock = payload.get("challengeLock")
+    if isinstance(challenge_lock, dict):
+        challenge_lock = {
+            "isLocked": challenge_lock.get("isLocked"),
+            "unlocksAt": challenge_lock.get("unlocksAt"),
+            "reason": challenge_lock.get("reason"),
+            "bannedTrackId": challenge_lock.get("bannedTrackId"),
+            "bannedLevel": challenge_lock.get("bannedLevel"),
+        }
+
     return {
         "id": payload.get("id"),
         "title": payload.get("title"),
@@ -280,9 +350,9 @@ def compact_challenge(payload: Any) -> dict[str, Any]:
         "currentLevel": payload.get("currentLevel"),
         "activeTrackId": payload.get("activeTrackId"),
         "cooldown": payload.get("cooldown"),
-        "challengeLock": payload.get("challengeLock"),
+        "challengeLock": challenge_lock,
         "tracks": tracks,
-        "flags": payload.get("flags"),
+        "visibleFlags": visible_flags,
     }
 
 

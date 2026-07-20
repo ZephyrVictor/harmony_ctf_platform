@@ -189,7 +189,8 @@
   "notice": {
     "blood": "Selamat kepada {{team}} atas {{blood}} di {{chal}}.",
     "new_challenge": "Challenge baru [{{title}}] telah dirilis.",
-    "new_hint": "Petunjuk untuk [{{title}}] telah diperbarui."
+    "new_hint": "Petunjuk untuk [{{title}}] telah diperbarui.",
+    "score_adjustment": "Admin {{operator}} adjusted {{team}} by {{delta}}: {{reason}}"
   },
   "notification": {
     "connected": {

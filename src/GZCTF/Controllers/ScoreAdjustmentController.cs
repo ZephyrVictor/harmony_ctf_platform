@@ -4,6 +4,7 @@ using GZCTF.Middlewares;
 using GZCTF.Models.Data;
 using GZCTF.Models.Request.Edit;
 using GZCTF.Models.Response;
+using GZCTF.Repositories.Interface;
 using GZCTF.Services.Cache;
 using GZCTF.Services.Scoring;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,7 @@ namespace GZCTF.Controllers;
 public class ScoreAdjustmentController(
     AppDbContext context,
     CacheHelper cacheHelper,
+    IGameNoticeRepository gameNoticeRepository,
     ChallengeScoreService challengeScoreService) : ControllerBase
 {
     /// <summary>创建调分记录（手动或 0day 加分）</summary>
@@ -69,7 +71,7 @@ public class ScoreAdjustmentController(
 
         // 写入 GameNotice 通报（全员可见）
         var userName = User.Identity?.Name ?? "admin";
-        context.GameNotices.Add(new GameNotice
+        var notice = new GameNotice
         {
             GameId = gameId,
             Type = NoticeType.ScoreAdjustment,
@@ -81,9 +83,9 @@ public class ScoreAdjustmentController(
                 userName
             },
             PublishTimeUtc = DateTimeOffset.UtcNow
-        });
+        };
 
-        await context.SaveChangesAsync(token);
+        await gameNoticeRepository.AddNotice(notice, token);
 
         // 刷新记分牌缓存，让新分数立即生效
         await cacheHelper.FlushScoreboardCache(gameId, token);

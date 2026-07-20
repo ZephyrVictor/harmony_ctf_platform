@@ -6,6 +6,7 @@ namespace GZCTF.Repositories;
 
 public class ZeroDayTicketRepository(
     AppDbContext context,
+    IGameNoticeRepository gameNoticeRepository,
     ChallengeScoreService challengeScoreService) : RepositoryBase(context), IZeroDayTicketRepository
 {
     public async Task<ZeroDayTicket> CreateTicket(ZeroDayTicket ticket, CancellationToken token = default)
@@ -132,7 +133,7 @@ public class ZeroDayTicketRepository(
         // R17: 0day bonus 加分到提交者队伍
         if (bonusScore > 0)
         {
-            await AwardBonusToSubmitter(ticket, bonusScore, token);
+            await AwardBonusToSubmitter(ticket, bonusScore, comment, reviewerId, token);
         }
 
         return await GetTicket(ticketId, token) ?? ticket;
@@ -230,10 +231,12 @@ public class ZeroDayTicketRepository(
     /// <summary>
     /// 创建 SubmissionRecord 把 BonusScore 加到提交者队伍的总分。
     /// </summary>
-    private async Task AwardBonusToSubmitter(ZeroDayTicket ticket, int bonusScore, CancellationToken token)
+    private async Task AwardBonusToSubmitter(ZeroDayTicket ticket, int bonusScore, string? comment,
+        Guid reviewerId, CancellationToken token)
     {
         // 找到提交者的 participation
         var participation = await Context.Participations
+            .Include(p => p.Team)
             .FirstOrDefaultAsync(p => p.GameId == ticket.GameId
                 && p.Members.Any(m => m.UserId == ticket.UserId), token);
         if (participation is null)
@@ -278,7 +281,28 @@ public class ZeroDayTicketRepository(
             SubmissionType = "ZeroDayBonus"
         };
         await Context.SubmissionRecords.AddAsync(record, token);
-        await Context.SaveChangesAsync(token);
+
+        var reviewerName = await Context.Users
+            .Where(u => u.Id == reviewerId)
+            .Select(u => u.UserName)
+            .FirstOrDefaultAsync(token) ?? "Admin";
+        var reason = string.IsNullOrWhiteSpace(comment)
+            ? $"0day ticket approved: {ticket.Title}"
+            : comment.Trim();
+
+        await gameNoticeRepository.AddNotice(new GameNotice
+        {
+            GameId = ticket.GameId,
+            Type = NoticeType.ScoreAdjustment,
+            Values = new List<string>
+            {
+                participation.Team.Name,
+                bonusScore > 0 ? $"+{bonusScore}" : bonusScore.ToString(),
+                reason,
+                reviewerName
+            },
+            PublishTimeUtc = DateTimeOffset.UtcNow
+        }, token);
     }
 
     public async Task<ZeroDayTicket> RejectTicket(Guid ticketId, string reason, Guid reviewerId,

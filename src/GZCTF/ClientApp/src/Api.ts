@@ -141,6 +141,7 @@ export enum NoticeType {
   ThirdBlood = "ThirdBlood",
   NewHint = "NewHint",
   NewChallenge = "NewChallenge",
+  ScoreAdjustment = "ScoreAdjustment",
 }
 
 /** Challenge category */
