@@ -108,7 +108,6 @@ internal static class ServicesExtension
             builder.Services.AddScoped<ITicketRepository, TicketRepository>();
             builder.Services.AddScoped<IBigScreenEventRepository, BigScreenEventRepository>();
             builder.Services.AddScoped<ICompetitionSettingRepository, CompetitionSettingRepository>();
-            builder.Services.AddScoped<IZeroDayTicketRepository, ZeroDayTicketRepository>();
             builder.Services.AddScoped<IChallengeTrackRepository, ChallengeTrackRepository>();
             builder.Services.AddScoped<IChallengeLevelConfigRepository, ChallengeLevelConfigRepository>();
             builder.Services.AddScoped<IChallengeLockStateRepository, ChallengeLockStateRepository>();

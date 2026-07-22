@@ -14,6 +14,7 @@ import classes from '@Styles/ScoreboardTable.module.css'
 
 const RANK_WIDTH = 50
 const SCORE_WIDTH = 70
+const ZERO_DAY_SCORE_WIDTH = 80
 
 const TableRow: FC<{
   item: ScoreboardItem
@@ -50,6 +51,7 @@ const TableRow: FC<{
         </Group>
       </Table.Td>
       <Table.Td className={cx(classes.mono, classes.left)}>{item.score}</Table.Td>
+      <Table.Td className={cx(classes.mono, classes.left)}>{item.zeroDayScore ?? 0}</Table.Td>
     </Table.Tr>
   )
 })
@@ -134,18 +136,14 @@ export const MobileScoreboardTable: FC<ScoreboardProps> = ({ divisionId, setDivi
         <Box
           pos="relative"
           maw="100%"
-          style={{
-            overflow: 'scroll',
-            '&::-webkit-scrollbar': {
-              display: 'none',
-            },
-          }}
+          style={{ overflow: 'scroll' }}
         >
           <Table className={classes.table}>
             <colgroup>
               <col style={{ width: RANK_WIDTH }} />
               <col />
               <col style={{ width: SCORE_WIDTH }} />
+              <col style={{ width: ZERO_DAY_SCORE_WIDTH }} />
             </colgroup>
             <Table.Thead className={classes.thead}>
               <Table.Tr>
@@ -157,6 +155,9 @@ export const MobileScoreboardTable: FC<ScoreboardProps> = ({ divisionId, setDivi
                 </Table.Th>
                 <Table.Th className={cx(classes.left, classes.theadHeader)}>
                   {t('game.label.score_table.score_total')}
+                </Table.Th>
+                <Table.Th className={cx(classes.left, classes.theadHeader)}>
+                  {t('game.label.score_table.zero_day_score', { defaultValue: '0day得分' })}
                 </Table.Th>
               </Table.Tr>
             </Table.Thead>

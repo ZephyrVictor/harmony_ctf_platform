@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GZCTF.Integration.Test.Base;
+using GZCTF.Models;
 using GZCTF.Models.Data;
 using GZCTF.Models.Request.Account;
 using GZCTF.Models.Request.Edit;
@@ -796,6 +797,155 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         }
     }
 
+    /// <summary>
+    /// Test scoreboard exposes the score adjustment total as the 0day score column
+    /// </summary>
+    [Fact]
+    public async Task Scoreboard_ShouldExpose_ZeroDayScoreFromScoreAdjustments()
+    {
+        var game = await CreateGameWithBloodBonus("Score Adjustment Column Test", packBloods(1.0f, 1.0f, 1.0f));
+        var challenge = await CreateChallenge(game.Id, "Adjustment Challenge", "flag{adjust}", 1000);
+        var teams = await CreateMultipleTeams(2, "AdjustmentTeam");
+
+        await JoinGameAndSolve(teams[0], game.Id, [(challenge.Id, "flag{adjust}")]);
+        await JoinGame(teams[1], game.Id);
+
+        await AddScoreAdjustment(game.Id, teams[0].team.Id, teams[0].user.Id, 120, ScoreAdjustmentCategory.Manual);
+        await AddScoreAdjustment(game.Id, teams[0].team.Id, teams[0].user.Id, -30, ScoreAdjustmentCategory.ZeroDayBonus);
+        await AddScoreAdjustment(game.Id, teams[1].team.Id, teams[1].user.Id, 25, ScoreAdjustmentCategory.ZeroDayBonus);
+
+        await FlushScoreboardCache(game.Id);
+
+        var scoreboard = await GetScoreboard(
+            teams[0].client,
+            game.Id,
+            expectedTeamIds: [teams[0].team.Id, teams[1].team.Id],
+            readiness: s => s.GetTeam(teams[0].team.Id).ZeroDayScore == 90);
+
+        var adjustedTeam = scoreboard.GetTeam(teams[0].team.Id);
+        var bonusOnlyTeam = scoreboard.GetTeam(teams[1].team.Id);
+
+        Assert.Equal(90, adjustedTeam.ZeroDayScore);
+        Assert.Equal(1090, adjustedTeam.Score);
+        Assert.Equal(25, bonusOnlyTeam.ZeroDayScore);
+        Assert.Equal(25, bonusOnlyTeam.Score);
+    }
+
+    /// <summary>
+    /// Test 0day bonus creation uses structured severity and server-side game base score
+    /// </summary>
+    [Fact]
+    public async Task ScoreAdjustment_ShouldCalculate_ZeroDayBonusFromSeverity()
+    {
+        var game = await CreateGameWithBloodBonus("0day Severity Bonus Test", packBloods(1.0f, 1.0f, 1.0f));
+        var teams = await CreateMultipleTeams(1, "ZeroDaySeverityTeam");
+        await JoinGame(teams[0], game.Id);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var gameEntity = await context.Games.FindAsync(game.Id)
+                             ?? throw new InvalidOperationException("Game not found");
+            gameEntity.ZeroDayBaseScore = 2;
+            await context.SaveChangesAsync();
+        }
+
+        const string adminPassword = "Admin@ZeroDay123";
+        var admin = await TestDataSeeder.CreateUserAsync(
+            factory.Services,
+            TestDataSeeder.RandomName(),
+            adminPassword,
+            role: Role.Admin);
+
+        using var adminClient = factory.CreateClient();
+        using (var loginResponse = await adminClient.PostAsJsonAsync("/api/Account/LogIn",
+                   new LoginModel { UserName = admin.UserName, Password = adminPassword }))
+        {
+            loginResponse.EnsureSuccessStatusCode();
+        }
+
+        var createResponse = await adminClient.PostAsJsonAsync(
+            $"/api/admin/games/{game.Id}/score-adjustments",
+            new ScoreAdjustmentCreateModel
+            {
+                TeamId = teams[0].team.Id,
+                Delta = 999,
+                Reason = "CVE severity bonus",
+                Category = ScoreAdjustmentCategory.ZeroDayBonus,
+                ZeroDaySeverity = ZeroDaySeverity.Critical,
+                RelatedInfo = "CVE-2026-0001"
+            });
+
+        createResponse.EnsureSuccessStatusCode();
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScoreAdjustmentDtoResponse>(ScoreboardJsonOptions)
+                      ?? throw new InvalidOperationException("Missing score adjustment response");
+
+        Assert.Equal(200, created.Delta);
+        Assert.Equal("Critical", created.ZeroDaySeverity);
+        Assert.Equal("CVE-2026-0001", created.RelatedInfo);
+
+        var stats = await adminClient.GetFromJsonAsync<ZeroDayBonusStatsResponse>(
+            $"/api/admin/games/{game.Id}/score-adjustments/zeroday-stats",
+            ScoreboardJsonOptions);
+
+        Assert.NotNull(stats);
+        Assert.Equal(200, stats!.TotalScore);
+        Assert.Equal(1, stats.Critical);
+        Assert.Equal(0, stats.High);
+        Assert.Equal(0, stats.Medium);
+        Assert.Equal(0, stats.Low);
+
+        await FlushScoreboardCache(game.Id);
+
+        var scoreboard = await GetScoreboard(
+            teams[0].client,
+            game.Id,
+            expectedTeamIds: [teams[0].team.Id],
+            readiness: s => s.GetTeam(teams[0].team.Id).ZeroDayScore == 200);
+
+        var team = scoreboard.GetTeam(teams[0].team.Id);
+        Assert.Equal(200, team.ZeroDayScore);
+        Assert.Equal(200, team.Score);
+    }
+
+    /// <summary>
+    /// Test 0day bonus creation requires structured severity
+    /// </summary>
+    [Fact]
+    public async Task ScoreAdjustment_ShouldReject_ZeroDayBonusWithoutSeverity()
+    {
+        var game = await CreateGameWithBloodBonus("0day Severity Required Test", packBloods(1.0f, 1.0f, 1.0f));
+        var teams = await CreateMultipleTeams(1, "ZeroDayMissingSeverityTeam");
+        await JoinGame(teams[0], game.Id);
+
+        const string adminPassword = "Admin@ZeroDayMissing123";
+        var admin = await TestDataSeeder.CreateUserAsync(
+            factory.Services,
+            TestDataSeeder.RandomName(),
+            adminPassword,
+            role: Role.Admin);
+
+        using var adminClient = factory.CreateClient();
+        using (var loginResponse = await adminClient.PostAsJsonAsync("/api/Account/LogIn",
+                   new LoginModel { UserName = admin.UserName, Password = adminPassword }))
+        {
+            loginResponse.EnsureSuccessStatusCode();
+        }
+
+        var createResponse = await adminClient.PostAsJsonAsync(
+            $"/api/admin/games/{game.Id}/score-adjustments",
+            new ScoreAdjustmentCreateModel
+            {
+                TeamId = teams[0].team.Id,
+                Delta = 100,
+                Reason = "missing severity",
+                Category = ScoreAdjustmentCategory.ZeroDayBonus
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, createResponse.StatusCode);
+    }
+
 
     /// <summary>
     /// Test ScoreboardSheet download
@@ -913,8 +1063,9 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         var headerRow = sheet.GetRow(0);
 
         // Find the index where challenge columns start and where total score is
-        // Based on ExcelHelper: Rank, Team, [Division], Captain, Members, RealName, Email, StdNumber, Phone, SolvedCount, ScoringTime, TotalScore, [Challenges...]
+        // Based on ExcelHelper: Rank, Team, [Division], Captain, Members, RealName, Email, StdNumber, Phone, SolvedCount, ScoringTime, TotalScore, 0day得分, [Challenges...]
         var totalScoreColumnIndex = -1;
+        var zeroDayScoreColumnIndex = -1;
         var challengeStartColumnIndex = -1;
 
         // Count header cells to find structure
@@ -926,11 +1077,17 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             // The header contains "Total Score" or similar
             if (headerValue.Contains("Score") && i > 5) // Likely the summary score column
                 totalScoreColumnIndex = i;
+
+            if (headerValue == "0day得分")
+                zeroDayScoreColumnIndex = i;
         }
 
-        // If we found total score, challenges start after it
-        if (totalScoreColumnIndex >= 0)
-            challengeStartColumnIndex = totalScoreColumnIndex + 1;
+        Assert.True(zeroDayScoreColumnIndex > totalScoreColumnIndex,
+            "Scoreboard Excel should contain 0day得分 after total score");
+
+        // If we found 0day score, challenges start after it
+        if (zeroDayScoreColumnIndex >= 0)
+            challengeStartColumnIndex = zeroDayScoreColumnIndex + 1;
 
         // Process data rows (starting from row 1)
         for (var row = 1; row < sheet.PhysicalNumberOfRows; row++)
@@ -1217,7 +1374,6 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             Type = ChallengeType.StaticAttachment,
             Hints = [],
             IsEnabled = true,
-            SubmissionLimit = 0,
             OriginalScore = score,
             MinScoreRate = 1.0, // Static scoring by default
             Difficulty = 1,
@@ -1256,7 +1412,6 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             Type = ChallengeType.StaticAttachment,
             Hints = [],
             IsEnabled = true,
-            SubmissionLimit = 0,
             OriginalScore = originalScore,
             MinScoreRate = minScoreRate,
             Difficulty = difficulty,
@@ -1411,6 +1566,31 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         await cacheHelper.FlushScoreboardCache(gameId, CancellationToken.None);
     }
 
+    private async Task AddScoreAdjustment(
+        int gameId,
+        int teamId,
+        Guid operatorId,
+        int delta,
+        ScoreAdjustmentCategory category)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        context.ScoreAdjustments.Add(new ScoreAdjustment
+        {
+            GameId = gameId,
+            TeamId = teamId,
+            OperatorId = operatorId,
+            Delta = delta,
+            Reason = "integration test adjustment",
+            Category = category,
+            ZeroDaySeverity = category == ScoreAdjustmentCategory.ZeroDayBonus ? ZeroDaySeverity.Critical : null,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+    }
+
     private async Task<ScoreboardSnapshot> GetScoreboard(
         HttpClient client,
         int gameId,
@@ -1546,6 +1726,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         int Id,
         string Name,
         int Score,
+        int ZeroDayScore,
         int Rank,
         int? DivisionId,
         int? DivisionRank,
@@ -1563,6 +1744,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
                 item.Id,
                 item.Name,
                 item.Score,
+                item.ZeroDayScore,
                 item.Rank,
                 item.DivisionId,
                 item.DivisionRank,
@@ -1722,10 +1904,27 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         public int? DivisionId { get; set; }
         public string? Avatar { get; set; }
         public int Score { get; set; }
+        public int ZeroDayScore { get; set; }
         public int Rank { get; set; }
         public int? DivisionRank { get; set; }
         public long LastSubmissionTime { get; set; }
         public List<SolvedChallengeResponse>? SolvedChallenges { get; set; }
+    }
+
+    private sealed class ScoreAdjustmentDtoResponse
+    {
+        public int Delta { get; set; }
+        public string? ZeroDaySeverity { get; set; }
+        public string? RelatedInfo { get; set; }
+    }
+
+    private sealed class ZeroDayBonusStatsResponse
+    {
+        public int TotalScore { get; set; }
+        public int Critical { get; set; }
+        public int High { get; set; }
+        public int Medium { get; set; }
+        public int Low { get; set; }
     }
 
     private sealed class SolvedChallengeResponse

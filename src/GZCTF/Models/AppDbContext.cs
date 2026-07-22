@@ -47,7 +47,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
     public DbSet<TicketAttachment> TicketAttachments { get; set; } = null!;
     public DbSet<BigScreenEvent> BigScreenEvents { get; set; } = null!;
     public DbSet<CompetitionSetting> CompetitionSettings { get; set; } = null!;
-    public DbSet<ZeroDayTicket> ZeroDayTickets { get; set; } = null!;
     public DbSet<ScoreAdjustment> ScoreAdjustments { get; set; } = null!;
     public DbSet<ChallengeTrack> ChallengeTracks { get; set; } = null!;
     public DbSet<ChallengeLevelConfig> ChallengeLevelConfigs { get; set; } = null!;
@@ -96,6 +95,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
 
         builder.Entity<Game>(entity =>
         {
+            entity.Property(e => e.ZeroDayBaseScore)
+                .HasDefaultValue(1);
+
             entity.HasMany(e => e.GameEvents)
                 .WithOne(e => e.Game)
                 .HasForeignKey(e => e.GameId);
@@ -605,33 +607,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Property(e => e.Key).HasMaxLength(100);
         });
 
-        builder.Entity<ZeroDayTicket>(entity =>
-        {
-            entity.HasOne(e => e.Game)
-                .WithMany()
-                .HasForeignKey(e => e.GameId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.Challenge)
-                .WithMany()
-                .HasForeignKey(e => e.ChallengeId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            entity.HasOne(e => e.User)
-                .WithMany()
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Reviewer)
-                .WithMany()
-                .HasForeignKey(e => e.ReviewerId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            entity.Property(e => e.Status)
-                .HasConversion<string>()
-                .HasMaxLength(20);
-        });
-
         builder.Entity<ScoreAdjustment>(entity =>
         {
             entity.HasOne(e => e.Game)
@@ -653,6 +628,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.HasIndex(e => new { e.GameId, e.Category });
 
             entity.Property(e => e.Category)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.ZeroDaySeverity)
                 .HasConversion<string>()
                 .HasMaxLength(20);
         });

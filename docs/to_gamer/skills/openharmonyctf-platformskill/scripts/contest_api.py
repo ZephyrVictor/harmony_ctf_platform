@@ -290,7 +290,6 @@ def compact_details(payload: Any) -> dict[str, Any]:
         "challengeCount": payload.get("challengeCount"),
         "zeroDayNdayScoreRequirement": payload.get("zeroDayNdayScoreRequirement"),
         "ndayScore": payload.get("ndayScore"),
-        "canSubmitZeroDay": payload.get("canSubmitZeroDay"),
         "cooldownMinutes": payload.get("cooldownMinutes"),
         "challenges": challenges,
     }
@@ -447,24 +446,6 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("challenge_id", type=int)
     p.add_argument("submission_id", type=int)
 
-    p = sub.add_parser("zeroday-create")
-    p.add_argument("--game-id", type=int, required=True)
-    p.add_argument("--challenge-id", type=int)
-    p.add_argument("--title")
-    p.add_argument("--description", required=True)
-    p.add_argument("--severity", choices=["None", "Low", "Medium", "High", "Critical"], default="None")
-    p.add_argument("--module")
-    p.add_argument("--file-path")
-    p.add_argument("--line-number")
-    p.add_argument("--commit-hash")
-    p.add_argument("--cwe")
-    p.add_argument("--poc")
-
-    p = sub.add_parser("zeroday-mine")
-    p.add_argument("--game-id", type=int)
-    p.add_argument("--count", type=int, default=100)
-    p.add_argument("--skip", type=int, default=0)
-
     args = parser.parse_args(argv)
     require_base_url(args)
     api = ContestApi(args.base_url, args.cookie_jar, args.timeout)
@@ -524,23 +505,6 @@ def main(argv: list[str] | None = None) -> int:
             dump(result)
         elif args.command == "status":
             dump(api.get_json(f"/api/game/{args.game_id}/challenges/{args.challenge_id}/status/{args.submission_id}"))
-        elif args.command == "zeroday-create":
-            payload = {
-                "title": args.title,
-                "description": args.description,
-                "gameId": args.game_id,
-                "challengeId": args.challenge_id,
-                "severity": args.severity,
-                "module": args.module,
-                "filePath": args.file_path,
-                "lineNumber": args.line_number,
-                "commitHash": args.commit_hash,
-                "cwe": args.cwe,
-                "poC": args.poc,
-            }
-            dump(api.post_json("/api/ext/zeroday-tickets", payload))
-        elif args.command == "zeroday-mine":
-            dump(api.get_json("/api/ext/zeroday-tickets/mine", gameId=args.game_id, count=args.count, skip=args.skip))
         else:  # pragma: no cover - argparse enforces command
             raise ApiError(f"Unhandled command {args.command}")
     except (ApiError, requests.RequestException, ValueError) as exc:

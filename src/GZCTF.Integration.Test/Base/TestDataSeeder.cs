@@ -257,7 +257,6 @@ public static class TestDataSeeder
             Type = ChallengeType.StaticAttachment,
             Hints = [],
             IsEnabled = true,
-            SubmissionLimit = 0,
             OriginalScore = originalScore,
             MinScoreRate = 0.8,
             Difficulty = 5,

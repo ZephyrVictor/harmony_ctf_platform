@@ -10,6 +10,7 @@ public class ExcelHelper(IStringLocalizer<Program> localizer)
     private const string Empty = "<empty>";
     private const string Split = " / ";
     private const string Ignore = "-";
+    private const string ZeroDayScoreHeader = "0day得分";
 
     private readonly string[] _commonScoreboardHeader =
     [
@@ -23,7 +24,8 @@ public class ExcelHelper(IStringLocalizer<Program> localizer)
         localizer[nameof(Resources.Program.Header_PhoneNumber)],
         localizer[nameof(Resources.Program.Header_SolvedNumber)],
         localizer[nameof(Resources.Program.Header_ScoringTime)],
-        localizer[nameof(Resources.Program.Header_TotalScore)]
+        localizer[nameof(Resources.Program.Header_TotalScore)],
+        ZeroDayScoreHeader
     ];
 
     private readonly string[] _commonSubmissionHeader =
@@ -190,6 +192,7 @@ public class ExcelHelper(IStringLocalizer<Program> localizer)
             row.CreateCell(colIndex++).SetCellValue(item.SolvedCount);
             row.CreateCell(colIndex++).SetCellValue(item.LastSubmissionTime.ToString("u"));
             row.CreateCell(colIndex++).SetCellValue(item.Score);
+            row.CreateCell(colIndex++).SetCellValue(item.ZeroDayScore);
 
             foreach (var challId in challIds)
             {

@@ -19,6 +19,9 @@ public class ScoreAdjustmentCreateModel
     /// <summary>类别：Manual 手动调分 / ZeroDayBonus 0day 加分</summary>
     public ScoreAdjustmentCategory Category { get; set; } = ScoreAdjustmentCategory.Manual;
 
-    /// <summary>附加信息（0day 用：CVE 编号 + 级别等）</summary>
+    /// <summary>0day 加分级别。ZeroDayBonus 必填；后端按比赛配置计算分值</summary>
+    public ZeroDaySeverity? ZeroDaySeverity { get; set; }
+
+    /// <summary>附加信息（0day 用：CVE 编号等）</summary>
     public string? RelatedInfo { get; set; }
 }

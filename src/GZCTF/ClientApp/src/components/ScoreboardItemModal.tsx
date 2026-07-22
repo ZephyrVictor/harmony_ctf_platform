@@ -172,6 +172,14 @@ export const ScoreboardItemModal: FC<ScoreboardItemModalProps> = (props) => {
             </Stack>
             <Stack gap={2}>
               <Text fw="bold" size="sm" ff="monospace">
+                {item?.zeroDayScore ?? 0}
+              </Text>
+              <Text size="xs" fw={500}>
+                {t('game.label.score_table.zero_day_score', { defaultValue: '0day得分' })}
+              </Text>
+            </Stack>
+            <Stack gap={2}>
+              <Text fw="bold" size="sm" ff="monospace">
                 {item?.solvedCount}
               </Text>
               <Text size="xs" fw={500}>

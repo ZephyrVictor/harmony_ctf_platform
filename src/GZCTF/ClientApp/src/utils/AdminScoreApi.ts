@@ -10,9 +10,20 @@ export interface ScoreAdjustmentDto {
   delta: number
   reason: string
   category: 'Manual' | 'ZeroDayBonus'
+  zeroDaySeverity: ZeroDaySeverity | null
   relatedInfo: string | null
   operatorId: string
   createdAt: string
+}
+
+export type ZeroDaySeverity = 'Critical' | 'High' | 'Medium' | 'Low'
+
+export interface ZeroDayBonusStats {
+  totalScore: number
+  critical: number
+  high: number
+  medium: number
+  low: number
 }
 
 export interface TeamSearchResult {
@@ -22,6 +33,7 @@ export interface TeamSearchResult {
   members: string[]
   ndayScore: number
   zeroDayNdayScoreRequirement: number
+  zeroDayBaseScore: number
   canReceiveZeroDayBonus: boolean
 }
 
@@ -36,6 +48,7 @@ export interface ScoreAdjustmentCreateModel {
   delta: number
   reason: string
   category: 'Manual' | 'ZeroDayBonus'
+  zeroDaySeverity?: ZeroDaySeverity | null
   relatedInfo?: string | null
 }
 
@@ -76,6 +89,9 @@ export const listScoreAdjustments = (
     `/games/${gameId}/score-adjustments?${search}`
   )
 }
+
+export const getZeroDayBonusStats = (gameId: number) =>
+  request<ZeroDayBonusStats>(`/games/${gameId}/score-adjustments/zeroday-stats`)
 
 export const searchTeams = (gameId: number, q: string) => {
   const search = new URLSearchParams({ q })

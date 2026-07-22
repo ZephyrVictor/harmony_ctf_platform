@@ -1,5 +1,5 @@
 {
-  "runId": "2026-07-14T12-06-43-089Z",
+  "runId": "2026-07-15T13-31-04-081Z",
   "baseUrl": "http://127.0.0.1:63000",
   "backendUrl": "http://127.0.0.1:8080",
   "screenshots": [
@@ -23,20 +23,20 @@
     "docs/e2e-contest-flow/screenshots/12-monitor-submissions.png"
   ],
   "traces": [
-    "docs/e2e-contest-flow/traces/2026-07-14T12-06-43-089Z-admin.zip",
-    "docs/e2e-contest-flow/traces/2026-07-14T12-06-43-089Z-player.zip"
+    "docs/e2e-contest-flow/traces/2026-07-15T13-31-04-081Z-admin.zip",
+    "docs/e2e-contest-flow/traces/2026-07-15T13-31-04-081Z-player.zip"
   ],
   "apiChecks": [
     {
       "answer": "ecmascript/builtins/builtins_arraybuffer.cpp:552",
       "level": 1,
       "response": {
-        "id": 8,
+        "id": 126,
         "message": "Accepted",
-        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "trackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "level": 1,
         "solvedCount": 0,
-        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "activeTrackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -50,14 +50,14 @@
     {
       "answer": "af0534741d9990427700aa4c43f2080b42c0a93f",
       "level": 2,
-      "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+      "trackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
       "response": {
-        "id": 9,
+        "id": 127,
         "message": "Accepted",
-        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "trackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "level": 2,
         "solvedCount": 0,
-        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "activeTrackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -72,12 +72,12 @@
       "answer": "ecmascript/builtins/builtins.cpp:286",
       "level": 1,
       "response": {
-        "id": 10,
+        "id": 128,
         "message": "Accepted",
-        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "level": 1,
         "solvedCount": 0,
-        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "activeTrackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -92,12 +92,12 @@
       "answer": "ecmascript/builtins/builtins_arraybuffer.cpp:552",
       "level": 1,
       "response": {
-        "id": 11,
+        "id": 129,
         "message": "该级别已提交过，请继续提交下一 Level",
-        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "trackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "level": 1,
         "solvedCount": 0,
-        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "activeTrackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -111,14 +111,14 @@
     {
       "answer": "CWE-476",
       "level": 3,
-      "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+      "trackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
       "response": {
-        "id": 12,
+        "id": 130,
         "message": "Accepted",
-        "trackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "trackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "level": 3,
         "solvedCount": 1,
-        "activeTrackId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
+        "activeTrackId": "1ad3b094-3653-496f-8820-19920eb00cfe",
         "isTrackComplete": true,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -132,14 +132,14 @@
     {
       "answer": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
       "level": 2,
-      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+      "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
       "response": {
-        "id": 13,
+        "id": 131,
         "message": "Wrong answer",
-        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "level": 2,
         "solvedCount": 1,
-        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "activeTrackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -158,18 +158,18 @@
     {
       "answer": "hash(0)",
       "level": 2,
-      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+      "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
       "response": {
-        "id": 14,
+        "id": 132,
         "message": "该 Track 的当前 Level 已被封禁，请联系管理员",
-        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "level": 2,
         "solvedCount": 1,
-        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "activeTrackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
-        "bannedTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "bannedTrackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "bannedLevel": 2,
         "triggerAnswer": "hash(0)",
         "cooldown": {
@@ -184,14 +184,14 @@
     {
       "answer": "CWE-787",
       "level": 3,
-      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+      "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
       "response": {
-        "id": 15,
+        "id": 133,
         "message": "请先提交上一 Level",
-        "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "level": 3,
         "solvedCount": 1,
-        "activeTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "activeTrackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
@@ -205,9 +205,9 @@
     {
       "answer": "0",
       "level": 2,
-      "trackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+      "trackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
       "response": {
-        "id": 16,
+        "id": 134,
         "message": "该 Track 的当前 Level 已被封禁，请联系管理员",
         "trackId": null,
         "level": null,
@@ -216,7 +216,7 @@
         "isTrackComplete": false,
         "challengeLocked": false,
         "unlocksAt": null,
-        "bannedTrackId": "c3761d6a-7545-4c62-93a1-00152cb492a5",
+        "bannedTrackId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8",
         "bannedLevel": 2,
         "triggerAnswer": "0",
         "cooldown": null
@@ -224,10 +224,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-0-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-0-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 17,
+        "id": 135,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -249,10 +249,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-1-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-1-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 18,
+        "id": 136,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -274,10 +274,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-2-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-2-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 19,
+        "id": 137,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -299,10 +299,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-3-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-3-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 20,
+        "id": 138,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -324,10 +324,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-4-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-4-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 21,
+        "id": 139,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -349,10 +349,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-5-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-5-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 22,
+        "id": 140,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -374,10 +374,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-6-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-6-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 23,
+        "id": 141,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -399,10 +399,10 @@
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-7-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-7-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 24,
+        "id": 142,
         "message": "Wrong answer",
         "trackId": null,
         "level": 1,
@@ -418,16 +418,16 @@
           "wrongCount": 0,
           "wrongAnswerLimit": 10,
           "cooldownMinutes": 5,
-          "cooldownUntil": 1784031133004
+          "cooldownUntil": 1784122594276
         }
       },
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-8-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-8-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 25,
+        "id": 143,
         "message": "题目冷却中，剩 04:59",
         "trackId": null,
         "level": null,
@@ -443,16 +443,16 @@
           "wrongCount": 0,
           "wrongAnswerLimit": 10,
           "cooldownMinutes": 5,
-          "cooldownUntil": 1784031133004
+          "cooldownUntil": 1784122594276
         }
       },
       "status": "WrongAnswer"
     },
     {
-      "answer": "wrong-during-cooldown-2026-07-14T12-06-43-089Z",
+      "answer": "wrong-during-cooldown-2026-07-15T13-31-04-081Z",
       "level": 1,
       "response": {
-        "id": 26,
+        "id": 144,
         "message": "题目冷却中，剩 04:59",
         "trackId": null,
         "level": null,
@@ -468,7 +468,7 @@
           "wrongCount": 0,
           "wrongAnswerLimit": 10,
           "cooldownMinutes": 5,
-          "cooldownUntil": 1784031133004
+          "cooldownUntil": 1784122594276
         }
       },
       "status": "WrongAnswer"
@@ -487,10 +487,10 @@
   ],
   "bugs": [],
   "entities": {
-    "gameId": 2,
-    "challengeId": 2,
-    "teamId": 2,
-    "trackNormalId": "e1580fbd-3e66-4dcf-b3d1-771d3b4a7e4c",
-    "trackTrapId": "c3761d6a-7545-4c62-93a1-00152cb492a5"
+    "gameId": 15,
+    "challengeId": 14,
+    "teamId": 14,
+    "trackNormalId": "1ad3b094-3653-496f-8820-19920eb00cfe",
+    "trackTrapId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8"
   }
 }

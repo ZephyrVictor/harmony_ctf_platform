@@ -21,9 +21,6 @@ const ZeroDayInfo: FC = () => {
   const { data: detail } = api.game.useGameChallengesWithTeamInfo(numId, {
     revalidateOnFocus: false,
   })
-  const ndayScore = detail?.ndayScore ?? 0
-  const zeroDayGate = detail?.zeroDayNdayScoreRequirement ?? 200
-  const canSubmitZeroDay = detail?.canSubmitZeroDay ?? (zeroDayGate <= 0 || ndayScore >= zeroDayGate)
 
   const renderedMarkdown = useMemo(() => {
     const md = detail?.zeroDayInfoMarkdown ?? ''
@@ -58,15 +55,7 @@ const ZeroDayInfo: FC = () => {
                 </Group>
               </Group>
 
-              {!canSubmitZeroDay ? (
-                <Alert color="yellow" icon={<Icon path={mdiAlertCircleOutline} size={1} />}>
-                  {t('game.content.zeroday.gate', {
-                    current: ndayScore,
-                    required: zeroDayGate,
-                    defaultValue: `0day submission requires ${zeroDayGate} Nday points. Current Nday score: ${ndayScore}.`,
-                  })}
-                </Alert>
-              ) : renderedMarkdown ? (
+              {renderedMarkdown ? (
                 <Markdown source={renderedMarkdown} />
               ) : (
                 <Alert color="yellow" icon={<Icon path={mdiAlertCircleOutline} size={1} />}>

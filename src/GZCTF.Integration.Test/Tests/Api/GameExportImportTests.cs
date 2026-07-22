@@ -431,7 +431,6 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Type = ChallengeType.StaticAttachment,
             Hints = ["The offset is a prime number", "ROT13 is your friend"],
             IsEnabled = true,
-            SubmissionLimit = 0,
             OriginalScore = 1000,
             MinScoreRate = 0.5,
             Difficulty = 3
@@ -456,7 +455,6 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Type = ChallengeType.StaticContainer,
             Hints = ["Check the login form", "UNION SELECT is powerful"],
             IsEnabled = true,
-            SubmissionLimit = 10,
             OriginalScore = 1500,
             MinScoreRate = 0.7,
             Difficulty = 5,
@@ -486,7 +484,6 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Type = ChallengeType.DynamicContainer,
             Hints = ["Check the stack carefully", "NX is disabled"],
             IsEnabled = true,
-            SubmissionLimit = 50,
             OriginalScore = 2000,
             MinScoreRate = 0.8,
             Difficulty = 8,
@@ -510,7 +507,6 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Type = ChallengeType.StaticAttachment,
             Hints = ["Start with strings", "Check the resources", "Don't forget the encryption key"],
             IsEnabled = true,
-            SubmissionLimit = 0,
             OriginalScore = 1200,
             MinScoreRate = 0.6,
             Difficulty = 6

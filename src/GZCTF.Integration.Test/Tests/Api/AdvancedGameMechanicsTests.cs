@@ -25,7 +25,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
     /// <summary>
     /// Test that submission limit prevents submissions after limit is reached
     /// </summary>
-    [Fact]
+    [Fact(Skip = "SubmissionLimit was removed and replaced by cooldown mechanics.")]
     public async Task ChallengeSubmissionLimit_ShouldPreventExcessiveSubmissions()
     {
         var password = "Limit@Test123";
@@ -52,7 +52,6 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 Type = ChallengeType.StaticAttachment,
                 Hints = new List<string>(),
                 IsEnabled = true,
-                SubmissionLimit = 3, // Limit to 3 submissions
                 OriginalScore = 100,
                 MinScoreRate = 0.5,
                 Difficulty = 2,
@@ -133,7 +132,6 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 Type = ChallengeType.StaticAttachment,
                 Hints = new List<string>(),
                 IsEnabled = true,
-                SubmissionLimit = 0, // No submission limit
                 DeadlineUtc = DateTimeOffset.UtcNow.AddMinutes(-5), // Deadline 5 minutes ago
                 OriginalScore = 100,
                 MinScoreRate = 0.5,
@@ -377,7 +375,6 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 Type = ChallengeType.StaticAttachment,
                 Hints = new List<string>(),
                 IsEnabled = true,
-                SubmissionLimit = 0,
                 OriginalScore = 200,
                 MinScoreRate = 0.5,
                 Difficulty = 2,
@@ -467,7 +464,6 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 Type = ChallengeType.StaticAttachment,
                 Hints = [],
                 IsEnabled = true,
-                SubmissionLimit = 0,
                 OriginalScore = 100, // Initial score
                 MinScoreRate = 0.5,
                 Difficulty = 2,
@@ -567,7 +563,6 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 Type = ChallengeType.StaticAttachment,
                 Hints = new List<string>(),
                 IsEnabled = true,
-                SubmissionLimit = 0,
                 OriginalScore = 150,
                 MinScoreRate = 0.5,
                 Difficulty = 2,

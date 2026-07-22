@@ -325,7 +325,6 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
             Type = ChallengeType.StaticAttachment,
             Hints = [],
             IsEnabled = true,
-            SubmissionLimit = 0,
             OriginalScore = 1000,
             MinScoreRate = 0.8,
             Difficulty = 5,

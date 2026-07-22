@@ -25,7 +25,8 @@ import modalClasses from '@Styles/ScoreboardItemModal.module.css'
 import tableClasses from '@Styles/Table.module.css'
 
 export const MobileScoreboardItemModal: FC<ScoreboardItemModalProps> = React.memo((props) => {
-  const { item, scoreboard, divisionMap, ...modalProps } = props
+  const { item, scoreboard, divisionMap, bloodBonusMap, ...modalProps } = props
+  void bloodBonusMap
   const { t } = useTranslation()
   const { locale } = useLanguage()
 
@@ -127,6 +128,12 @@ export const MobileScoreboardItemModal: FC<ScoreboardItemModalProps> = React.mem
                 {item?.score}
               </Text>
               <Text size="xs">{t('game.label.score_table.score')}</Text>
+            </Stack>
+            <Stack gap={1}>
+              <Text fw="bold" size="sm" ff="monospace">
+                {item?.zeroDayScore ?? 0}
+              </Text>
+              <Text size="xs">{t('game.label.score_table.zero_day_score', { defaultValue: '0day得分' })}</Text>
             </Stack>
             <Stack gap={1}>
               <Text fw="bold" size="sm" ff="monospace">

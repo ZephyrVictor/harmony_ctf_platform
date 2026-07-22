@@ -40,7 +40,7 @@ import { ChallengeInfo, ChallengeCategory, ScoreboardItem, SubmissionType } from
 import misc from '@Styles/Misc.module.css'
 import classes from '@Styles/ScoreboardTable.module.css'
 
-const Widths = [60, 60, 175, 60, 70, 60]
+const Widths = [60, 60, 175, 60, 70, 80]
 const Lefts = Widths.reduce(
   (acc, cur) => {
     acc.push(acc[acc.length - 1] + cur)
@@ -55,7 +55,7 @@ const TableHeader = React.memo((table: Record<string, ChallengeInfo[]>) => {
   const { t } = useTranslation()
   const challengeCategoryLabelMap = useChallengeCategoryLabelMap()
 
-  const hiddenCol = [...Array(5).keys()].map((i) => (
+  const hiddenCol = [...Array(6).keys()].map((i) => (
     <Table.Th
       key={i}
       className={classes.left}
@@ -111,6 +111,7 @@ const TableHeader = React.memo((table: Record<string, ChallengeInfo[]>) => {
           t('common.label.team'),
           t('game.label.score_table.solved_count'),
           t('game.label.score_table.score_total'),
+          t('game.label.score_table.zero_day_score', { defaultValue: '0day得分' }),
         ].map((header, idx) => (
           <Table.Th key={idx} className={cx(classes.left, classes.header)} style={{ left: Lefts[idx] }}>
             {header}
@@ -195,6 +196,9 @@ const TableRow: FC<{
       </Table.Td>
       <Table.Td className={cx(classes.mono, classes.left)} style={{ left: Lefts[4] }}>
         {item.score}
+      </Table.Td>
+      <Table.Td className={cx(classes.mono, classes.left)} style={{ left: Lefts[5] }}>
+        {item.zeroDayScore ?? 0}
       </Table.Td>
       {challenges &&
         Object.keys(challenges).map((key) =>

@@ -658,6 +658,7 @@ public class GameRepository(
         {
             if (adjustmentsByTeam.TryGetValue(item.Id, out var delta))
             {
+                item.ZeroDayScore = delta;
                 item.Score += delta;
             }
         }

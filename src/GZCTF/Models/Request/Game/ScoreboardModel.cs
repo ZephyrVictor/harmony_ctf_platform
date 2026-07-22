@@ -220,6 +220,12 @@ public partial class ScoreboardItem
     public int Score { get; set; }
 
     /// <summary>
+    /// Score adjustment total displayed as 0day score
+    /// </summary>
+    [Required]
+    public int ZeroDayScore { get; set; }
+
+    /// <summary>
     /// Rank
     /// </summary>
     [Required]

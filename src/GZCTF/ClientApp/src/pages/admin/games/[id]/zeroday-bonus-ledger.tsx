@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { showErrorMsg } from '@Utils/Shared'
-import { listScoreAdjustments, ScoreAdjustmentDto } from '@Utils/AdminScoreApi'
+import {
+  getZeroDayBonusStats, listScoreAdjustments, ScoreAdjustmentDto, ZeroDaySeverity,
+} from '@Utils/AdminScoreApi'
 
 interface Stats {
   totalScore: number
@@ -34,21 +36,7 @@ const ZeroDayBonusLedger: FC = () => {
       })
       setItems(res.data)
       setTotal(res.total)
-
-      // 加载全部统计（最多 1000 条）
-      const all = await listScoreAdjustments(gameId, {
-        page: 1, pageSize: 1000, category: 'ZeroDayBonus',
-      })
-      const s: Stats = { totalScore: 0, critical: 0, high: 0, medium: 0, low: 0 }
-      all.data.forEach((a) => {
-        s.totalScore += a.delta
-        const info = a.relatedInfo ?? ''
-        if (info.includes('Critical')) s.critical++
-        else if (info.includes('High')) s.high++
-        else if (info.includes('Medium')) s.medium++
-        else if (info.includes('Low')) s.low++
-      })
-      setStats(s)
+      setStats(await getZeroDayBonusStats(gameId))
     } catch (e) {
       showErrorMsg(e, t)
     } finally {
@@ -64,6 +52,19 @@ const ZeroDayBonusLedger: FC = () => {
       <Text size="xl" fw={700} c={color}>{value}</Text>
     </Card>
   )
+
+  const severityColor = (severity: ZeroDaySeverity) => {
+    switch (severity) {
+      case 'Critical':
+        return 'red'
+      case 'High':
+        return 'orange'
+      case 'Medium':
+        return 'yellow'
+      case 'Low':
+        return 'blue'
+    }
+  }
 
   return (
     <WithGameEditTab>
@@ -100,9 +101,16 @@ const ZeroDayBonusLedger: FC = () => {
                 <Table.Td><Code>#{a.teamId}</Code></Table.Td>
                 <Table.Td><Text c="green" fw={700}>+{a.delta}</Text></Table.Td>
                 <Table.Td>
-                  {(a.relatedInfo ?? '').split(/[,;]/).map((s, i) => s.trim()).filter(Boolean).map((s, i) => (
-                    <Badge key={i} size="sm" variant="light" mr={4}>{s}</Badge>
-                  ))}
+                  <Group gap={4}>
+                    {a.zeroDaySeverity && (
+                      <Badge size="sm" variant="light" color={severityColor(a.zeroDaySeverity)}>
+                        {a.zeroDaySeverity}
+                      </Badge>
+                    )}
+                    {(a.relatedInfo ?? '').split(/[,;]/).map((s) => s.trim()).filter(Boolean).map((s) => (
+                      <Badge key={s} size="sm" variant="light">{s}</Badge>
+                    ))}
+                  </Group>
                 </Table.Td>
                 <Table.Td>{a.reason}</Table.Td>
               </Table.Tr>

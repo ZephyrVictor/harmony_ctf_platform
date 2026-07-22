@@ -314,16 +314,16 @@
           "description": "Enable writeup submission",
           "label": "Writeup Required"
         },
-        "zeroday_info_markdown": "0day Submission Info (Markdown)",
-        "zeroday_info_markdown_desc": "Displayed in the in-game 0day Submission tab. Supports placeholders {{teamToken}}, {{teamName}}",
+        "zeroday_info_markdown": "0day Info (Markdown)",
+        "zeroday_info_markdown_desc": "Displayed in the in-game 0day info tab. Supports placeholders {{teamToken}}, {{teamName}}",
         "zeroday_base_score": {
           "label": "0day Bonus Base Score",
           "desc": "0day bonus = base × severity multiplier (Critical×100 / High×60 / Medium×30 / Low×10)",
           "hint": "e.g. base=1: Critical gives 100 pts; base=2: Critical gives 200 pts"
         },
         "zeroday_nday_score_requirement": {
-          "label": "0day Nday Score Gate",
-          "desc": "Teams can submit 0day tickets only after reaching this Nday level-score threshold. Set 0 to disable the gate"
+          "label": "0day Bonus Nday Score Reference Gate",
+          "desc": "Reference Nday level-score threshold for admins before awarding 0day bonus. Set 0 to disable the warning"
         }
       },
       "notices": {
@@ -367,9 +367,6 @@
     "markdown_inline_support": "Styling with inline Markdown is supported",
     "markdown_support": "Styling with Markdown is supported",
     "nothing_found": "Nothing found",
-    "zeroday": {
-      "empty": "No 0day tickets yet"
-    },
     "settings": {
       "account": {
         "allow_register": {
@@ -495,25 +492,10 @@
   "notification": {
     "games": {
       "challenges": {
-        "attachment": {
-          "no_selected": "Please select at least one file",
-          "updated": "Attachment updated"
-        },
-        "created": "Challenge created",
-        "deleted": "Challenge deleted",
-        "flag": {
-          "copied": "Flag copied to clipboard",
-          "created": "Flag created",
-          "deleted": "Flag deleted"
-        },
-        "flag_template": {
-          "updated": "Flag template updated"
-        },
-        "preview": {
-          "attachment_downloaded": "Pretend the attachment has been downloaded!",
-          "flag_submitted": "Flag submitted!"
-        },
-        "updated": "Challenge updated"
+        "tracks": {
+          "flags_required": "At least one level with flag value is required",
+          "created_full": "Track and flags created successfully"
+        }
       },
       "created": "Game created",
       "divisions": {
@@ -527,8 +509,7 @@
         "exporting": "Exporting game..."
       },
       "import": {
-        "imported": "Game imported successfully",
-        "importing": "Importing game..."
+        "repo_submod_required": "Repository and Submodule columns are required"
       },
       "info": {
         "deleted": "Game deleted",
@@ -553,15 +534,6 @@
       },
       "participation": {
         "updated": "Team status has been updated"
-      },
-      "import": {
-        "repo_submod_required": "Repository and Submodule columns are required"
-      },
-      "challenges": {
-        "tracks": {
-          "flags_required": "At least one level with flag value is required",
-          "created_full": "Track and flags created successfully"
-        }
       }
     },
     "instances": {
@@ -753,11 +725,11 @@
       "tickets": "Tickets",
       "writeups": "Writeups",
       "import_flags": "Import Flags",
-      "zeroday_tickets": "0day Tickets",
       "score_adjustment": "Score Management",
       "score_ledger": "Score Ledger",
       "zeroday_bonus_ledger": "0day Bonus Ledger",
-      "bans": "Ban Management"
+      "bans": "Ban Management",
+      "team_progress": "Team Progress"
     },
     "instances": "Instances",
     "logs": "Logs",
@@ -904,15 +876,16 @@
     "severity": "Severity",
     "cve_id": "CVE ID / Related Info",
     "submit": "Submit",
+    "delta_calculated": "Calculated from game config: {{base}} × {{multiplier}}",
     "team": "Team",
     "no_results": "Search for a team",
     "adjust_success": "Score adjusted",
     "error_delta_zero": "Delta cannot be zero",
     "error_reason_required": "Reason is required",
-    "zeroday_gate_passed": "Gate met",
-    "zeroday_gate_unmet": "Gate unmet",
-    "zeroday_bonus_gate_warning": "This team has not reached the {{required}} Nday score gate. Current Nday score: {{current}}. According to the contest rules, 0day bonus should not be awarded; continue only if you intentionally override this.",
-    "zero_day_reason_placeholder": "e.g. 0day bonus - CVE-2024-XXXX - Critical"
+    "zeroday_gate_passed": "Reference met",
+    "zeroday_gate_unmet": "Reference unmet",
+    "zeroday_bonus_gate_warning": "This team has not reached the {{required}} Nday score reference gate. Current Nday score: {{current}}. Confirm before awarding 0day bonus; continue only if you intentionally override this.",
+    "zero_day_reason_placeholder": "e.g. 0day bonus - CVE-2024-XXXX"
   },
   "score_ledger": {
     "filter_category": "Category Filter",
@@ -960,5 +933,59 @@
     "no_bans": "No ban records",
     "no_alerts": "No rate limit alerts",
     "error_fields_required": "Please fill in all required fields"
+  },
+  "team_progress": {
+    "filters": {
+      "search": "Team Search",
+      "search_placeholder": "Team name / member / token search",
+      "status": "Review Status",
+      "all_status": "All statuses"
+    },
+    "status": {
+      "accepted": "Accepted",
+      "pending": "Pending",
+      "rejected": "Rejected",
+      "suspended": "Suspended",
+      "unsubmitted": "Unsubmitted"
+    },
+    "actions": {
+      "detail": "Details",
+      "refresh": "Refresh"
+    },
+    "columns": {
+      "team": "Team",
+      "status": "Status",
+      "members": "Members",
+      "submissions": "Submissions",
+      "result_breakdown": "AC / Wrong / Penalty",
+      "level_progress": "Level Progress",
+      "track_progress": "Track Completion",
+      "zeroday_count": "0day Accepted",
+      "zeroday_score": "0day Score",
+      "last_submission": "Last Submission",
+      "actions": "Actions"
+    },
+    "detail": {
+      "title": "Answer Details",
+      "progress": "Challenge Progress",
+      "submissions": "Submissions",
+      "zeroday": "0day Bonus",
+      "disabled": "Disabled",
+      "solved": "Solved",
+      "unsolved": "Unsolved",
+      "score": "Score",
+      "attempts": "Attempts",
+      "wrong": "Wrong",
+      "solved_at": "Solved At"
+    },
+    "submissions": {
+      "time": "Time",
+      "user": "User",
+      "challenge": "Challenge",
+      "answer": "Submitted Answer",
+      "status": "Result",
+      "score": "Score Change"
+    },
+    "empty": "No team progress data"
   }
 }

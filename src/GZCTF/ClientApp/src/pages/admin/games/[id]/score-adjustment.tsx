@@ -8,10 +8,12 @@ import { useParams } from 'react-router'
 import { WithGameEditTab } from '@Components/admin/WithGameEditTab'
 import { showErrorMsg, showSuccessMsg } from '@Utils/Shared'
 import {
-  createScoreAdjustment, searchTeams, TeamSearchResult,
+  createScoreAdjustment, searchTeams, TeamSearchResult, ZeroDaySeverity,
 } from '@Utils/AdminScoreApi'
 
-const SeverityMultipliers: Record<string, number> = {
+const SeverityOptions: ZeroDaySeverity[] = ['Critical', 'High', 'Medium', 'Low']
+
+const SeverityMultipliers: Record<ZeroDaySeverity, number> = {
   Critical: 100, High: 60, Medium: 30, Low: 10,
 }
 
@@ -31,8 +33,11 @@ const ScoreAdjustment: FC = () => {
   const [delta, setDelta] = useState(0)
   const [reason, setReason] = useState('')
   const [relatedInfo, setRelatedInfo] = useState('')
-  const [severity, setSeverity] = useState<string>('Critical')
+  const [severity, setSeverity] = useState<ZeroDaySeverity>('Critical')
   const [saving, setSaving] = useState(false)
+
+  const getZeroDayDelta = (team: TeamSearchResult | null, value: ZeroDaySeverity) =>
+    Math.max(1, team?.zeroDayBaseScore ?? 1) * SeverityMultipliers[value]
 
   const onSearch = useCallback(async () => {
     if (!query.trim()) return
@@ -58,7 +63,7 @@ const ScoreAdjustment: FC = () => {
   const openZeroDay = (team: TeamSearchResult) => {
     setSelectedTeam(team)
     setSeverity('Critical')
-    setDelta(100) // base=1, Critical=100
+    setDelta(getZeroDayDelta(team, 'Critical'))
     setReason('')
     setRelatedInfo('')
     setZeroDayOpen(true)
@@ -66,9 +71,9 @@ const ScoreAdjustment: FC = () => {
 
   const onSeverityChange = (v: string | null) => {
     if (!v) return
-    setSeverity(v)
-    const base = 1 // 默认 base，实际应从 game 配置取，初版写死
-    setDelta(base * (SeverityMultipliers[v] ?? 0))
+    const nextSeverity = v as ZeroDaySeverity
+    setSeverity(nextSeverity)
+    setDelta(getZeroDayDelta(selectedTeam, nextSeverity))
   }
 
   const submit = async (category: 'Manual' | 'ZeroDayBonus') => {
@@ -88,6 +93,7 @@ const ScoreAdjustment: FC = () => {
         delta,
         reason,
         category,
+        zeroDaySeverity: category === 'ZeroDayBonus' ? severity : null,
         relatedInfo: relatedInfo || null,
       })
       showSuccessMsg(t('admin.score.adjust_success'), t)
@@ -212,7 +218,7 @@ const ScoreAdjustment: FC = () => {
           )}
           <Select
             label={t('admin.score.severity')}
-            data={['Critical', 'High', 'Medium', 'Low']}
+            data={SeverityOptions}
             value={severity}
             onChange={onSeverityChange}
             required
@@ -220,14 +226,18 @@ const ScoreAdjustment: FC = () => {
           <NumberInput
             label={t('admin.score.delta')}
             value={delta}
-            onChange={(v) => setDelta(Number(v) || 0)}
+            description={t('admin.score.delta_calculated', {
+              base: selectedTeam?.zeroDayBaseScore ?? 1,
+              multiplier: SeverityMultipliers[severity],
+            })}
+            readOnly
             required
           />
           <TextInput
             label={t('admin.score.cve_id')}
             value={relatedInfo}
             onChange={(e) => setRelatedInfo(e.target.value)}
-            placeholder="CVE-2024-XXXX / Severity: Critical"
+            placeholder="CVE-2024-XXXX"
           />
           <Textarea
             label={t('admin.score.reason')}

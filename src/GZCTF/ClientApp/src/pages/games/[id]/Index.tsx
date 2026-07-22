@@ -209,13 +209,6 @@ const GameDetail: FC = () => {
           {t('game.button.challenges')}
         </Button>
       )}
-      {/* 0day 工单前端关闭（iter2），改用 WithGameTab 的 0day 提交说明 tab。
-          后端 ZeroDayTicketController 代码保留，便于将来恢复。 */}
-      {/* {status === ParticipationStatus.Accepted && started && (
-        <Button component={Link} to={`/games/${numId}/ZeroDayTickets`} variant="light">
-          {t('game.button.zeroday_tickets', { defaultValue: '0day Tickets' })}
-        </Button>
-      )} */}
     </>
   )
 

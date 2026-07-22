@@ -4,6 +4,7 @@ import {
   mdiBugCheckOutline,
   mdiBullhornOutline,
   mdiCashMultiple,
+  mdiChartBoxOutline,
   mdiClipboardListOutline,
   mdiDatabaseImportOutline,
   mdiFileDocumentCheckOutline,
@@ -51,11 +52,10 @@ export const WithGameEditTab: FC<GameEditTabProps> = ({
     { icon: mdiTagOutline, title: t('admin.tab.games.divisions'), path: 'divisions' },
     { icon: mdiAccountGroupOutline, title: t('admin.tab.games.review'), path: 'review' },
     { icon: mdiTicketOutline, title: t('admin.tab.games.tickets'), path: 'tickets' },
-    // 0day 工单审批暂时关闭（iter2），后端代码保留。将来恢复时取消注释。
-    // { icon: mdiBugCheckOutline, title: t('admin.tab.games.zeroday_tickets', { defaultValue: '0day Tickets' }), path: 'ZeroDayTickets' },
     { icon: mdiCashMultiple, title: t('admin.tab.games.score_adjustment', { defaultValue: '分数管理' }), path: 'score-adjustment' },
     { icon: mdiClipboardListOutline, title: t('admin.tab.games.score_ledger', { defaultValue: '调分记录' }), path: 'score-ledger' },
     { icon: mdiBugCheckOutline, title: t('admin.tab.games.zeroday_bonus_ledger', { defaultValue: '0day 加分记录' }), path: 'zeroday-bonus-ledger' },
+    { icon: mdiChartBoxOutline, title: t('admin.tab.games.team_progress', { defaultValue: '队伍答题统计' }), path: 'team-progress' },
     { icon: mdiGavel, title: t('admin.tab.games.bans', { defaultValue: '封禁管理' }), path: 'bans' },
     { icon: mdiFileDocumentCheckOutline, title: t('admin.tab.games.writeups'), path: 'writeups' },
   ]

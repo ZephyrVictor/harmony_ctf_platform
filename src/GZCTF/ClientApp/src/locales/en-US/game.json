@@ -20,9 +20,6 @@
     "writeup": {
       "upload": "Submit Writeup",
       "uploading": "Uploading..."
-    },
-    "zeroday": {
-      "submit": "Submit 0day Ticket"
     }
   },
   "content": {
@@ -147,42 +144,6 @@
       "title": "Writeup Management",
       "unsubmitted": "Not yet submitted",
       "unsubmitted_note": "Your team has not submitted yet"
-    },
-    "zeroday": {
-      "title": "0day Tickets",
-      "empty": "No 0day tickets yet",
-      "empty_hint": "Submit a 0day vulnerability you discovered during the competition",
-      "gate": "0day submission requires at least {{required}} Nday points. Current Nday score: {{current}}.",
-      "no_title": "Untitled",
-      "review": "Review",
-      "bonus": "Bonus",
-      "reviewed": "Reviewed",
-      "status": {
-        "pending": "Pending",
-        "approved": "Approved",
-        "rejected": "Rejected"
-      },
-      "severity": {
-        "none": "None",
-        "low": "Low",
-        "medium": "Medium",
-        "high": "High",
-        "critical": "Critical"
-      },
-      "modal": {
-        "title": "Submit 0day Ticket",
-        "title_field": "Title (optional)",
-        "description": "Description (required)",
-        "description_placeholder": "Describe the vulnerability location, trigger, and impact",
-        "challenge_id": "Challenge ID (optional, if tied to a specific challenge)",
-        "severity": "Severity (bonus tier: Critical N×100, High N×60, Medium N×30, Low N×10)",
-        "module": "Module (e.g. ecmascript/base)",
-        "file_path": "File path (L1 key, e.g. ecmascript/base/foo.cpp)",
-        "line_number": "Line number (e.g. c:1060, c:550-559, c:281、c:286)",
-        "commit_hash": "Commit hash (40-char hex fix commit)",
-        "cwe": "CWE (e.g. CWE-787, or CWE-125; CWE-787 for multiple)",
-        "poc": "PoC / evidence (optional)"
-      }
     }
   },
   "event": {
@@ -222,7 +183,8 @@
       "score_total": "Score",
       "solved_count": "Solved",
       "team": "Team",
-      "type": "Type"
+      "type": "Type",
+      "zero_day_score": "0day得分"
     },
     "traffic": "Traffic"
   },
@@ -257,10 +219,6 @@
     },
     "writeup": {
       "submitted": "Writeup was successfully submitted"
-    },
-    "zeroday": {
-      "description_required": "Description is required",
-      "submitted": "0day ticket submitted successfully"
     }
   },
   "participation": {
@@ -308,7 +266,7 @@
   "tab": {
     "challenge": "Challenges",
     "submissions": "Submissions",
-    "zeroday_info": "0day Submission",
+    "zeroday_info": "0day Info",
     "monitor": {
       "cheatinfo": "Cheats",
       "events": "Events",
@@ -320,7 +278,7 @@
   },
   "zeroday_info": {
     "title": "0day Vulnerability Submission Guide",
-    "empty": "Admin has not configured 0day submission info",
+    "empty": "Admin has not configured 0day info",
     "platform_label": "Submission Platform",
     "open_platform": "Go to Bugbounty Platform"
   },

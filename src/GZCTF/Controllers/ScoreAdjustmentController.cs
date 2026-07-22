@@ -27,6 +27,15 @@ public class ScoreAdjustmentController(
     IGameNoticeRepository gameNoticeRepository,
     ChallengeScoreService challengeScoreService) : ControllerBase
 {
+    private static readonly IReadOnlyDictionary<ZeroDaySeverity, int> ZeroDaySeverityMultipliers =
+        new Dictionary<ZeroDaySeverity, int>
+        {
+            [ZeroDaySeverity.Critical] = 100,
+            [ZeroDaySeverity.High] = 60,
+            [ZeroDaySeverity.Medium] = 30,
+            [ZeroDaySeverity.Low] = 10
+        };
+
     /// <summary>创建调分记录（手动或 0day 加分）</summary>
     [RequireAdmin]
     [HttpPost]
@@ -36,9 +45,6 @@ public class ScoreAdjustmentController(
         [FromBody] ScoreAdjustmentCreateModel model,
         CancellationToken token)
     {
-        if (model.Delta == 0)
-            return BadRequest(new RequestResponse("Delta cannot be zero"));
-
         if (string.IsNullOrWhiteSpace(model.Reason))
             return BadRequest(new RequestResponse("Reason is required"));
 
@@ -50,19 +56,40 @@ public class ScoreAdjustmentController(
         if (team is null)
             return NotFound(new RequestResponse("Team not found"));
 
+        var isParticipant = await context.Participations
+            .AnyAsync(p => p.GameId == gameId && p.TeamId == model.TeamId, token);
+        if (!isParticipant)
+            return BadRequest(new RequestResponse("Team is not participating in this game"));
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null)
             return Unauthorized(new RequestResponse("User not found"));
+
+        var delta = model.Delta;
+        ZeroDaySeverity? zeroDaySeverity = null;
+
+        if (model.Category == ScoreAdjustmentCategory.ZeroDayBonus)
+        {
+            if (model.ZeroDaySeverity is not { } severity)
+                return BadRequest(new RequestResponse("0day severity is required"));
+
+            zeroDaySeverity = severity;
+            delta = Math.Max(1, game.ZeroDayBaseScore) * ZeroDaySeverityMultipliers[severity];
+        }
+
+        if (delta == 0)
+            return BadRequest(new RequestResponse("Delta cannot be zero"));
 
         var adjustment = new ScoreAdjustment
         {
             Id = Guid.NewGuid(),
             GameId = gameId,
             TeamId = model.TeamId,
-            Delta = model.Delta,
+            Delta = delta,
             Reason = model.Reason,
             Category = model.Category,
-            RelatedInfo = model.RelatedInfo,
+            ZeroDaySeverity = zeroDaySeverity,
+            RelatedInfo = string.IsNullOrWhiteSpace(model.RelatedInfo) ? null : model.RelatedInfo.Trim(),
             OperatorId = Guid.Parse(userId),
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -78,7 +105,7 @@ public class ScoreAdjustmentController(
             Values = new List<string>
             {
                 team.Name,
-                model.Delta > 0 ? $"+{model.Delta}" : model.Delta.ToString(),
+                delta > 0 ? $"+{delta}" : delta.ToString(),
                 model.Reason,
                 userName
             },
@@ -97,7 +124,7 @@ public class ScoreAdjustmentController(
 
     /// <summary>获取单条调分记录</summary>
     [RequireAdmin]
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ScoreAdjustmentDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetById([FromRoute] int gameId, [FromRoute] Guid id, CancellationToken token)
     {
@@ -143,6 +170,7 @@ public class ScoreAdjustmentController(
                 Delta = a.Delta,
                 Reason = a.Reason,
                 Category = a.Category,
+                ZeroDaySeverity = a.ZeroDaySeverity,
                 RelatedInfo = a.RelatedInfo,
                 OperatorId = a.OperatorId,
                 CreatedAt = a.CreatedAt
@@ -150,6 +178,50 @@ public class ScoreAdjustmentController(
             .ToArrayAsync(token);
 
         return Ok(new ArrayResponse<ScoreAdjustmentDto>(items, total));
+    }
+
+    /// <summary>0day 加分统计</summary>
+    [RequireAdmin]
+    [HttpGet("zeroday-stats")]
+    [ProducesResponseType(typeof(ZeroDayBonusStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetZeroDayStats([FromRoute] int gameId, CancellationToken token)
+    {
+        var rows = await context.ScoreAdjustments
+            .AsNoTracking()
+            .Where(a => a.GameId == gameId && a.Category == ScoreAdjustmentCategory.ZeroDayBonus)
+            .GroupBy(a => a.ZeroDaySeverity)
+            .Select(g => new
+            {
+                Severity = g.Key,
+                Count = g.Count(),
+                TotalScore = g.Sum(a => a.Delta)
+            })
+            .ToArrayAsync(token);
+
+        var stats = new ZeroDayBonusStatsDto();
+
+        foreach (var row in rows)
+        {
+            stats.TotalScore += row.TotalScore;
+
+            switch (row.Severity)
+            {
+                case ZeroDaySeverity.Critical:
+                    stats.Critical = row.Count;
+                    break;
+                case ZeroDaySeverity.High:
+                    stats.High = row.Count;
+                    break;
+                case ZeroDaySeverity.Medium:
+                    stats.Medium = row.Count;
+                    break;
+                case ZeroDaySeverity.Low:
+                    stats.Low = row.Count;
+                    break;
+            }
+        }
+
+        return Ok(stats);
     }
 
     /// <summary>搜索队伍（队名/成员/Token 模糊搜）</summary>
@@ -191,8 +263,16 @@ public class ScoreAdjustmentController(
             .Take(20)
             .ToListAsync(token);
 
+        var zeroDayBaseScore = await context.Games
+            .Where(g => g.Id == gameId)
+            .Select(g => g.ZeroDayBaseScore)
+            .FirstOrDefaultAsync(token);
+        zeroDayBaseScore = Math.Max(1, zeroDayBaseScore);
+
         foreach (var team in teams)
         {
+            team.ZeroDayBaseScore = zeroDayBaseScore;
+
             var gate = await challengeScoreService.GetZeroDayGateStatusForTeam(gameId, team.TeamId, token);
             if (gate is null)
                 continue;
@@ -213,6 +293,7 @@ public class ScoreAdjustmentController(
         Delta = a.Delta,
         Reason = a.Reason,
         Category = a.Category,
+        ZeroDaySeverity = a.ZeroDaySeverity,
         RelatedInfo = a.RelatedInfo,
         OperatorId = a.OperatorId,
         CreatedAt = a.CreatedAt

@@ -39,7 +39,12 @@ public class ScoreAdjustment
     public ScoreAdjustmentCategory Category { get; set; } = ScoreAdjustmentCategory.Manual;
 
     /// <summary>
-    /// 0day 加分用：CVE 编号 + 级别等附加信息
+    /// 0day 加分级别，非 0day 记录为空
+    /// </summary>
+    public ZeroDaySeverity? ZeroDaySeverity { get; set; }
+
+    /// <summary>
+    /// 0day 加分用：CVE 编号等附加信息
     /// </summary>
     [MaxLength(256)]
     public string? RelatedInfo { get; set; }
@@ -59,4 +64,13 @@ public enum ScoreAdjustmentCategory
 {
     Manual,
     ZeroDayBonus
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ZeroDaySeverity
+{
+    Critical,
+    High,
+    Medium,
+    Low
 }

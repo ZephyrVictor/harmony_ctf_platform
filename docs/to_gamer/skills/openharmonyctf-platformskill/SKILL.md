@@ -1,6 +1,6 @@
 ---
 name: openharmonyctf-platformskill
-description: "Use when an agent needs to participate in the OpenHarmony CTF platform through backend APIs: authenticate as a player, list visible contests for user selection, create/join teams, join a selected game, inspect challenge state, submit Level 1/2/3 answers, poll submission status, handle duplicate/cooldown/ban responses, and create or list 0day tickets."
+description: "Use when an agent needs to participate in the OpenHarmony CTF platform through backend APIs: authenticate as a player, list visible contests for user selection, create/join teams, join a selected game, inspect challenge state, submit Level 1/2/3 answers, and poll submission status while handling duplicate/cooldown/ban responses."
 ---
 
 # OpenHarmonyCTF-PlatformSKill
@@ -31,7 +31,7 @@ Do not pick the contest silently.
 6. Show the contest IDs, titles, time state, and summaries to the user.
 7. Ask the user which contest to use.
 8. After contest selection, inspect game detail, teams, and join requirements.
-9. Ask before creating a team, accepting a team invite, joining a game, submitting an answer, or creating a 0day ticket.
+9. Ask before creating a team, accepting a team invite, joining a game, or submitting an answer.
 
 Keep credentials out of transcripts when possible. Prefer `--password-env HARMONY_CTF_PASSWORD` or interactive password input over `--password`.
 
@@ -132,9 +132,6 @@ python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py
 Important fields:
 
 - `challenges[]`: compact list of challenge `id`, `title`, `category`, `score`, `solved`, and `repository`.
-- `zeroDayNdayScoreRequirement`: Nday score required before 0day submission; `0` means disabled.
-- `ndayScore`: current positive Nday score.
-- `canSubmitZeroDay`: whether 0day ticket creation is currently allowed.
 - `cooldownMinutes`: per-game challenge cooldown duration.
 
 Inspect a challenge before every answer submission:
@@ -260,40 +257,9 @@ Cooldown behavior:
 - If `cooldown.cooldownUntil` is present and in the future, pause that challenge until the timestamp.
 - If `challengeLocked` is true, pause until `unlocksAt`.
 
-## 0day Tickets
+## 0day Handling
 
-Before creating a 0day ticket, run:
-
-```bash
-python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py details <gameId>
-```
-
-Only create a ticket if `canSubmitZeroDay` is true. If false, explain the current `ndayScore` and `zeroDayNdayScoreRequirement` to the user.
-
-Create a ticket only after user confirmation:
-
-```bash
-python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-create \
-  --game-id <gameId> \
-  --challenge-id <challengeId-if-known> \
-  --title '<short title>' \
-  --description '<required description>' \
-  --severity High \
-  --module '<module/submodule>' \
-  --file-path '<source file>' \
-  --line-number '<line-or-range>' \
-  --commit-hash '<commit-hash>' \
-  --cwe '<cwe-id>' \
-  --poc '<proof or reproduction notes>'
-```
-
-Severity must be one of `None`, `Low`, `Medium`, `High`, or `Critical`.
-
-List current user's tickets:
-
-```bash
-python3 docs/to_gamer/skills/openharmonyctf-platformskill/scripts/contest_api.py zeroday-mine --game-id <gameId>
-```
+The platform no longer exposes contestant-side 0day ticket APIs. Contestants should follow the event instructions shown in the 0day info tab; any 0day bonus is awarded manually by administrators through the score-management workflow.
 
 ## Manual API Reference
 
@@ -315,8 +281,6 @@ Use these endpoints if the script is unavailable:
 - `GET /api/game/{gameId}/challenges/{challengeId}`
 - `POST /api/game/{gameId}/challenges/{challengeId}`
 - `GET /api/game/{gameId}/challenges/{challengeId}/status/{submitId}`
-- `POST /api/ext/zeroday-tickets`
-- `GET /api/ext/zeroday-tickets/mine?gameId={gameId}`
 
 ## Agent Checklist
 
@@ -330,4 +294,3 @@ Use these endpoints if the script is unavailable:
 8. Before every answer, run `challenge` and verify level, track, cooldown, lock, and ban state.
 9. Ask before submitting any answer.
 10. Poll status after submission and preserve returned `trackId`.
-11. Ask before creating any 0day ticket; first verify the Nday score gate.

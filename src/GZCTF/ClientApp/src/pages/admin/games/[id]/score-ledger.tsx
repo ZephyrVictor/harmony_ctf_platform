@@ -89,7 +89,9 @@ const ScoreLedger: FC = () => {
                       : t('admin.score_ledger.manual')}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{a.relatedInfo ?? '-'}</Table.Td>
+                <Table.Td>
+                  {[a.zeroDaySeverity, a.relatedInfo].filter(Boolean).join(' / ') || '-'}
+                </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

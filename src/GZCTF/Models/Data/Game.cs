@@ -223,7 +223,7 @@ public partial class Game
         WriteupDeadline = model.WriteupDeadline;
         BloodBonus = BloodBonus.FromValue(model.BloodBonusValue);
         ZeroDayInfoMarkdown = model.ZeroDayInfoMarkdown;
-        ZeroDayBaseScore = model.ZeroDayBaseScore;
+        ZeroDayBaseScore = Math.Max(1, model.ZeroDayBaseScore);
         ZeroDayNdayScoreRequirement = model.ZeroDayNdayScoreRequirement;
         CooldownMinutes = model.CooldownMinutes;
 

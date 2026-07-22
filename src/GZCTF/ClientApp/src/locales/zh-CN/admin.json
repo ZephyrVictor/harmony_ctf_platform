@@ -314,16 +314,16 @@
           "description": "是否启用比赛的 Writeup 提交功能",
           "label": "需要 Writeup"
         },
-        "zeroday_info_markdown": "0day 提交说明（Markdown）",
-        "zeroday_info_markdown_desc": "显示在比赛中 0day 提交 tab 的文案，支持占位符 {{teamToken}}、{{teamName}}",
+        "zeroday_info_markdown": "0day 说明（Markdown）",
+        "zeroday_info_markdown_desc": "显示在比赛中 0day 说明 tab 的文案，支持占位符 {{teamToken}}、{{teamName}}",
         "zeroday_base_score": {
           "label": "0day 加分基础倍数",
           "desc": "0day 奖励 = 基础倍数 × 级别系数（Critical×100 / High×60 / Medium×30 / Low×10）",
           "hint": "例如 base=1：Critical 加 100 分；base=2：Critical 加 200 分"
         },
         "zeroday_nday_score_requirement": {
-          "label": "0day 提交 Nday 分数门槛",
-          "desc": "队伍 Nday Level 得分达到该值后才允许提交 0day 工单；0 表示不限制"
+          "label": "0day 加分 Nday 分数参考门槛",
+          "desc": "管理员发放 0day 加分前可参考的队伍 Nday Level 得分门槛；0 表示不提醒"
         }
       },
       "notices": {
@@ -367,9 +367,6 @@
     "markdown_inline_support": "支持 Inline Markdown 语法",
     "markdown_support": "支持 Markdown 语法",
     "nothing_found": "什么都没有找到",
-    "zeroday": {
-      "empty": "暂无 0day 工单"
-    },
     "settings": {
       "account": {
         "allow_register": {
@@ -495,25 +492,10 @@
   "notification": {
     "games": {
       "challenges": {
-        "attachment": {
-          "no_selected": "请选择至少一个文件",
-          "updated": "附件已更新"
-        },
-        "created": "题目已创建",
-        "deleted": "题目已删除",
-        "flag": {
-          "copied": "flag 已复制到剪贴板",
-          "created": "flag 已创建",
-          "deleted": "flag 已删除"
-        },
-        "flag_template": {
-          "updated": "flag 模板已更新"
-        },
-        "preview": {
-          "attachment_downloaded": "假装附件已经下载了！",
-          "flag_submitted": "flag 似乎被正确提交了！"
-        },
-        "updated": "题目已更新"
+        "tracks": {
+          "flags_required": "至少需要一级 flag 值",
+          "created_full": "漏洞及 flag 创建成功"
+        }
       },
       "created": "比赛已创建",
       "divisions": {
@@ -527,8 +509,7 @@
         "exporting": "正在导出比赛..."
       },
       "import": {
-        "imported": "比赛导入成功",
-        "importing": "正在导入比赛..."
+        "repo_submod_required": "必须选择所属仓库和子模块列"
       },
       "info": {
         "deleted": "比赛已删除",
@@ -553,15 +534,6 @@
       },
       "participation": {
         "updated": "队伍审核状态已更新"
-      },
-      "import": {
-        "repo_submod_required": "必须选择所属仓库和子模块列"
-      },
-      "challenges": {
-        "tracks": {
-          "flags_required": "至少需要一级 flag 值",
-          "created_full": "漏洞及 flag 创建成功"
-        }
       }
     },
     "instances": {
@@ -753,11 +725,11 @@
       "tickets": "工单审核",
       "writeups": "Writeups",
       "import_flags": "批量导入",
-      "zeroday_tickets": "0day 工单",
       "score_adjustment": "分数管理",
       "score_ledger": "调分记录",
       "zeroday_bonus_ledger": "0day 加分记录",
-      "bans": "封禁管理"
+      "bans": "封禁管理",
+      "team_progress": "队伍答题统计"
     },
     "instances": "实例管理",
     "logs": "系统日志",
@@ -904,15 +876,16 @@
     "severity": "级别",
     "cve_id": "CVE 编号 / 附加信息",
     "submit": "提交",
+    "delta_calculated": "按比赛配置自动计算：{{base}} × {{multiplier}}",
     "team": "队伍",
     "no_results": "请搜索队伍",
     "adjust_success": "调分成功",
     "error_delta_zero": "分值不能为 0",
     "error_reason_required": "理由不能为空",
-    "zeroday_gate_passed": "已达门槛",
-    "zeroday_gate_unmet": "未达门槛",
-    "zeroday_bonus_gate_warning": "当前队伍尚未达到 {{required}} 分 Nday 得分门槛，当前为 {{current}} 分。根据比赛规则，不应予以 0day 加分；如确需处理，可继续提交。",
-    "zero_day_reason_placeholder": "如：0day 奖励 - CVE-2024-XXXX - Critical"
+    "zeroday_gate_passed": "已达参考门槛",
+    "zeroday_gate_unmet": "未达参考门槛",
+    "zeroday_bonus_gate_warning": "当前队伍尚未达到 {{required}} 分 Nday 得分参考门槛，当前为 {{current}} 分。请确认后再发放 0day 加分；如确需处理，可继续提交。",
+    "zero_day_reason_placeholder": "如：0day 奖励 - CVE-2024-XXXX"
   },
   "score_ledger": {
     "filter_category": "类别过滤",
@@ -960,5 +933,59 @@
     "no_bans": "暂无封禁记录",
     "no_alerts": "暂无限流告警",
     "error_fields_required": "请填写所有必填字段"
+  },
+  "team_progress": {
+    "filters": {
+      "search": "队伍搜索",
+      "search_placeholder": "队名 / 成员 / Token 搜索",
+      "status": "审核状态",
+      "all_status": "全部状态"
+    },
+    "status": {
+      "accepted": "已通过",
+      "pending": "待审核",
+      "rejected": "已拒绝",
+      "suspended": "已暂停",
+      "unsubmitted": "未报名"
+    },
+    "actions": {
+      "detail": "查看详情",
+      "refresh": "刷新"
+    },
+    "columns": {
+      "team": "队伍",
+      "status": "状态",
+      "members": "成员",
+      "submissions": "提交次数",
+      "result_breakdown": "AC / Wrong / Penalty",
+      "level_progress": "Level 进度",
+      "track_progress": "Track 完成",
+      "zeroday_count": "0day 通过数",
+      "zeroday_score": "0day 加分",
+      "last_submission": "最后提交",
+      "actions": "操作"
+    },
+    "detail": {
+      "title": "答题详情",
+      "progress": "题目进度",
+      "submissions": "提交记录",
+      "zeroday": "0day 加分",
+      "disabled": "已禁用",
+      "solved": "已答对",
+      "unsolved": "未答对",
+      "score": "分值",
+      "attempts": "尝试",
+      "wrong": "错误",
+      "solved_at": "答对时间"
+    },
+    "submissions": {
+      "time": "时间",
+      "user": "用户",
+      "challenge": "题目",
+      "answer": "提交内容",
+      "status": "结果",
+      "score": "分数变化"
+    },
+    "empty": "暂无队伍统计"
   }
 }

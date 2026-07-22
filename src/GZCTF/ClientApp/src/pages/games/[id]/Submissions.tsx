@@ -174,7 +174,7 @@ const Submissions: FC = () => {
                                   <TicketAttachmentSummary attachments={ticket.attachments} />
                                 </Stack>
                             ) : r.isPenalty ? (
-                              // 申诉功能暂时关闭（iter2），改用 0day 工单流程。代码保留便于恢复。
+                              // 申诉功能暂时关闭（iter2），0day 分数统一由管理员调分。
                               // <Button
                               //   size="xs"
                               //   variant="light"

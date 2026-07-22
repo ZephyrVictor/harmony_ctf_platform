@@ -1,5 +1,5 @@
 {
-  "adminName": "admin_120643",
-  "playerName": "player_120643",
-  "dbUserSql": "UPDATE \"AspNetUsers\" SET \"Role\" = 3 WHERE \"UserName\" = 'admin_120643';"
+  "adminName": "admin_133104",
+  "playerName": "player_133104",
+  "dbUserSql": "UPDATE \"AspNetUsers\" SET \"Role\" = 3 WHERE \"UserName\" = 'admin_133104';"
 }

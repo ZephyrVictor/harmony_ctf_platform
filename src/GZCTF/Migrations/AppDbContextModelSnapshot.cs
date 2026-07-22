@@ -929,7 +929,9 @@ namespace GZCTF.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<int>("ZeroDayBaseScore")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("ZeroDayInfoMarkdown")
                         .IsRequired()
@@ -1348,6 +1350,10 @@ namespace GZCTF.Migrations
                     b.Property<int>("TeamId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ZeroDaySeverity")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Category");
@@ -1747,96 +1753,6 @@ namespace GZCTF.Migrations
                         .IsUnique();
 
                     b.ToTable("UserParticipations");
-                });
-
-            modelBuilder.Entity("GZCTF.Models.Data.ZeroDayTicket", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("BonusScore")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CWE")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<int?>("ChallengeId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CommitHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CreatedTrackId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("FilePath")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<int>("GameId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("LineNumber")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("Module")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("PoC")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("ReviewComment")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTimeOffset?>("ReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ReviewerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Severity")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChallengeId");
-
-                    b.HasIndex("GameId");
-
-                    b.HasIndex("ReviewerId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ZeroDayTickets");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -2606,39 +2522,6 @@ namespace GZCTF.Migrations
                     b.Navigation("Participation");
 
                     b.Navigation("Team");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("GZCTF.Models.Data.ZeroDayTicket", b =>
-                {
-                    b.HasOne("GZCTF.Models.Data.GameChallenge", "Challenge")
-                        .WithMany()
-                        .HasForeignKey("ChallengeId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("GZCTF.Models.Data.Game", "Game")
-                        .WithMany()
-                        .HasForeignKey("GameId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("GZCTF.Models.Data.UserInfo", "Reviewer")
-                        .WithMany()
-                        .HasForeignKey("ReviewerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("GZCTF.Models.Data.UserInfo", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Challenge");
-
-                    b.Navigation("Game");
-
-                    b.Navigation("Reviewer");
 
                     b.Navigation("User");
                 });
