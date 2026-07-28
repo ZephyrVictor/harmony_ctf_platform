@@ -849,6 +849,7 @@
       "answerType": "Answer type",
       "score": "Score",
       "orSeparators": "OR separators",
+      "orSeparatorsDescription": "Separates Exact alternatives or SourceLocation line candidates",
       "rangeSeparator": "Range separator",
       "caseSensitive": "Case sensitive",
       "pathCaseSensitive": "Path case sensitive",

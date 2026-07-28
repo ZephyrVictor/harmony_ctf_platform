@@ -62,9 +62,13 @@ public class ChallengeFlagRepository(AppDbContext context) : RepositoryBase(cont
             .ThenBy(f => f.SortOrder)
             .ToArrayAsync(token);
 
-    public Task<ChallengeFlag[]> GetFlagsByTrackLevel(Guid trackId, int level, CancellationToken token = default) =>
+    public Task<ChallengeFlag[]> GetFlagsByTrackLevel(int challengeId, Guid trackId, int level,
+        CancellationToken token = default) =>
         Context.ChallengeFlags
-            .Where(f => f.TrackId == trackId && f.Level == level && f.IsEnabled)
+            .Where(f => f.ChallengeId == challengeId
+                        && f.TrackId == trackId
+                        && f.Level == level
+                        && f.IsEnabled)
             .OrderBy(f => f.SortOrder)
             .ToArrayAsync(token);
 

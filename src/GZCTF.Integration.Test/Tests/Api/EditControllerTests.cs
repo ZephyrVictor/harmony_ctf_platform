@@ -474,6 +474,13 @@ public class EditControllerTests(GZCTFApplicationFactory factory, ITestOutputHel
     [Fact]
     public async Task TestContainerOperations_ShouldRetrieveFlagSuccessfully()
     {
+        if (Environment.GetEnvironmentVariable("GZCTF_INTEGRATION_TEST_MODE")?.ToLowerInvariant()
+            is not ("cloud" or "k3s"))
+        {
+            output.WriteLine("Container lifecycle verification runs in cloud/K3s mode.");
+            return;
+        }
+
         // Arrange: Create admin user, game, and dynamic container challenge
         var adminPassword = "Admin@Pass123";
         var adminUser = await TestDataSeeder.CreateUserAsync(factory.Services,
@@ -494,7 +501,7 @@ public class EditControllerTests(GZCTFApplicationFactory factory, ITestOutputHel
                 Type = ChallengeType.DynamicContainer,
                 GameId = game.Id,
                 IsEnabled = true,
-                ContainerImage = "ghcr.io/gzctf/challenge-base/echo:latest",
+                ContainerImage = ContainerHelper.EchoImage,
                 ExposePort = 70,
                 MemoryLimit = 64,
                 CPUCount = 1,
@@ -645,7 +652,7 @@ public class EditControllerTests(GZCTFApplicationFactory factory, ITestOutputHel
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "Pass@123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{gameId}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{gameId}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Login as admin and delete the game
         using var adminClient = factory.CreateClient();

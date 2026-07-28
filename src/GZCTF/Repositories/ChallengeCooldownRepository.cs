@@ -8,16 +8,20 @@ public class ChallengeCooldownRepository(AppDbContext context) : RepositoryBase(
 {
     const int CooldownAdvisoryLockKey = 0x43544643; // "CTFC"
 
+    public Task AcquireLock(int participationId, int challengeId, CancellationToken token = default) =>
+        Context.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, {1})",
+            [CooldownAdvisoryLockKey, AdvisoryLockKey(participationId, challengeId)],
+            cancellationToken: token);
+
     public Task<ChallengeCooldownState?> Get(int participationId, int challengeId, CancellationToken token = default) =>
         Context.ChallengeCooldownStates
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.ParticipationId == participationId && s.ChallengeId == challengeId, token);
 
     public async Task<ChallengeCooldownState> Upsert(ChallengeCooldownState state, CancellationToken token = default)
     {
-        await Context.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock({0}, {1})",
-            [CooldownAdvisoryLockKey, AdvisoryLockKey(state.ParticipationId, state.ChallengeId)],
-            cancellationToken: token);
+        await AcquireLock(state.ParticipationId, state.ChallengeId, token);
 
         var existing = await Context.ChallengeCooldownStates
             .FirstOrDefaultAsync(s => s.ParticipationId == state.ParticipationId
@@ -44,10 +48,7 @@ public class ChallengeCooldownRepository(AppDbContext context) : RepositoryBase(
         int cooldownMinutes,
         CancellationToken token = default)
     {
-        await Context.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock({0}, {1})",
-            [CooldownAdvisoryLockKey, AdvisoryLockKey(participationId, challengeId)],
-            cancellationToken: token);
+        await AcquireLock(participationId, challengeId, token);
 
         var state = await Context.ChallengeCooldownStates
             .FirstOrDefaultAsync(s => s.ParticipationId == participationId
@@ -86,10 +87,7 @@ public class ChallengeCooldownRepository(AppDbContext context) : RepositoryBase(
 
     public async Task Clear(int participationId, int challengeId, CancellationToken token = default)
     {
-        await Context.Database.ExecuteSqlRawAsync(
-            "SELECT pg_advisory_xact_lock({0}, {1})",
-            [CooldownAdvisoryLockKey, AdvisoryLockKey(participationId, challengeId)],
-            cancellationToken: token);
+        await AcquireLock(participationId, challengeId, token);
 
         var state = await Context.ChallengeCooldownStates
             .FirstOrDefaultAsync(s => s.ParticipationId == participationId

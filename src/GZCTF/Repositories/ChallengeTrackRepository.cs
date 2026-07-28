@@ -14,6 +14,14 @@ public class ChallengeTrackRepository(AppDbContext context) : RepositoryBase(con
     public Task<ChallengeTrack?> GetTrack(Guid trackId, CancellationToken token = default) =>
         Context.ChallengeTracks.FirstOrDefaultAsync(t => t.Id == trackId, token);
 
+    public Task<ChallengeTrack?> GetEnabledTrack(int challengeId, Guid trackId,
+        CancellationToken token = default) =>
+        Context.ChallengeTracks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == trackId
+                                      && t.ChallengeId == challengeId
+                                      && t.IsEnabled, token);
+
     public async Task<ChallengeTrack> CreateTrack(ChallengeTrack track, CancellationToken token = default)
     {
         await Context.ChallengeTracks.AddAsync(track, token);

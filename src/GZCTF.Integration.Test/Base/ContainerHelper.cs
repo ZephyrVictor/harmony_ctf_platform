@@ -16,6 +16,8 @@ namespace GZCTF.Integration.Test.Base;
 /// </summary>
 public static class ContainerHelper
 {
+    public const string EchoImage = "ghcr.nju.edu.cn/gzctf/challenge-base/echo:latest";
+
     private const string Namespace = "gzctf-test";
     private const int MaxAttempts = 30;
     private const int DelayMs = 2000;
@@ -133,7 +135,7 @@ public static class ContainerHelper
 
     /// <summary>
     /// Fetch flag from container
-    /// NOTE: use `ghcr.io/gzctf/challenge-base/echo:latest`
+    /// NOTE: use <see cref="EchoImage"/>
     /// </summary>
     /// <param name="entry"></param>
     /// <returns></returns>

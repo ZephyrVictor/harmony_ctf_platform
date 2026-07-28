@@ -81,7 +81,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit 3 wrong flags (at limit)
         for (var i = 0; i < 3; i++)
@@ -152,7 +152,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submission should fail due to expired deadline
         var expiredResponse = await client.PostAsJsonAsync(
@@ -216,14 +216,14 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client1.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user1.UserName, Password = password });
         await client1.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = team1.Id, DivisionId = divisionA!.Id, InviteCode = "DIVA" });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team1.Id, DivisionId = divisionA!.Id, InviteCode = "DIVA" });
 
         // Team 2 joins Division B
         using var client2 = factory.CreateClient();
         await client2.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user2.UserName, Password = password });
         await client2.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = team2.Id, DivisionId = divisionB!.Id, InviteCode = "DIVB" });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team2.Id, DivisionId = divisionB!.Id, InviteCode = "DIVB" });
 
         await Task.Delay(100);
 
@@ -296,7 +296,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit flags for both challenges
         await client.PostAsJsonAsync($"/api/Game/{game.Id}/Challenges/{challenge1.Id}",
@@ -393,7 +393,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit correct flag
         await client.PostAsJsonAsync($"/api/Game/{game.Id}/Challenges/{challengeId}",
@@ -482,7 +482,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit correct flag
         await client.PostAsJsonAsync($"/api/Game/{game.Id}/Challenges/{challengeId}",
@@ -581,7 +581,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Admin disables then re-enables the challenge
         using var adminClient = factory.CreateClient();
@@ -627,6 +627,13 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
     [Fact]
     public async Task DynamicContainerChallenge_ShouldRetrieveFlagSuccessfully()
     {
+        if (Environment.GetEnvironmentVariable("GZCTF_INTEGRATION_TEST_MODE")?.ToLowerInvariant()
+            is not ("cloud" or "k3s"))
+        {
+            output.WriteLine("Container lifecycle verification runs in cloud/K3s mode.");
+            return;
+        }
+
         // Create game
         var game = await TestDataSeeder.CreateGameAsync(factory.Services, "Dynamic Container Game");
 
@@ -646,7 +653,7 @@ public class AdvancedGameMechanicsTests(GZCTFApplicationFactory factory, ITestOu
                 Content = "Dynamic container challenge with echo",
                 Category = ChallengeCategory.Misc,
                 Type = ChallengeType.DynamicContainer,
-                ContainerImage = "ghcr.io/gzctf/challenge-base/echo:latest",
+                ContainerImage = ContainerHelper.EchoImage,
                 ExposePort = 70,
                 FlagTemplate = "flag{The quick brown fox jumps over the lazy dog}",
                 Hints = [],

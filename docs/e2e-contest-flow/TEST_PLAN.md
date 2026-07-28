@@ -205,4 +205,45 @@ For this isolated E2E run, the critical contest flow passed:
 - The 0day information entry `/games/{id}/zeroday-info` is reachable and covered by screenshot evidence.
 - The 0day ticket entry is gated by configurable Nday score and rejects direct API submissions below the gate.
 
+## Integrity Fix Run: Issues 1, 2, and 6
+
+Run ID: `2026-07-28-integrity-1-2-6`
+
+This isolated Chrome run verifies the cross-challenge Track boundary, concurrent game registration, and Exact OR matching:
+
+- Both game-level and challenge-level import pages expose `OR 分隔符` for Exact L2/L3 mappings after a real CSV preview.
+- Two concurrent registration requests produce one accepted Participation only (`200`, `400`), with one UserParticipation.
+- A Track from another challenge returns `400`; no Submission, SubmissionRecord, or cooldown state is created.
+- `CWE-787` is accepted against `CWE-125、CWE-787`; submitting `CWE-125` afterward is idempotent and does not score twice.
+- `hash(0)` still creates the intended permanent `(Track, Level)` ban.
+- Ten concurrent unique wrong answers trigger one five-minute cooldown with `WrongCount=0`; a follow-up request is blocked with the remaining time.
+- The scoreboard remains level-only at 15 points, and player/admin submission and ban views show the resulting activity.
+
+New evidence:
+
+| Screenshot | Assertion |
+| --- | --- |
+| `screenshots/19-admin-game-import-exact-or.png` | Game import Exact mappings expose OR separators. |
+| `screenshots/20-admin-challenge-import-exact-or.png` | Challenge import Exact mappings expose OR separators. |
+| `screenshots/21-player-combo-cwe-single-accepted.png` | A single CWE candidate completes the combination level. |
+| `screenshots/22-player-trap-ban-regression.png` | Trap ban remains visible with `hash(0)`. |
+| `screenshots/23-player-concurrent-cooldown-fixed.png` | Concurrent threshold produces an active cooldown notice. |
+| `screenshots/24-player-scoreboard-level-only.png` | Player scoreboard shows 15 level points. |
+| `screenshots/25-player-submissions-integrity.png` | Player submission history is reachable. |
+| `screenshots/26-admin-monitor-integrity.png` | Monitor lists accepted, duplicate, trap, wrong, and cooldown activity. |
+| `screenshots/27-admin-ban-integrity.png` | Admin ban page lists the automatic Track-level ban. |
+
+The run exposed and fixed a cooldown race: requests loaded a tracked cooldown entity before waiting for the advisory lock, so EF identity resolution could overwrite newer counts. The cooldown lock now covers the check and mutation in the submission transaction, pre-check reads are no-tracking, and a five-way PostgreSQL concurrency regression test enforces the exact threshold.
+
+Final gates after that fix:
+
+| Gate | Result |
+| --- | --- |
+| Unit tests | 236 passed |
+| Local PostgreSQL integration | 225 passed, 1 obsolete test skipped |
+| K3s/MinIO integration | 225 passed, 1 obsolete test skipped |
+| Frontend strict type check and production build | Passed |
+| Migration empty/clean/duplicate scenarios | Passed; duplicate upgrade aborts without data changes |
+| Chrome E2E | Passed with 9 new screenshots |
+
 Remaining production operations should still be handled separately before public launch: switch from the temporary Development/E2E environment to Production, use HTTPS and strong secrets, and review registration/captcha/team approval policy.

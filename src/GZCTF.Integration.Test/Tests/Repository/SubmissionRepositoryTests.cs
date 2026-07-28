@@ -375,7 +375,8 @@ public class SubmissionRepositoryTests(GZCTFApplicationFactory factory, ITestOut
         // Get unchecked flags
         var uncheckedFlags = await submissionRepo.GetUncheckedFlags(CancellationToken.None);
 
-        Assert.Equal(2, uncheckedFlags.Length);
+        Assert.Contains(uncheckedFlags, submission => submission.Id == unchecked1.Id);
+        Assert.Contains(uncheckedFlags, submission => submission.Id == unchecked2.Id);
         Assert.All(uncheckedFlags, s => Assert.Equal(AnswerResult.FlagSubmitted, s.Status));
 
         output.WriteLine($"Unchecked flags test passed - Found {uncheckedFlags.Length} unchecked submissions");

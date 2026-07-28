@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1106,5 +1106,20 @@
   </data>
   <data name="Challenge_DeadlinePassed" xml:space="preserve">
     <value>La fecha límite de este desafío ha pasado</value>
+  </data>
+  <data name="Challenge_TrackRequired" xml:space="preserve">
+    <value>TrackId is required for Level 2 and above</value>
+  </data>
+  <data name="Challenge_TrackNotAllowedForLevelOne" xml:space="preserve">
+    <value>TrackId must not be provided for Level 1</value>
+  </data>
+  <data name="Challenge_InvalidTrack" xml:space="preserve">
+    <value>The selected track does not belong to this challenge or is disabled</value>
+  </data>
+  <data name="Challenge_LevelUnavailable" xml:space="preserve">
+    <value>The selected level is unavailable</value>
+  </data>
+  <data name="Game_JoinConflict" xml:space="preserve">
+    <value>The team membership changed concurrently; refresh and try again</value>
   </data>
 </root>

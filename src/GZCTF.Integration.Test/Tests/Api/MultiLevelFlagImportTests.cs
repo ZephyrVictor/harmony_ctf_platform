@@ -106,6 +106,40 @@ public class MultiLevelFlagImportTests(GZCTFApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Import_ExactAlternatives_PreservesCombinedFlagAndSeparators()
+    {
+        var (client, challengeId) = await SetupAsync();
+        const string csv = """
+            Title,FilePath,L3
+            Combined CWE,path-cwe,CWE-125; CWE-787
+            """;
+        const string mapping = """
+            {"trackTitleColumn":"Title","trackFilePathColumn":"FilePath","matchBy":"FilePath","levelColumns":[{"level":3,"columnName":"L3","answerType":"Exact","score":1,"orSeparators":"、,;"}]}
+            """;
+
+        var response = await client.PostAsync(
+            $"/api/ext/challenges/{challengeId}/flags/import",
+            BuildImportForm(csv, mapping, "Upsert"));
+
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<FlagImportResult>();
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.Imported);
+        Assert.Equal(0, result.Failed);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var flag = await context.ChallengeFlags.SingleAsync(f =>
+            f.ChallengeId == challengeId && f.Level == 3);
+        var config = await context.ChallengeLevelConfigs.SingleAsync(c =>
+            c.ChallengeId == challengeId && c.Level == 3);
+
+        Assert.Equal("CWE-125; CWE-787", flag.FlagValue);
+        Assert.Equal(ChallengeFlagAnswerType.Exact, flag.AnswerType);
+        Assert.Equal("、,;", config.OrSeparators);
+    }
+
+    [Fact]
     public async Task Import_WithInvalidMode_Returns400()
     {
         // Bug 8: invalid mode should return 400, not 500
@@ -135,10 +169,10 @@ public class MultiLevelFlagImportTests(GZCTFApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Import_WithDuplicateFlagValues_FailsRow()
+    public async Task Import_WithDuplicateFlagValues_CreatesIndependentTracks()
     {
-        // Bug 11: duplicate flag values within the same challenge should fail.
-        // Row 2's duplicate flag triggers a rollback, so only one flag survives in DB.
+        // Duplicate answer values can represent independent tracks. The scorer
+        // resolves the first still-unsolved match for the current participation.
         var (client, challengeId) = await SetupAsync();
 
         var csv = """
@@ -156,15 +190,15 @@ public class MultiLevelFlagImportTests(GZCTFApplicationFactory factory)
         var result = await response.Content.ReadFromJsonAsync<FlagImportResult>();
         Assert.NotNull(result);
         Assert.Equal(2, result!.TotalRows);
-        Assert.Equal(1, result.Failed);
-        Assert.Contains(result.Errors, e => e.Error.Contains("already exists"));
+        Assert.Equal(0, result!.Failed);
+        Assert.Equal(2, result.Imported);
 
-        // Verify only one flag actually persists in DB (row 2 was rolled back)
+        // Both tracks and their flags must persist.
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var count = await context.ChallengeFlags.CountAsync(f =>
             f.ChallengeId == challengeId && f.FlagValue == "flag{dup}");
-        Assert.Equal(1, count);
+        Assert.Equal(2, count);
     }
 
     [Fact]

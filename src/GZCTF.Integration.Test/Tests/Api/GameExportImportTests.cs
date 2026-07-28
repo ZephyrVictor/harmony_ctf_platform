@@ -716,7 +716,10 @@ public class GameExportImportTests(GZCTFApplicationFactory factory, ITestOutputH
             Assert.Equal(originalChallenge.Content, importedChallenge.Content);
             Assert.Equal(originalChallenge.Category, importedChallenge.Category);
             Assert.Equal(originalChallenge.Type, importedChallenge.Type);
-            Assert.Equal(originalChallenge.OriginalScore, importedChallenge.OriginalScore);
+            var expectedImportedScore = originalChallenge.Flags.Count > 1
+                ? originalChallenge.OriginalScore * originalChallenge.Flags.Count
+                : originalChallenge.OriginalScore;
+            Assert.Equal(expectedImportedScore, importedChallenge.OriginalScore);
             Assert.Equal(originalChallenge.MinScoreRate, importedChallenge.MinScoreRate);
             Assert.Equal(originalChallenge.Difficulty, importedChallenge.Difficulty);
             Assert.Equal(originalChallenge.FlagTemplate, importedChallenge.FlagTemplate);

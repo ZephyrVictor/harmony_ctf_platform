@@ -72,6 +72,27 @@ public class ScoringService
         int level,
         CancellationToken token = default)
     {
+        var requestedLevelConfig = await _levelConfigRepo.GetConfig(challenge.Id, level, token);
+
+        if (trackId is null && level > 1)
+            throw new InvalidFlagSubmissionException(
+                _localizer[nameof(Resources.Program.Challenge_TrackRequired)]);
+
+        if (trackId is not null)
+        {
+            if (level == 1)
+                throw new InvalidFlagSubmissionException(
+                    _localizer[nameof(Resources.Program.Challenge_TrackNotAllowedForLevelOne)]);
+
+            if (requestedLevelConfig is not { IsEnabled: true })
+                throw new InvalidFlagSubmissionException(
+                    _localizer[nameof(Resources.Program.Challenge_LevelUnavailable)]);
+
+            if (await _trackRepo.GetEnabledTrack(challenge.Id, trackId.Value, token) is null)
+                throw new InvalidFlagSubmissionException(
+                    _localizer[nameof(Resources.Program.Challenge_InvalidTrack)]);
+        }
+
         // 0. R11: 已取消参赛资格的队伍禁止提交
         if (participation.Status == ParticipationStatus.Suspended)
         {
@@ -135,6 +156,9 @@ public class ScoringService
         var trackCount = tracks.Length;
         var wrongAnswerLimit = trackCount * 5;
 
+        if (cooldownMinutes > 0 && wrongAnswerLimit > 0)
+            await _cooldownRepo.AcquireLock(participation.Id, challenge.Id, token);
+
         var cooldownState = await _cooldownRepo.Get(participation.Id, challenge.Id, token);
         if (cooldownMinutes > 0 && cooldownState?.CooldownUntil is not null
             && cooldownState.CooldownUntil > DateTimeOffset.UtcNow)
@@ -159,21 +183,12 @@ public class ScoringService
         if (trackId is null)
         {
             // Level 1 入口：所有 Level 1 flags
-            if (level != 1)
-                return new ScoreResult
-                {
-                    Status = AnswerResult.WrongAnswer,
-                    ScoreChange = 0,
-                    Message = "trackId is required for Level > 1"
-                };
             candidates = await _flagRepo.GetFlagsByLevel(challenge.Id, 1, token);
         }
         else
         {
-            candidates = await _flagRepo.GetFlagsByTrackLevel(trackId.Value, level, token);
+            candidates = await _flagRepo.GetFlagsByTrackLevel(challenge.Id, trackId.Value, level, token);
         }
-
-        var requestedLevelConfig = await _levelConfigRepo.GetConfig(challenge.Id, level, token);
 
         // 4. 找匹配的 flags
         var matchedFlags = candidates
@@ -332,10 +347,7 @@ public class ScoringService
 
         if (flag.AnswerType == ChallengeFlagAnswerType.Exact)
         {
-            var comparison = levelConfig?.CaseSensitive == false
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal;
-            return string.Equals(flag.FlagValue, answer, comparison);
+            return TryMatchExact(flag.FlagValue, answer, levelConfig);
         }
 
         var submitted = ParseHybridLineAnswer(answer, flag.AnswerType);
@@ -353,6 +365,25 @@ public class ScoringService
         }
 
         return HybridLineMatches(flagAnswer.Value, submitted.Value);
+    }
+
+    private static bool TryMatchExact(string expected, string submitted, ChallengeLevelConfig? levelConfig)
+    {
+        var comparison = levelConfig?.CaseSensitive == false
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        if (string.Equals(expected, submitted, comparison))
+            return true;
+
+        if (string.IsNullOrEmpty(levelConfig?.OrSeparators))
+            return false;
+
+        var alternatives = expected.Split(levelConfig.OrSeparators.ToCharArray(),
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return alternatives.Length > 1
+               && alternatives.Any(alternative => string.Equals(alternative, submitted, comparison));
     }
 
     public static bool TryMatchForTest(ChallengeFlag flag, string answer, ChallengeLevelConfig? levelConfig = null) =>

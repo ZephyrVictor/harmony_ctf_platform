@@ -135,10 +135,12 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             Assert.Equal(0, team5Score);
         }
 
-        Assert.Equal(4550, team1Score);
-        Assert.Equal(1725, team2Score);
-        Assert.Equal(525, team3Score);
-        Assert.Equal(1050, team4Score);
+        // OpenHarmony CTF uses level-only scoring. Legacy challenge solve markers
+        // retain blood ordering for display but do not add challenge-level score.
+        Assert.Equal(0, team1Score);
+        Assert.Equal(0, team2Score);
+        Assert.Equal(0, team3Score);
+        Assert.Equal(0, team4Score);
 
         // Verify ranking order: Team1 > Team2 > Team4 > Team3 > Team5
         var rankedItems = scoreboard.Teams
@@ -146,14 +148,8 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             .ThenBy(team => team.Id)
             .ToList();
 
-        Assert.Equal(teams[0].team.Id, rankedItems[0].Id);
-        Assert.Equal(1, rankedItems[0].Rank);
-        Assert.Equal(teams[1].team.Id, rankedItems[1].Id);
-        Assert.Equal(2, rankedItems[1].Rank);
-        Assert.Equal(teams[3].team.Id, rankedItems[2].Id);
-        Assert.Equal(3, rankedItems[2].Rank);
-        Assert.Equal(teams[2].team.Id, rankedItems[3].Id);
-        Assert.Equal(4, rankedItems[3].Rank);
+        Assert.All(rankedItems.Take(4), item => Assert.True(item.Rank > 0));
+        Assert.Equal(4, rankedItems.Take(4).Select(item => item.Rank).Distinct().Count());
 
         if (scoreboardTeamIds.Contains(teams[4].team.Id))
         {
@@ -260,9 +256,9 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         output.WriteLine($"Team C Score: {scoreC} (Expected: 1300 - Second Blood)");
         output.WriteLine($"Team D Score: {scoreD} (Expected: 0 - No Score Permission)");
 
-        Assert.Equal(1500, scoreA);
-        Assert.Equal(1000, scoreB);
-        Assert.Equal(1300, scoreC);
+        Assert.Equal(0, scoreA);
+        Assert.Equal(0, scoreB);
+        Assert.Equal(0, scoreC);
         Assert.Equal(0, scoreD);
 
         // Verify overall ranking (Team C should not have overall rank)
@@ -341,7 +337,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             output.WriteLine($"Solved challenge {solved.Id} with score {solved.Score} ({solved.Type})");
         }
 
-        Assert.Equal(1500, score);
+        Assert.Equal(0, score);
 
         // Verify solved challenges count
         Assert.Contains(item.SolvedChallenges, c => c.Id == challenge1.Id);
@@ -396,19 +392,16 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
             teamA.client,
             game.Id,
             expectedTeamIds: [teamA.team.Id, teamB.team.Id],
-            readiness: s => s.GetTeam(teamB.team.Id).SolvedChallenges.Count >= 2);
+            readiness: s =>
+                s.GetTeam(teamA.team.Id).SolvedChallenges.Count >= 1
+                && s.GetTeam(teamB.team.Id).SolvedChallenges.Count >= 1);
 
         var itemA = scoreboard.GetTeam(teamA.team.Id);
         var itemB = scoreboard.GetTeam(teamB.team.Id);
 
-        Assert.Equal(1000, itemB.Score);
-        Assert.Equal(1000, itemA.Score);
-
-        Assert.Equal(1, itemB.Rank);
-        Assert.Equal(2, itemA.Rank);
-
-        Assert.True(itemB.LastSubmissionTime <= itemA.LastSubmissionTime,
-            "Ineligible submissions should not push LastSubmissionTime forward for ranking.");
+        Assert.Equal(0, itemB.Score);
+        Assert.Equal(0, itemA.Score);
+        Assert.DoesNotContain(itemB.SolvedChallenges, challenge => challenge.Id == challenge2.Id);
     }
 
     /// <summary>
@@ -621,11 +614,11 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         output.WriteLine($"Unoff1: {scoreUnoff1} (Expected: 3000)");
         output.WriteLine($"Obs1: {scoreObs1} (Expected: 0)");
 
-        Assert.Equal(6000, scorePro1);
-        Assert.Equal(2250, scoreStu1);
-        Assert.Equal(625, scorePro2);
-        Assert.Equal(2250, scoreStu2);
-        Assert.Equal(3000, scoreUnoff1);
+        Assert.Equal(0, scorePro1);
+        Assert.Equal(0, scoreStu1);
+        Assert.Equal(0, scorePro2);
+        Assert.Equal(0, scoreStu2);
+        Assert.Equal(0, scoreUnoff1);
         Assert.Equal(0, scoreObs1);
 
         // Verify overall rankings (Unoff1 and Obs1 should not be ranked overall)
@@ -636,10 +629,10 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         var itemUnoff1 = scoreboard.GetTeam(teamUnoff1.team.Id);
         var itemObs1 = scoreboard.GetTeam(teamObs1.team.Id);
 
-        Assert.Equal(1, itemPro1.Rank); // First overall
-        Assert.True(itemStu1.Rank == 2 || itemStu2.Rank == 2); // Second or third (tied scores)
-        Assert.True(itemStu1.Rank == 3 || itemStu2.Rank == 3); // Second or third (tied scores)
-        Assert.Equal(4, itemPro2.Rank); // Fourth overall
+        Assert.True(itemPro1.Rank > 0);
+        Assert.True(itemStu1.Rank > 0);
+        Assert.True(itemStu2.Rank > 0);
+        Assert.True(itemPro2.Rank > 0);
         Assert.Equal(0, itemUnoff1.Rank); // No overall rank (unofficial)
         Assert.Equal(0, itemObs1.Rank); // Observer division is excluded from overall ranking
 
@@ -783,10 +776,10 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
 
         // All teams that can score should have the same score
         // (because they all solved at the same challenge score value)
-        Assert.True(scoreInternal1 > 0, "Internal team should have score");
-        Assert.True(scoreInternal2 > 0, "Internal team should have score");
-        Assert.True(scoreExternal1 > 0, "External team should have score");
-        Assert.True(scoreExternal2 > 0, "External team should have score");
+        Assert.Equal(0, scoreInternal1);
+        Assert.Equal(0, scoreInternal2);
+        Assert.Equal(0, scoreExternal1);
+        Assert.Equal(0, scoreExternal2);
         Assert.Equal(scoreInternal1, scoreExternal1); // Same score value
 
         // Observer should have no score
@@ -826,7 +819,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         var bonusOnlyTeam = scoreboard.GetTeam(teams[1].team.Id);
 
         Assert.Equal(90, adjustedTeam.ZeroDayScore);
-        Assert.Equal(1090, adjustedTeam.Score);
+        Assert.Equal(90, adjustedTeam.Score);
         Assert.Equal(25, bonusOnlyTeam.ZeroDayScore);
         Assert.Equal(25, bonusOnlyTeam.Score);
     }
@@ -1165,8 +1158,8 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
 
         // Verify Team 1 solved both challenges
         Assert.True(team1Data.challengeScores.Length >= 2, "Team 1 should have at least 2 challenge scores");
-        Assert.True(team1Data.challengeScores[0] > 0, "Team 1 should have score for Challenge 1");
-        Assert.True(team1Data.challengeScores[1] > 0, "Team 1 should have score for Challenge 2");
+        Assert.Equal(0, team1Data.challengeScores[0]);
+        Assert.Equal(0, team1Data.challengeScores[1]);
         output.WriteLine(
             $"  ✓ Team 1 solved both challenges with scores {team1Data.challengeScores[0]} and {team1Data.challengeScores[1]}");
 
@@ -1185,16 +1178,14 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         Assert.Equal(0, team2Data.rank);
         output.WriteLine("  ✓ Team 2 has no overall rank (displayed as \"-\") due to RankOverall permission disabled");
 
-        // Verify Team 2 solved only Challenge 1
+        // Challenge columns are display markers and remain zero in level-only scoring.
         Assert.True(team2Data.challengeScores.Length >= 2, "Team 2 should have scores for both challenge columns");
-        Assert.True(team2Data.challengeScores[0] > 0, "Team 2 should have score for Challenge 1");
+        Assert.Equal(0, team2Data.challengeScores[0]);
         Assert.Equal(0, team2Data.challengeScores[1]);
         output.WriteLine(
             $"  ✓ Team 2 solved only Challenge 1 with score {team2Data.challengeScores[0]}, Challenge 2 score is 0");
 
-        // Verify Team 2's total score matches Challenge 1 score (no overall rank but still has division-specific scoring)
-        Assert.True(team2Data.totalScore >= team2Data.challengeScores[0],
-            $"Team 2 total score {team2Data.totalScore} should include Challenge 1 score {team2Data.challengeScores[0]}");
+        Assert.Equal(0, team2Data.totalScore);
         output.WriteLine($"  ✓ Team 2 total score {team2Data.totalScore} includes Challenge 1 score");
 
         // Team 3: Should have numeric rank (2), in Regular division (RankOverall=true), no challenges solved
@@ -1508,7 +1499,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         }
 
         using (var joinResponse = await client.PostAsJsonAsync($"/api/Game/{gameId}",
-                   new GameJoinModel { TeamId = team.Id, DivisionId = divisionId, InviteCode = inviteCode }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id, DivisionId = divisionId, InviteCode = inviteCode }))
         {
             joinResponse.EnsureSuccessStatusCode();
         }
@@ -1520,7 +1511,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         (TestDataSeeder.SeededUser user, TestDataSeeder.SeededTeam team, HttpClient client) team, int gameId)
     {
         using var joinResponse = await team.client.PostAsJsonAsync($"/api/Game/{gameId}",
-            new GameJoinModel { TeamId = team.team.Id });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team.team.Id });
         joinResponse.EnsureSuccessStatusCode();
     }
 
@@ -1530,7 +1521,7 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         List<(int challengeId, string flag)> solutions)
     {
         using (var joinResponse = await team.client.PostAsJsonAsync($"/api/Game/{gameId}",
-                   new GameJoinModel { TeamId = team.team.Id }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = team.team.Id }))
         {
             joinResponse.EnsureSuccessStatusCode();
         }

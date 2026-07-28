@@ -1,4 +1,4 @@
-﻿using GZCTF.Models.Request.Admin;
+using GZCTF.Models.Request.Admin;
 using GZCTF.Models.Request.Game;
 
 namespace GZCTF.Repositories.Interface;
@@ -63,6 +63,11 @@ public interface IParticipationRepository : IRepository
     /// <param name="token"></param>
     /// <returns></returns>
     public Task<bool> CheckRepeatParticipation(UserInfo user, Game game, CancellationToken token = default);
+
+    /// <summary>
+    /// Serialize game joins for both the user and the team within the current transaction.
+    /// </summary>
+    public Task AcquireJoinLocks(int gameId, int teamId, Guid userId, CancellationToken token = default);
 
     /// <summary>
     /// Remove user's participation in a specific game

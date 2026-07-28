@@ -492,5 +492,119 @@
     "teamId": 14,
     "trackNormalId": "1ad3b094-3653-496f-8820-19920eb00cfe",
     "trackTrapId": "15964935-f8e8-4d3e-b8cf-c27893f2efe8"
+  },
+  "integrityFixRun": {
+    "runId": "2026-07-28-integrity-1-2-6",
+    "entities": {
+      "gameId": 1,
+      "targetChallengeId": 1,
+      "foreignChallengeId": 2,
+      "teamId": 1,
+      "normalTrackId": "b7a78192-31bb-4673-bf03-4020c6365162",
+      "trapTrackId": "a7b81243-e8a8-4d88-934a-cd7e7c23f113",
+      "foreignTrackId": "423af3e2-bddc-41ee-bf0c-d0b55ecef288"
+    },
+    "screenshots": [
+      "docs/e2e-contest-flow/screenshots/19-admin-game-import-exact-or.png",
+      "docs/e2e-contest-flow/screenshots/20-admin-challenge-import-exact-or.png",
+      "docs/e2e-contest-flow/screenshots/21-player-combo-cwe-single-accepted.png",
+      "docs/e2e-contest-flow/screenshots/22-player-trap-ban-regression.png",
+      "docs/e2e-contest-flow/screenshots/23-player-concurrent-cooldown-fixed.png",
+      "docs/e2e-contest-flow/screenshots/24-player-scoreboard-level-only.png",
+      "docs/e2e-contest-flow/screenshots/25-player-submissions-integrity.png",
+      "docs/e2e-contest-flow/screenshots/26-admin-monitor-integrity.png",
+      "docs/e2e-contest-flow/screenshots/27-admin-ban-integrity.png"
+    ],
+    "assertions": {
+      "gameImportExactOrSeparators": {
+        "status": "passed",
+        "level2": "、,;",
+        "level3": "、,;"
+      },
+      "challengeImportExactOrSeparators": {
+        "status": "passed",
+        "level2": "、,;",
+        "level3": "、,;"
+      },
+      "concurrentRegistration": {
+        "status": "passed",
+        "httpStatuses": [
+          200,
+          400
+        ],
+        "participations": 1,
+        "userParticipations": 1
+      },
+      "foreignTrackBoundary": {
+        "status": "passed",
+        "httpStatus": 400,
+        "submissions": 0,
+        "submissionRecords": 0,
+        "cooldownStates": 0
+      },
+      "exactOrSingleCandidate": {
+        "status": "passed",
+        "stored": "CWE-125、CWE-787",
+        "acceptedCandidate": "CWE-787",
+        "positiveLevel3Records": 1
+      },
+      "exactOrAlternativeAfterSolve": {
+        "status": "passed",
+        "candidate": "CWE-125",
+        "messageContains": "已提交过",
+        "positiveLevel3Records": 1
+      },
+      "trapRegression": {
+        "status": "passed",
+        "trackId": "a7b81243-e8a8-4d88-934a-cd7e7c23f113",
+        "level": 2,
+        "answer": "hash(0)",
+        "manual": false
+      },
+      "concurrentCooldown": {
+        "status": "passed",
+        "wrongAnswerLimit": 10,
+        "concurrentRequests": 10,
+        "wrongCountAfterThreshold": 0,
+        "secondsRemainingObserved": 289,
+        "followUpMessageContains": "题目冷却中"
+      },
+      "scoreboard": {
+        "status": "passed",
+        "totalScore": 15,
+        "challengeMarkerScore": 0
+      },
+      "monitorAndBanPages": {
+        "status": "passed"
+      }
+    },
+    "bugsFoundAndFixed": [
+      {
+        "name": "Concurrent cooldown lost update",
+        "cause": "A tracked cooldown entity was loaded before the advisory lock and reused after waiting.",
+        "fix": "Acquire the transaction advisory lock before cooldown checks and use no-tracking pre-check reads.",
+        "regression": "MultiLevel_ConcurrentWrongAnswers_TriggerCooldownAtExactThreshold"
+      }
+    ],
+    "qualityGates": {
+      "unit": {
+        "passed": 236,
+        "failed": 0
+      },
+      "integrationLocal": {
+        "passed": 225,
+        "failed": 0,
+        "skipped": 1
+      },
+      "integrationCloud": {
+        "passed": 225,
+        "failed": 0,
+        "skipped": 1
+      },
+      "frontendCheck": "passed",
+      "frontendBuild": "passed",
+      "migrationScenarios": "passed",
+      "chromeE2E": "passed"
+    }
   }
 }

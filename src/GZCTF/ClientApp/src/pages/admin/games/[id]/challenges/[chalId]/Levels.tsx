@@ -199,6 +199,9 @@ const LevelEditModal: FC<{
         <Group grow>
           <TextInput
             label={t('admin.import.level.orSeparators', { defaultValue: 'OR separators' })}
+            description={t('admin.import.level.orSeparatorsDescription', {
+              defaultValue: 'Separates Exact alternatives or SourceLocation line candidates',
+            })}
             value={model.orSeparators ?? '、,;'}
             onChange={(e) => setModel({ ...model, orSeparators: e.target.value })}
           />

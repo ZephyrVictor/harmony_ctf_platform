@@ -137,6 +137,68 @@ public class ScoringServiceTests
         Assert.Equal(2, ScoringService.CalculateWrongPenaltyForTest(null, challengePenaltyScore: null, defaultPenaltyScore: 2));
     }
 
+    [Theory]
+    [InlineData("CWE-125; CWE-787")]
+    [InlineData("CWE-125")]
+    [InlineData("CWE-787")]
+    public void ExactMatch_OrSeparators_AcceptsWholeValueAndAlternatives(string submitted)
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "CWE-125; CWE-787",
+            AnswerType = ChallengeFlagAnswerType.Exact
+        };
+        var config = new ChallengeLevelConfig { CaseSensitive = true, OrSeparators = "、,;" };
+
+        Assert.True(ScoringService.TryMatchForTest(flag, submitted, config));
+    }
+
+    [Theory]
+    [InlineData("CWE-12")]
+    [InlineData("CWE-999")]
+    [InlineData("CWE-125;")]
+    public void ExactMatch_OrSeparators_RejectsPartialAndUnknownValues(string submitted)
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "CWE-125; CWE-787",
+            AnswerType = ChallengeFlagAnswerType.Exact
+        };
+        var config = new ChallengeLevelConfig { CaseSensitive = true, OrSeparators = "、,;" };
+
+        Assert.False(ScoringService.TryMatchForTest(flag, submitted, config));
+    }
+
+    [Fact]
+    public void ExactMatch_OrSeparators_RespectsCaseSensitivity()
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "CWE-125; CWE-787",
+            AnswerType = ChallengeFlagAnswerType.Exact
+        };
+
+        Assert.False(ScoringService.TryMatchForTest(flag, "cwe-125",
+            new ChallengeLevelConfig { CaseSensitive = true, OrSeparators = ";" }));
+        Assert.True(ScoringService.TryMatchForTest(flag, "cwe-125",
+            new ChallengeLevelConfig { CaseSensitive = false, OrSeparators = ";" }));
+    }
+
+    [Fact]
+    public void ExactMatch_OrSeparators_SupportsCustomAndEmptyConfiguration()
+    {
+        var flag = new ChallengeFlag
+        {
+            FlagValue = "CWE-125|CWE-787",
+            AnswerType = ChallengeFlagAnswerType.Exact
+        };
+
+        Assert.True(ScoringService.TryMatchForTest(flag, "CWE-787",
+            new ChallengeLevelConfig { OrSeparators = "|" }));
+        Assert.False(ScoringService.TryMatchForTest(flag, "CWE-787",
+            new ChallengeLevelConfig { OrSeparators = string.Empty }));
+    }
+
     [Fact]
     public void NormalizeHybridLineAnswer_Exact_NumericReturnsNormalized()
     {

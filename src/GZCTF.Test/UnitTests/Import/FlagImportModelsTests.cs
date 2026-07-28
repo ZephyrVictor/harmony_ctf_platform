@@ -165,6 +165,25 @@ public class FlagImportModelsTests
     }
 
     [Fact]
+    public void BuildFlagValue_ExactAlternativeAnswer_PreservesCombinedValue()
+    {
+        var row = new Dictionary<string, string>
+        {
+            ["CWE"] = "CWE-125; CWE-787"
+        };
+        var level = new LevelColumnMapping
+        {
+            Level = 3,
+            ColumnName = "CWE",
+            AnswerType = ChallengeFlagAnswerType.Exact,
+            OrSeparators = "、,;"
+        };
+
+        Assert.Equal("CWE-125; CWE-787", FlagImportService.BuildFlagValueForTest(row, level));
+        Assert.Null(FlagImportService.ValidateImportedFlagValueForTest("CWE-125; CWE-787", level));
+    }
+
+    [Fact]
     public void ValidateRowFlagValues_RejectsRowsWithAnyInvalidLevel()
     {
         var row = new Dictionary<string, string>

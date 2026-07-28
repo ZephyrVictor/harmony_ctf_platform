@@ -184,4 +184,45 @@ public class DatabaseContextTests(GZCTFApplicationFactory factory, ITestOutputHe
         dbContext.Users.Remove(captain);
         await dbContext.SaveChangesAsync();
     }
+
+    [Fact]
+    public async Task DbContext_ShouldRejectDuplicateParticipationForTeamAndGame()
+    {
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var captain = new UserInfo
+        {
+            UserName = TestDataSeeder.RandomName(),
+            Email = $"captain_{Guid.NewGuid():N}@test.com",
+            Role = Role.User,
+            EmailConfirmed = true,
+            RegisterTimeUtc = DateTimeOffset.UtcNow
+        };
+        var team = new Team { Name = TestDataSeeder.RandomName(), Captain = captain };
+        var game = new Game
+        {
+            Title = TestDataSeeder.RandomName(),
+            StartTimeUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
+            EndTimeUtc = DateTimeOffset.UtcNow.AddHours(1)
+        };
+
+        dbContext.AddRange(captain, team, game);
+        await dbContext.SaveChangesAsync();
+
+        var first = new Participation { TeamId = team.Id, GameId = game.Id, Token = "first" };
+        dbContext.Participations.Add(first);
+        await dbContext.SaveChangesAsync();
+
+        var duplicate = new Participation { TeamId = team.Id, GameId = game.Id, Token = "duplicate" };
+        dbContext.Participations.Add(duplicate);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+
+        dbContext.Entry(duplicate).State = EntityState.Detached;
+        dbContext.Participations.Remove(first);
+        dbContext.Teams.Remove(team);
+        dbContext.Games.Remove(game);
+        dbContext.Users.Remove(captain);
+        await dbContext.SaveChangesAsync();
+    }
 }

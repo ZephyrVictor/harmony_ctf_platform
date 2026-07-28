@@ -54,7 +54,7 @@ public class PracticeModeDeadlineTests(GZCTFApplicationFactory factory)
 
         // Act & Assert: Joining should fail when practice mode is disabled
         var joinResponse1 = await client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = team1.Id, DivisionId = null });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team1.Id, DivisionId = null });
 
         Assert.False(joinResponse1.IsSuccessStatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, joinResponse1.StatusCode);
@@ -71,7 +71,7 @@ public class PracticeModeDeadlineTests(GZCTFApplicationFactory factory)
 
         // Act & Assert: Joining should succeed when practice mode is enabled
         var joinResponse2 = await client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = team2.Id, DivisionId = null });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team2.Id, DivisionId = null });
 
         joinResponse2.EnsureSuccessStatusCode();
     }

@@ -22,5 +22,6 @@ public class FlagSubmitModel
     /// <summary>
     /// Level (1, 2, 3...)
     /// </summary>
+    [Range(1, int.MaxValue)]
     public int Level { get; set; } = 1;
 }

@@ -199,7 +199,7 @@ GameChallenge (题目)
 - 标准答案 `ecmascript/builtins/builtins.cpp:281、286` 可接受选手提交 `...:281` 或 `...:286`。每个 OR 项也可以是一个范围。
 - 导入时 L1 由 `文件路径` + `代码行数` 拼接;`path.cpp:c:856-864` 会标准化为 `path.cpp:856-864` 后保存。
 
-**R30 组合 CWE 顺序敏感性**: L3 答案 `CWE-125; CWE-787` 与 `CWE-787; CWE-125` 不同 (Exact 类型强制顺序)。
+**R30 组合 CWE OR 语义**: L3 标准答案 `CWE-125; CWE-787` 保留完整 Exact 匹配，同时按该 Level 的 `OrSeparators` 接受 `CWE-125` 或 `CWE-787` 任一完整候选项；不接受编号前缀或子串。
 
 #### 3.1.4 前端 UI
 
@@ -338,7 +338,7 @@ Admin 审核通过 0day 工单时:
 | 单行格式 `c:1060` | L1 = `path:1060`, AnswerType=SourceLocation;选手可提交 `path:1060` 或 `path:c:1060` |
 | 范围格式 `c:550-559` | L1 = `path:550-559`, AnswerType=SourceLocation;选手提交其中任意单行或子区间均命中 |
 | 多解格式 `c:281、c:286` | L1 = `path:281、286`, AnswerType=SourceLocation;选手提交其中任意一个 OR 项均命中 |
-| 组合 CWE `CWE-125; CWE-787` | L3 = `CWE-125; CWE-787`, AnswerType=Exact (顺序敏感) |
+| 组合 CWE `CWE-125; CWE-787` | L3 保留组合值,AnswerType=Exact;整串或任一完整候选项均可命中 |
 | `无法验证` L3 | L3 = `无法验证` (literal, 数据集语义问题) |
 | `hash(0)` 行 | L2 = `hash(0)`;BanOnAnswers 默认空,可由管理员显式开启 |
 
@@ -802,7 +802,7 @@ Admin 确认,POST /api/ext/games/{gid}/flags/import (file + mapping + mode=Upser
 | **R27** | ban-trigger 永久封禁 | ✅ BanOnAnswers + BanState | Phase 2.3 |
 | **R28** | hash(0) 数据源 | ✅ 数据源保留;Trap 封禁默认关闭,管理员可显式开启 BanOnAnswers=["0","hash(0)",40 个 0] | Phase 1.10 |
 | **R29** | 类别不符/可争议 误报申诉 | ✅ 工单系统支持 | Phase 4.5 |
-| **R30** | 组合 CWE 顺序 | ✅ Exact 强制顺序 | Phase 2.9 |
+| **R30** | 组合 CWE 多答案 | ✅ Exact 整串兼容 + OrSeparators 任一候选命中 | Phase 2.9 |
 
 ### 8.1 已实现规则统计
 

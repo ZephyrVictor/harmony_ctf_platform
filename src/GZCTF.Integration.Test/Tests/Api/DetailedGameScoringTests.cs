@@ -52,7 +52,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
         }
 
         using (var joinResponse1 = await client1.PostAsJsonAsync($"/api/Game/{game.Id}",
-                   new GameJoinModel { TeamId = teams[0].team.Id }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = teams[0].team.Id }))
         {
             joinResponse1.EnsureSuccessStatusCode();
         }
@@ -80,7 +80,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
         }
 
         using (var joinResponse2 = await client2.PostAsJsonAsync($"/api/Game/{game.Id}",
-                   new GameJoinModel { TeamId = teams[1].team.Id }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = teams[1].team.Id }))
         {
             joinResponse2.EnsureSuccessStatusCode();
         }
@@ -101,7 +101,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
         }
 
         using (var joinResponse3 = await client3.PostAsJsonAsync($"/api/Game/{game.Id}",
-                   new GameJoinModel { TeamId = teams[2].team.Id }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = teams[2].team.Id }))
         {
             joinResponse3.EnsureSuccessStatusCode();
         }
@@ -147,7 +147,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
         }
 
         using (var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}",
-                   new GameJoinModel { TeamId = team.Id }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id }))
         {
             joinResponse.EnsureSuccessStatusCode();
         }
@@ -227,7 +227,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
             }
 
             using (var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}",
-                       new GameJoinModel { TeamId = team.Id }))
+                       new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id }))
             {
                 joinResponse.EnsureSuccessStatusCode();
             }
@@ -352,7 +352,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
         }
 
         using (var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}",
-                   new GameJoinModel { TeamId = team.Id }))
+                   new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id }))
         {
             joinResponse.EnsureSuccessStatusCode();
         }
@@ -380,7 +380,7 @@ public class DetailedGameScoringTests(GZCTFApplicationFactory factory)
         using var client = factory.CreateClient();
 
         // Unauthenticated access to join game should fail
-        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = 1 });
+        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = 1 });
         Assert.Equal(HttpStatusCode.Unauthorized, joinResponse.StatusCode);
 
         // Unauthenticated access to submit flag should fail

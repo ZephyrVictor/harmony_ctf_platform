@@ -338,26 +338,29 @@ const AdminImport: FC = () => {
                         }
                       />
                     </Group>
+                    {(lc.answerType === ChallengeFlagAnswerType.Exact ||
+                      lc.answerType === ChallengeFlagAnswerType.SourceLocation) && (
+                      <Group grow>
+                        <TextInput
+                          label={t('admin.import.level.orSeparators', { defaultValue: 'OR separators' })}
+                          value={lc.orSeparators ?? '、,;'}
+                          onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, orSeparators: e.target.value } : l)))}
+                        />
+                        <Switch
+                          label={t('admin.import.level.caseSensitive', { defaultValue: 'Case sensitive' })}
+                          checked={lc.caseSensitive ?? true}
+                          onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, caseSensitive: e.target.checked } : l)))}
+                        />
+                      </Group>
+                    )}
                     {lc.answerType === ChallengeFlagAnswerType.SourceLocation && (
                       <Stack gap="xs">
-                        <Group grow>
-                          <TextInput
-                            label={t('admin.import.level.orSeparators', { defaultValue: 'OR separators' })}
-                            value={lc.orSeparators ?? '、,;'}
-                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, orSeparators: e.target.value } : l)))}
-                          />
-                          <TextInput
-                            label={t('admin.import.level.rangeSeparator', { defaultValue: 'Range separator' })}
-                            value={lc.rangeSeparator ?? '-'}
-                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, rangeSeparator: e.target.value } : l)))}
-                          />
-                        </Group>
+                        <TextInput
+                          label={t('admin.import.level.rangeSeparator', { defaultValue: 'Range separator' })}
+                          value={lc.rangeSeparator ?? '-'}
+                          onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, rangeSeparator: e.target.value } : l)))}
+                        />
                         <Group>
-                          <Switch
-                            label={t('admin.import.level.caseSensitive', { defaultValue: 'Case sensitive' })}
-                            checked={lc.caseSensitive ?? true}
-                            onChange={(e) => setLevelCols((ls) => ls.map((l, i) => (i === idx ? { ...l, caseSensitive: e.target.checked } : l)))}
-                          />
                           <Switch
                             label={t('admin.import.level.pathCaseSensitive', { defaultValue: 'Path case sensitive' })}
                             checked={lc.pathCaseSensitive ?? true}

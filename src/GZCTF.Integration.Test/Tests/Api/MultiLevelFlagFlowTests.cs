@@ -25,7 +25,7 @@ namespace GZCTF.Integration.Test.Tests.Api;
 [Collection(nameof(IntegrationTestCollection))]
 public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
 {
-    private async Task<Fixture> SetupFixtureAsync(bool withL2 = true)
+    private async Task<Fixture> SetupFixtureAsync(bool withL2 = true, bool withL3Alternatives = false)
     {
         var adminPassword = "Admin@Pass123";
         var admin = await TestDataSeeder.CreateUserAsync(factory.Services,
@@ -93,6 +93,20 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
             l2Resp.EnsureSuccessStatusCode();
         }
 
+        if (withL3Alternatives)
+        {
+            var l3Resp = await adminClient.PostAsJsonAsync(
+                $"/api/ext/challenges/{challengeId}/levels",
+                new LevelConfigCreateModel
+                {
+                    Level = 3,
+                    Title = "Level 3",
+                    Score = 1,
+                    OrSeparators = "、,;"
+                });
+            l3Resp.EnsureSuccessStatusCode();
+        }
+
         // Create a track
         var trackResp = await adminClient.PostAsJsonAsync(
             $"/api/ext/challenges/{challengeId}/tracks",
@@ -125,6 +139,19 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
             l2FlagResp.EnsureSuccessStatusCode();
         }
 
+        if (withL3Alternatives)
+        {
+            var l3FlagResp = await adminClient.PostAsJsonAsync(
+                $"/api/ext/challenges/{challengeId}/flags",
+                new ChallengeFlagCreateModel
+                {
+                    FlagValue = "CWE-125; CWE-787",
+                    Level = 3,
+                    TrackId = trackId
+                });
+            l3FlagResp.EnsureSuccessStatusCode();
+        }
+
         // Create user + team + join game
         var userPassword = "User@Pass123";
         var userName = TestDataSeeder.RandomName();
@@ -146,6 +173,50 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
             UserId = user.Id,
             TeamId = team.Id
         };
+    }
+
+    private async Task<Guid> CreateForeignTrack(int challengeId, bool isEnabled = true)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var track = new ChallengeTrack
+        {
+            Id = Guid.NewGuid(),
+            ChallengeId = challengeId,
+            Title = "Foreign Track",
+            IsEnabled = isEnabled
+        };
+        context.ChallengeTracks.Add(track);
+        context.ChallengeFlags.Add(new ChallengeFlag
+        {
+            Id = Guid.NewGuid(),
+            ChallengeId = challengeId,
+            TrackId = track.Id,
+            Level = 2,
+            FlagValue = "flag{foreign_l2}",
+            RawAnswer = "flag{foreign_l2}",
+            AnswerType = ChallengeFlagAnswerType.Exact,
+            IsEnabled = true
+        });
+        await context.SaveChangesAsync();
+        return track.Id;
+    }
+
+    private async Task AssertNoSubmissionSideEffects(Fixture fixture)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var participationId = await context.Participations
+            .Where(p => p.GameId == fixture.GameId && p.TeamId == fixture.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
+
+        Assert.False(await context.Submissions.AnyAsync(s =>
+            s.ParticipationId == participationId && s.ChallengeId == fixture.ChallengeId));
+        Assert.False(await context.SubmissionRecords.AnyAsync(r =>
+            r.ParticipationId == participationId && r.ChallengeId == fixture.ChallengeId));
+        Assert.False(await context.ChallengeCooldownStates.AnyAsync(s =>
+            s.ParticipationId == participationId && s.ChallengeId == fixture.ChallengeId));
     }
 
     /// <summary>
@@ -180,6 +251,75 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
         Assert.Equal(2, detail.GetProperty("currentLevel").GetInt32()); // Bug G
     }
 
+    [Theory]
+    [InlineData("CWE-125; CWE-787")]
+    [InlineData("CWE-125")]
+    [InlineData("CWE-787")]
+    public async Task MultiLevel_ExactAlternatives_AcceptsWholeValueAndEitherCandidate(string answer)
+    {
+        var fx = await SetupFixtureAsync(withL3Alternatives: true);
+
+        (await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 })).EnsureSuccessStatusCode();
+        (await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l2_correct}", Level = 2, TrackId = fx.TrackId }))
+            .EnsureSuccessStatusCode();
+
+        var response = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = answer, Level = 3, TrackId = fx.TrackId });
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Accepted", body.GetProperty("message").GetString());
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await context.SubmissionRecords.CountAsync(r =>
+            r.GameId == fx.GameId
+            && r.ChallengeId == fx.ChallengeId
+            && r.TrackId == fx.TrackId
+            && r.Level == 3
+            && r.ScoreChange == 1));
+    }
+
+    [Fact]
+    public async Task MultiLevel_ExactAlternativeAfterSolve_DoesNotAwardScoreTwice()
+    {
+        var fx = await SetupFixtureAsync(withL3Alternatives: true);
+
+        (await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 })).EnsureSuccessStatusCode();
+        (await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l2_correct}", Level = 2, TrackId = fx.TrackId }))
+            .EnsureSuccessStatusCode();
+        (await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "CWE-125", Level = 3, TrackId = fx.TrackId }))
+            .EnsureSuccessStatusCode();
+
+        var duplicateResponse = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "CWE-787", Level = 3, TrackId = fx.TrackId });
+
+        duplicateResponse.EnsureSuccessStatusCode();
+        var body = await duplicateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("已提交过", body.GetProperty("message").GetString());
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await context.SubmissionRecords.CountAsync(r =>
+            r.GameId == fx.GameId
+            && r.ChallengeId == fx.ChallengeId
+            && r.TrackId == fx.TrackId
+            && r.Level == 3
+            && r.ScoreChange > 0));
+    }
+
     /// <summary>
     /// Wrong answer should produce "Wrong answer" message and a negative ScoreChange.
     /// </summary>
@@ -197,6 +337,117 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
         var body = await submitResp.Content.ReadFromJsonAsync<JsonElement>();
         var message = body.GetProperty("message").GetString();
         Assert.Equal("Wrong answer", message);
+    }
+
+    [Fact]
+    public async Task MultiLevel_ConcurrentWrongAnswers_TriggerCooldownAtExactThreshold()
+    {
+        var fx = await SetupFixtureAsync();
+
+        var responses = await Task.WhenAll(Enumerable.Range(1, 5).Select(i =>
+            fx.UserClient.PostAsJsonAsync(
+                $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+                new FlagSubmitModel { Flag = $"flag{{concurrent_wrong_{i}}}", Level = 1 })));
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        var bodies = await Task.WhenAll(responses.Select(response =>
+            response.Content.ReadFromJsonAsync<JsonElement>()));
+        Assert.Single(bodies, body =>
+            body.GetProperty("cooldown").GetProperty("cooldownUntil").ValueKind == JsonValueKind.Number);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var participationId = await context.Participations
+            .Where(p => p.GameId == fx.GameId && p.TeamId == fx.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
+        var state = await context.ChallengeCooldownStates
+            .AsNoTracking()
+            .SingleAsync(s => s.ParticipationId == participationId && s.ChallengeId == fx.ChallengeId);
+
+        Assert.Equal(0, state.WrongCount);
+        Assert.True(state.CooldownUntil > DateTimeOffset.UtcNow);
+        Assert.Equal(5, await context.Submissions.CountAsync(s =>
+            s.ParticipationId == participationId && s.ChallengeId == fx.ChallengeId));
+    }
+
+    [Fact]
+    public async Task MultiLevel_Level1WithTrackId_ReturnsBadRequestWithoutSideEffects()
+    {
+        var fx = await SetupFixtureAsync();
+
+        var response = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1, TrackId = fx.TrackId });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNoSubmissionSideEffects(fx);
+    }
+
+    [Fact]
+    public async Task MultiLevel_NonexistentTrack_ReturnsBadRequestWithoutSideEffects()
+    {
+        var fx = await SetupFixtureAsync();
+
+        var response = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l2_correct}", Level = 2, TrackId = Guid.NewGuid() });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNoSubmissionSideEffects(fx);
+    }
+
+    [Fact]
+    public async Task MultiLevel_DisabledTrack_ReturnsBadRequestWithoutSideEffects()
+    {
+        var fx = await SetupFixtureAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var track = await context.ChallengeTracks.SingleAsync(t => t.Id == fx.TrackId);
+            track.IsEnabled = false;
+            await context.SaveChangesAsync();
+        }
+
+        var response = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l2_correct}", Level = 2, TrackId = fx.TrackId });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNoSubmissionSideEffects(fx);
+    }
+
+    [Fact]
+    public async Task MultiLevel_ForeignChallengeTrack_ReturnsBadRequestWithoutSideEffects()
+    {
+        var fx = await SetupFixtureAsync();
+        var foreignChallenge = await TestDataSeeder.CreateStaticChallengeAsync(factory.Services, fx.GameId,
+            "Foreign Challenge", "flag{foreign_seed}");
+        var foreignTrackId = await CreateForeignTrack(foreignChallenge.Id);
+
+        var response = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{foreign_l2}", Level = 2, TrackId = foreignTrackId });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNoSubmissionSideEffects(fx);
+    }
+
+    [Fact]
+    public async Task MultiLevel_OtherGameTrack_ReturnsBadRequestWithoutSideEffects()
+    {
+        var fx = await SetupFixtureAsync();
+        var otherGame = await TestDataSeeder.CreateGameAsync(factory.Services, "Other Track Game");
+        var foreignChallenge = await TestDataSeeder.CreateStaticChallengeAsync(factory.Services, otherGame.Id,
+            "Other Game Challenge", "flag{other_seed}");
+        var foreignTrackId = await CreateForeignTrack(foreignChallenge.Id);
+
+        var response = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{foreign_l2}", Level = 2, TrackId = foreignTrackId });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNoSubmissionSideEffects(fx);
     }
 
     /// <summary>
@@ -251,7 +502,7 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
             new FlagSubmitModel { Flag = "ban_answer", Level = 2, TrackId = fx.TrackId });
         Assert.Equal(HttpStatusCode.OK, banResp.StatusCode);
         var banBody = await banResp.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Answer banned this track-level", banBody.GetProperty("message").GetString());
+        Assert.Contains("封禁", banBody.GetProperty("message").GetString());
 
         var detailResp = await fx.UserClient.GetAsync(
             $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}");

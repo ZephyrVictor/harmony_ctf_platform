@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Mime;
@@ -64,6 +64,7 @@ public class GameController(
     IChallengeCooldownRepository cooldownRepository) : ControllerBase
 {
     const string PositiveFlagUniqueIndexName = "IX_SubmissionRecords_ParticipationId_MatchedFlagId";
+    const string ParticipationTeamGameUniqueIndexName = "IX_Participations_TeamId_GameId";
 
     /// <summary>
     /// Get the recent games
@@ -176,6 +177,7 @@ public class GameController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(RequestResponse), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> JoinGame(int id, [FromBody] GameJoinModel model, CancellationToken token)
     {
         await using var transaction = await gameRepository.BeginTransactionAsync(token);
@@ -241,6 +243,8 @@ public class GameController(
 
         // =============== Check and handle participation state ===============
 
+        await participationRepository.AcquireJoinLocks(id, team.Id, user!.Id, token);
+
         // Get existing participation for this team in this game
         var part = await participationRepository.GetParticipation(team, game, token);
 
@@ -276,17 +280,30 @@ public class GameController(
 
         // =============== All checks passed, add user to the team ===============
 
-        part.Members.Add(new(user!, game, team));
+        try
+        {
+            part.Members.Add(new(user!, game, team));
 
-        await participationRepository.SaveAsync(token);
+            await participationRepository.SaveAsync(token);
 
-        var shouldAcceptWithoutReview = div is null
-            ? game.AcceptWithoutReview
-            : !div.DefaultPermissions.HasFlag(GamePermission.RequireReview);
-        if (shouldAcceptWithoutReview)
-            await participationRepository.UpdateParticipationStatus(part, ParticipationStatus.Accepted, token);
+            var shouldAcceptWithoutReview = div is null
+                ? game.AcceptWithoutReview
+                : !div.DefaultPermissions.HasFlag(GamePermission.RequireReview);
+            if (shouldAcceptWithoutReview)
+                await participationRepository.UpdateParticipationStatus(part, ParticipationStatus.Accepted, token);
 
-        await transaction.CommitAsync(token);
+            await transaction.CommitAsync(token);
+        }
+        catch (DbUpdateException ex) when (IsJoinUniqueConstraintViolation(ex))
+        {
+            await transaction.RollbackAsync(token);
+            logger.LogWarning(ex,
+                "Concurrent game join conflicted for game {GameId}, team {TeamId}, user {UserId}",
+                id, team.Id, user!.Id);
+            return Conflict(new RequestResponse(localizer[nameof(Resources.Program.Game_JoinConflict)],
+                StatusCodes.Status409Conflict));
+        }
+
         await cacheHelper.FlushScoreboardCache(part.GameId, token);
 
         logger.Log(StaticLocalizer[nameof(Resources.Program.Game_JoinSucceeded), team.Name, game.Title], user,
@@ -1331,6 +1348,15 @@ public class GameController(
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: PositiveFlagUniqueIndexName
         };
+
+    private static bool IsJoinUniqueConstraintViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation
+        } postgres
+        && postgres.ConstraintName is ParticipationTeamGameUniqueIndexName
+            or "IX_UserParticipations_UserId_GameId"
+            or "PK_UserParticipations";
 
     private static int ResolveCurrentLevel(IEnumerable<int> enabledLevels, ISet<int> solvedLevels)
         => enabledLevels

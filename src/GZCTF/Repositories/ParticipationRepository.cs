@@ -1,4 +1,4 @@
-﻿using GZCTF.Models.Request.Admin;
+using GZCTF.Models.Request.Admin;
 using GZCTF.Models.Request.Game;
 using GZCTF.Models.Request.Info;
 using GZCTF.Repositories.Interface;
@@ -11,6 +11,8 @@ public class ParticipationRepository(
     IDivisionRepository divisionRepository,
     AppDbContext context) : RepositoryBase(context), IParticipationRepository
 {
+    const int JoinAdvisoryLockKey = 0x475A4A4E; // "GZJN"
+
     public async Task<bool> EnsureInstances(Participation part, Game game, CancellationToken token = default)
     {
         var newInstances = Context.GameChallenges
@@ -86,6 +88,20 @@ public class ParticipationRepository(
         Context.UserParticipations.Include(p => p.Participation)
             .AnyAsync(p => p.User == user && p.Game == game
                                           && p.Participation.Status != ParticipationStatus.Rejected, token);
+
+    public async Task AcquireJoinLocks(int gameId, int teamId, Guid userId,
+        CancellationToken token = default)
+    {
+        await Context.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, hashtext({1}))",
+            [JoinAdvisoryLockKey, $"user:{gameId}:{userId:N}"],
+            cancellationToken: token);
+
+        await Context.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, hashtext({1}))",
+            [JoinAdvisoryLockKey, $"team:{gameId}:{teamId}"],
+            cancellationToken: token);
+    }
 
     public async Task UpdateParticipation(Participation part, ParticipationEditModel model,
         CancellationToken token = default)

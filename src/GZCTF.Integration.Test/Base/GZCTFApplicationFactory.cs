@@ -72,7 +72,9 @@ public class GZCTFApplicationFactory : WebApplicationFactory<Program>, IAsyncLif
         {
             Console.WriteLine(@"[GZCTFApplicationFactory] Creating K3s container...");
 
-            var builder = new K3sBuilder("rancher/k3s:v1.35.2-k3s1")
+            // Kubernetes 1.35 removed cgroup v1 support, which is still used by some CI hosts.
+            var builder = new K3sBuilder("rancher/k3s:v1.31.5-k3s1")
+                .WithEnvironment("K3S_SYSTEM_DEFAULT_REGISTRY", "dockerproxy.net")
                 .WithCleanUp(true);
 
             _k3sContainer = builder.Build();

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1090,5 +1090,20 @@
   </data>
   <data name="Challenge_DeadlinePassed" xml:space="preserve">
     <value>该题目的截止时间已过</value>
+  </data>
+  <data name="Challenge_TrackRequired" xml:space="preserve">
+    <value>Level 2 及以上必须提供 TrackId</value>
+  </data>
+  <data name="Challenge_TrackNotAllowedForLevelOne" xml:space="preserve">
+    <value>Level 1 不允许提供 TrackId</value>
+  </data>
+  <data name="Challenge_InvalidTrack" xml:space="preserve">
+    <value>所选 Track 不属于当前题目或已被禁用</value>
+  </data>
+  <data name="Challenge_LevelUnavailable" xml:space="preserve">
+    <value>所选 Level 不可用</value>
+  </data>
+  <data name="Game_JoinConflict" xml:space="preserve">
+    <value>战队报名状态发生并发变化，请刷新后重试</value>
   </data>
 </root>

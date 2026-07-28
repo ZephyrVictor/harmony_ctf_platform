@@ -1272,7 +1272,8 @@ namespace GZCTF.Migrations
 
                     b.HasIndex("WriteupId");
 
-                    b.HasIndex("TeamId", "GameId");
+                    b.HasIndex("TeamId", "GameId")
+                        .IsUnique();
 
                     b.ToTable("Participations");
                 });

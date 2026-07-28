@@ -105,7 +105,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         user1LoginResponse.EnsureSuccessStatusCode();
 
         var joinDivAResponse = await user1Client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = team1.Id, DivisionId = divisionA.Id, InviteCode = "DIVA2025" });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team1.Id, DivisionId = divisionA.Id, InviteCode = "DIVA2025" });
         joinDivAResponse.EnsureSuccessStatusCode();
 
         // Test 4: User2 joins Division B
@@ -115,7 +115,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         user2LoginResponse.EnsureSuccessStatusCode();
 
         var joinDivBResponse = await user2Client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = team2.Id, DivisionId = divisionB.Id, InviteCode = "DIVB2025" });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = team2.Id, DivisionId = divisionB.Id, InviteCode = "DIVB2025" });
         joinDivBResponse.EnsureSuccessStatusCode();
 
         // Test 5: Verify division assignment in game details
@@ -221,7 +221,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         loginResponse.EnsureSuccessStatusCode();
 
         // Test 1: Join the game
-        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
         joinResponse.EnsureSuccessStatusCode();
 
         // Test 2: Verify team status in participation via repository with fresh scope
@@ -269,7 +269,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
             new LoginModel { UserName = user.UserName, Password = password });
         loginResponse.EnsureSuccessStatusCode();
 
-        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
         joinResponse.EnsureSuccessStatusCode();
 
         // Test 1: Get game details and verify all challenges are accessible
@@ -361,7 +361,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
             new LoginModel { UserName = user.UserName, Password = password });
         loginResponse.EnsureSuccessStatusCode();
 
-        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        var joinResponse = await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
         joinResponse.EnsureSuccessStatusCode();
 
         // Test 1: Submit incorrect flag
@@ -405,9 +405,10 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
             item.TryGetProperty("id", out var id) && id.GetInt32() == team.Id);
 
         Assert.NotEqual(default, teamScoreItem);
-        // Score field exists (may be 0 if async processing hasn't completed, or >0 if FirstSolve was created)
+        // Legacy challenges without LevelConfig award no positive score in the
+        // OpenHarmony level-only ruleset; the wrong submission keeps its default penalty.
         Assert.True(teamScoreItem.TryGetProperty("score", out var score));
-        Assert.True(score.GetInt32() >= 0, $"Team score should be non-negative, got {score.GetInt32()}");
+        Assert.Equal(-2, score.GetInt32());
     }
 
     /// <summary>
@@ -437,7 +438,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         using var client1 = factory.CreateClient();
         await client1.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user1.UserName, Password = password });
-        await client1.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team1.Id });
+        await client1.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team1.Id });
 
         // Submit first challenge for team 1
         var submit1Response = await client1.PostAsJsonAsync($"/api/Game/{game.Id}/Challenges/{challenge1.Id}",
@@ -457,7 +458,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         using var client2 = factory.CreateClient();
         await client2.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user2.UserName, Password = password });
-        await client2.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team2.Id });
+        await client2.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team2.Id });
 
         var submit3Response = await client2.PostAsJsonAsync($"/api/Game/{game.Id}/Challenges/{challenge1.Id}",
             new FlagSubmitModel { Flag = "flag{one}" });
@@ -555,7 +556,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         await client.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = password });
 
-        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await client.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit multiple wrong flags
         for (var i = 0; i < 5; i++)
@@ -635,7 +636,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         Assert.Equal(seededUser.UserName, profile.UserName);
 
         var joinResponse =
-            await client.PostAsJsonAsync($"/api/Game/{seededGame.Id}", new GameJoinModel { TeamId = seededTeam.Id });
+            await client.PostAsJsonAsync($"/api/Game/{seededGame.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = seededTeam.Id });
         joinResponse.EnsureSuccessStatusCode();
 
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/Game/{seededGame.Id}/Details");
@@ -746,15 +747,15 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
 
         // Join teams to different divisions
         var noReviewJoinResponse = await teams[0].client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = teams[0].teamId, DivisionId = noReviewDiv.Id });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = teams[0].teamId, DivisionId = noReviewDiv.Id });
         noReviewJoinResponse.EnsureSuccessStatusCode();
 
         var withReviewJoinResponse = await teams[1].client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = teams[1].teamId, DivisionId = withReviewDiv.Id });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = teams[1].teamId, DivisionId = withReviewDiv.Id });
         withReviewJoinResponse.EnsureSuccessStatusCode();
 
         var gameDefaultJoinResponse = await teams[2].client.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = teams[2].teamId, DivisionId = gameDefaultDiv.Id });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = teams[2].teamId, DivisionId = gameDefaultDiv.Id });
         gameDefaultJoinResponse.EnsureSuccessStatusCode();
 
         // Verify participation status
@@ -800,7 +801,7 @@ public class GameWorkflowTests(GZCTFApplicationFactory factory)
         newLoginResponse.EnsureSuccessStatusCode();
 
         var newJoinResponse = await newClient.PostAsJsonAsync($"/api/Game/{game.Id}",
-            new GameJoinModel { TeamId = newTeam.Id, DivisionId = gameDefaultDiv.Id });
+            new GameJoinModel { CommitmentAccepted = true, TeamId = newTeam.Id, DivisionId = gameDefaultDiv.Id });
         newJoinResponse.EnsureSuccessStatusCode();
 
         // Verify new participation follows division's permission
@@ -916,7 +917,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@Writeup123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit writeup
         using var formContent = CreateWriteupFormContent();
@@ -966,7 +967,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@Update123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Submit first writeup
         using var formContent1 = CreateWriteupFormContent("writeup1.pdf");
@@ -1029,7 +1030,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@TypeCheck123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Try to submit a non-PDF file
         var content = new MultipartFormDataContent();
@@ -1070,7 +1071,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@SizeCheck123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Create a file larger than 20MB
         var largeContent = new byte[21 * 1024 * 1024];
@@ -1113,7 +1114,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@DeadlineCheck123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         var pdfFile = CreateMockPdfFile();
         var response = await userClient.PostAsync(
@@ -1151,7 +1152,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@NoWriteup123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         var pdfFile = CreateMockPdfFile();
         var response = await userClient.PostAsync(
@@ -1199,7 +1200,7 @@ startxref
             using var teamClient = factory.CreateClient();
             await teamClient.PostAsJsonAsync("/api/Account/LogIn",
                 new LoginModel { UserName = user.UserName, Password = $"User@Team{i}" });
-            await teamClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+            await teamClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
             // Only first two teams submit writeups
             if (i < 2)
@@ -1288,7 +1289,7 @@ startxref
         using var userClient = factory.CreateClient();
         await userClient.PostAsJsonAsync("/api/Account/LogIn",
             new LoginModel { UserName = user.UserName, Password = "User@GetWriteup123" });
-        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+        await userClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
         // Get writeup info before submission
         var getResponse1 = await userClient.GetAsync($"/api/Game/{game.Id}/Writeup");
@@ -1364,7 +1365,7 @@ startxref
             using var teamClient = factory.CreateClient();
             await teamClient.PostAsJsonAsync("/api/Account/LogIn",
                 new LoginModel { UserName = user.UserName, Password = $"User@Team{i}" });
-            await teamClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { TeamId = team.Id });
+            await teamClient.PostAsJsonAsync($"/api/Game/{game.Id}", new GameJoinModel { CommitmentAccepted = true, TeamId = team.Id });
 
             // Submit writeup (PDF only)
             using var formContent = CreateWriteupFormContent($"writeup_team_{i + 1}.pdf");

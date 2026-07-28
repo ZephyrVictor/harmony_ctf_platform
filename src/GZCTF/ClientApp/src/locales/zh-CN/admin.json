@@ -849,6 +849,7 @@
       "answerType": "答案类型",
       "score": "分值",
       "orSeparators": "OR 分隔符",
+      "orSeparatorsDescription": "用于分隔 Exact 备选答案或 SourceLocation 行号候选",
       "rangeSeparator": "范围分隔符",
       "caseSensitive": "区分大小写",
       "pathCaseSensitive": "路径区分大小写",
