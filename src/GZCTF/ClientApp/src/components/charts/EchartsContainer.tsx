@@ -12,36 +12,57 @@ export interface EchartsContainerProps extends React.ComponentPropsWithoutRef<'d
 export const EchartsContainer: FC<EchartsContainerProps> = (props) => {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
+  const optionRef = useRef<EChartsOption>(props.option)
+  const appliedOptionRef = useRef<EChartsOption | null>(null)
   const { option, opts, style, ...rest } = props
+  optionRef.current = option
 
   const { colorScheme } = useMantineColorScheme()
+  const renderer = opts?.renderer
+  const locale = opts?.locale
+  const devicePixelRatio = opts?.devicePixelRatio
+  const useDirtyRect = opts?.useDirtyRect
+  const useCoarsePointer = opts?.useCoarsePointer
+  const pointerSize = opts?.pointerSize
+  const ssr = opts?.ssr
+  const width = opts?.width
+  const height = opts?.height
 
   useEffect(() => {
-    if (chartRef.current && !chartInstance.current) {
-      chartInstance.current = echarts.init(chartRef.current, colorScheme === 'dark' ? 'dark' : 'default', opts)
-      chartInstance.current.setOption(option)
-    }
+    if (!chartRef.current) return
+
+    chartInstance.current = echarts.init(chartRef.current, colorScheme === 'dark' ? 'dark' : 'default', {
+      renderer,
+      locale,
+      devicePixelRatio,
+      useDirtyRect,
+      useCoarsePointer,
+      pointerSize,
+      ssr,
+      width,
+      height,
+    })
+    chartInstance.current.setOption(optionRef.current, {
+      notMerge: true,
+      lazyUpdate: true,
+    })
+    appliedOptionRef.current = optionRef.current
 
     return () => {
-      if (chartInstance.current) {
-        chartInstance.current.dispose()
-        chartInstance.current = null
-      }
+      chartInstance.current?.dispose()
+      chartInstance.current = null
+      appliedOptionRef.current = null
     }
-  }, [])
+  }, [colorScheme, renderer, locale, devicePixelRatio, useDirtyRect, useCoarsePointer, pointerSize, ssr, width, height])
 
   useEffect(() => {
-    if (chartInstance.current) {
-      chartInstance.current.dispose()
-    }
-    chartInstance.current = echarts.init(chartRef.current, colorScheme === 'dark' ? 'dark' : 'default', opts)
-    chartInstance.current.setOption(option)
-  }, [colorScheme])
+    if (appliedOptionRef.current === option) return
 
-  useEffect(() => {
-    if (chartInstance.current) {
-      chartInstance.current.setOption(option, true)
-    }
+    chartInstance.current?.setOption(option, {
+      notMerge: true,
+      lazyUpdate: true,
+    })
+    appliedOptionRef.current = option
   }, [option])
 
   useEffect(() => {

@@ -49,6 +49,7 @@
     <PackageReference Include="NPOI"/>
     <PackageReference Include="NSwag.AspNetCore"/>
     <PackageReference Include="NSwag.MSBuild"/>
+    <PackageReference Include="OpenTelemetry.Api"/>
     <PackageReference Include="OpenTelemetry.Exporter.Console"/>
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
     <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore"/>
@@ -69,6 +70,7 @@
     <PackageReference Include="Serilog.Sinks.File"/>
     <PackageReference Include="Serilog.Sinks.File.Archive"/>
     <PackageReference Include="MailKit"/>
+    <PackageReference Include="MessagePack"/>
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"/>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis"/>
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis"/>

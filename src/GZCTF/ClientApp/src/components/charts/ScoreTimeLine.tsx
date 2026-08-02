@@ -73,6 +73,8 @@ export const ScoreTimeLine: FC<TimeLineProps> = ({ divisionId }) => {
     const timeLine = activeTeams
     const current = dayjs()
     const last = endTime.diff(current, 's') < 0 ? endTime : current
+    const compactItems = (items: TimeLine[]) =>
+      items.filter((item, index) => item.score !== (index === 0 ? 0 : items[index - 1].score))
 
     return [
       {
@@ -108,9 +110,10 @@ export const ScoreTimeLine: FC<TimeLineProps> = ({ divisionId }) => {
             type: 'line',
             step: 'end',
             name: team.name,
+            showSymbol: false,
             data: [
               [dayjs(game.start).toDate(), 0],
-              ...(team.items?.map((timeline: TimeLine) => [timeline.time, timeline.score]) ?? []),
+              ...(compactItems(team.items ?? []).map((timeline) => [timeline.time, timeline.score]) ?? []),
               [last.toDate(), (team.items && team.items[team.items.length - 1]?.score) ?? 0],
             ],
           }) satisfies SeriesOption
@@ -125,7 +128,7 @@ export const ScoreTimeLine: FC<TimeLineProps> = ({ divisionId }) => {
     const backgroundColor = isDark ? theme.colors.gray[6] : theme.colors.light[1]
 
     return {
-      animation: true,
+      animation: false,
       backgroundColor: 'transparent',
       toolbox: {
         show: true,
@@ -224,15 +227,21 @@ export const ScoreTimeLine: FC<TimeLineProps> = ({ divisionId }) => {
     } satisfies EChartsOption
   }, [t, game?.start, game?.end, colorScheme, theme, drawStart, drawEnd])
 
+  const option = useMemo<EChartsOption>(
+    () => ({
+      ...staticOption,
+      series: chartData,
+    }),
+    [staticOption, chartData]
+  )
+
   return (
     <EchartsContainer
-      option={{
-        ...staticOption,
-        series: chartData,
-      }}
+      option={option}
       opts={{
-        renderer: 'svg',
+        renderer: 'canvas',
         locale,
+        useDirtyRect: true,
       }}
       style={{
         width: '100%',

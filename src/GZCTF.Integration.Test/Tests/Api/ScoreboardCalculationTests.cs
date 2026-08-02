@@ -824,6 +824,128 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         Assert.Equal(25, bonusOnlyTeam.Score);
     }
 
+    [Fact]
+    public async Task Scoreboard_Timeline_ShouldExcludeZeroScoreSubmissionsWithoutChangingScores()
+    {
+        var game = await CreateGameWithBloodBonus("Timeline Compaction Test", packBloods(1.0f, 1.0f, 1.0f));
+        var challenge = await CreateChallenge(game.Id, "Timeline Challenge", "flag{timeline}", 1000);
+        var teams = await CreateMultipleTeams(1, "TimelineTeam");
+
+        await JoinGame(teams[0], game.Id);
+        using (var correctResponse = await SubmitFlag(teams[0].client, game.Id, challenge.Id, challenge.Flag))
+        {
+            correctResponse.EnsureSuccessStatusCode();
+        }
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var participation = context.Participations.Single(p =>
+                p.GameId == game.Id && p.TeamId == teams[0].team.Id);
+            var baseTime = DateTimeOffset.UtcNow;
+            var zeroScoreSubmissions = Enumerable.Range(0, 200)
+                .Select(index => new Submission
+                {
+                    Answer = $"wrong-{index}",
+                    Status = AnswerResult.WrongAnswer,
+                    UserId = teams[0].user.Id,
+                    TeamId = teams[0].team.Id,
+                    ParticipationId = participation.Id,
+                    GameId = game.Id,
+                    ChallengeId = challenge.Id,
+                    SubmitTimeUtc = baseTime.AddMilliseconds(index)
+                })
+                .ToList();
+            var bonusSubmission = new Submission
+            {
+                Answer = "[ticket bonus]",
+                Status = AnswerResult.Accepted,
+                UserId = teams[0].user.Id,
+                TeamId = teams[0].team.Id,
+                ParticipationId = participation.Id,
+                GameId = game.Id,
+                ChallengeId = challenge.Id,
+                SubmitTimeUtc = baseTime.AddSeconds(1)
+            };
+            var penaltySubmission = new Submission
+            {
+                Answer = "[penalty]",
+                Status = AnswerResult.WrongAnswer,
+                UserId = teams[0].user.Id,
+                TeamId = teams[0].team.Id,
+                ParticipationId = participation.Id,
+                GameId = game.Id,
+                ChallengeId = challenge.Id,
+                SubmitTimeUtc = baseTime.AddSeconds(2)
+            };
+
+            context.Submissions.AddRange(zeroScoreSubmissions);
+            context.Submissions.AddRange(bonusSubmission, penaltySubmission);
+            await context.SaveChangesAsync();
+
+            context.SubmissionRecords.AddRange(zeroScoreSubmissions.Select(submission => new SubmissionRecord
+            {
+                SubmissionId = submission.Id,
+                ScoreChange = 0,
+                IsPenalty = false,
+                GameId = game.Id,
+                ChallengeId = challenge.Id,
+                ParticipationId = participation.Id,
+                SubmissionType = "Wrong"
+            }));
+            context.SubmissionRecords.Add(new SubmissionRecord
+            {
+                SubmissionId = bonusSubmission.Id,
+                ScoreChange = 25,
+                IsPenalty = false,
+                GameId = game.Id,
+                ChallengeId = challenge.Id,
+                ParticipationId = participation.Id,
+                SubmissionType = "Correct"
+            });
+            context.SubmissionRecords.Add(new SubmissionRecord
+            {
+                SubmissionId = penaltySubmission.Id,
+                ScoreChange = -5,
+                IsPenalty = true,
+                GameId = game.Id,
+                ChallengeId = challenge.Id,
+                ParticipationId = participation.Id,
+                SubmissionType = "Wrong"
+            });
+            context.ScoreAdjustments.Add(new ScoreAdjustment
+            {
+                GameId = game.Id,
+                TeamId = teams[0].team.Id,
+                OperatorId = teams[0].user.Id,
+                Delta = 0,
+                Reason = "legacy zero adjustment",
+                Category = ScoreAdjustmentCategory.Manual,
+                CreatedAt = baseTime.AddSeconds(3)
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await FlushScoreboardCache(game.Id);
+
+        var scoreboard = await GetScoreboard(
+            teams[0].client,
+            game.Id,
+            expectedTeamIds: [teams[0].team.Id],
+            readiness: s => s.GetTeam(teams[0].team.Id).Score == 20);
+
+        var team = scoreboard.GetTeam(teams[0].team.Id);
+        var overallTimeline = Assert.Single(scoreboard.Timelines, timeline => timeline.DivisionId == 0);
+        var teamTimeline = Assert.Single(overallTimeline.Teams, team => team.Id == teams[0].team.Id);
+
+        Assert.Equal(20, team.Score);
+        Assert.Contains(team.SolvedChallenges, solved => solved.Id == challenge.Id && solved.Score == 0);
+        Assert.Collection(
+            teamTimeline.Items,
+            point => Assert.Equal(25, point.Score),
+            point => Assert.Equal(20, point.Score));
+    }
+
     /// <summary>
     /// Test 0day bonus creation uses structured severity and server-side game base score
     /// </summary>

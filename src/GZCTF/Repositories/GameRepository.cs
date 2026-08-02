@@ -17,6 +17,8 @@ public class GameRepository(
     IConfigService configService,
     AppDbContext context) : RepositoryBase(context), IGameRepository
 {
+    internal const int MaxTimelinePointsPerTeam = 2000;
+
     private readonly byte[] _xorKey = configService.GetXorKey();
 
     public override Task<int> CountAsync(CancellationToken token = default) => Context.Games.CountAsync(token);
@@ -535,7 +537,9 @@ public class GameRepository(
 
         var submissionRecordsDetail = await Context.SubmissionRecords
             .AsNoTracking()
-            .Where(r => r.Submission != null && items.Keys.Contains(r.Submission.ParticipationId))
+            .Where(r => r.ScoreChange != 0
+                        && r.Submission != null
+                        && items.Keys.Contains(r.Submission.ParticipationId))
             .Select(r => new ScoreRecordSnapshot(
                 r.Submission!.ParticipationId,
                 r.Submission!.ChallengeId,
@@ -666,6 +670,9 @@ public class GameRepository(
         var participationIdByTeamId = items.Values.ToDictionary(i => i.Id, i => i.ParticipantId);
         foreach (var adjustment in adjustments)
         {
+            if (adjustment.Delta == 0)
+                continue;
+
             if (!participationIdByTeamId.TryGetValue(adjustment.TeamId, out var participantId))
                 continue;
 
@@ -746,7 +753,7 @@ public class GameRepository(
                     {
                         Id = item.Id,
                         Name = item.Name,
-                        Items = timelineItems
+                        Items = DownsampleTimeline(timelineItems)
                     };
                 }
             )
@@ -806,6 +813,53 @@ public class GameRepository(
         int ParticipationId,
         DateTimeOffset SubmitTimeUtc,
         int ScoreChange);
+
+    internal static List<TimeLine> DownsampleTimeline(List<TimeLine> items,
+        int maxPoints = MaxTimelinePointsPerTeam)
+    {
+        if (items.Count <= maxPoints)
+            return items;
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxPoints, 4);
+
+        var sampled = new List<TimeLine>(maxPoints) { items[0] };
+        var interiorCount = items.Count - 2;
+        var bucketCount = (maxPoints - 2) / 2;
+
+        for (var bucket = 0; bucket < bucketCount; bucket++)
+        {
+            var start = 1 + (int)((long)bucket * interiorCount / bucketCount);
+            var end = 1 + (int)((long)(bucket + 1) * interiorCount / bucketCount);
+            var minIndex = start;
+            var maxIndex = start;
+
+            for (var index = start + 1; index < end; index++)
+            {
+                if (items[index].Score < items[minIndex].Score)
+                    minIndex = index;
+                if (items[index].Score > items[maxIndex].Score)
+                    maxIndex = index;
+            }
+
+            if (minIndex == maxIndex)
+            {
+                sampled.Add(items[minIndex]);
+            }
+            else if (minIndex < maxIndex)
+            {
+                sampled.Add(items[minIndex]);
+                sampled.Add(items[maxIndex]);
+            }
+            else
+            {
+                sampled.Add(items[maxIndex]);
+                sampled.Add(items[minIndex]);
+            }
+        }
+
+        sampled.Add(items[^1]);
+        return sampled;
+    }
 
     private static bool CheckDivisionPermission(DivisionItem? division, GamePermission permission,
         int? challengeId = null)
