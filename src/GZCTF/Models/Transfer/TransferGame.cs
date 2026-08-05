@@ -59,6 +59,11 @@ public class TransferGame : IValidatableObject
     public int ContainerCountLimit { get; set; } = 3;
 
     /// <summary>
+    /// Submission controls for this game.
+    /// </summary>
+    public GameSubmissionControlsSection? SubmissionControls { get; set; }
+
+    /// <summary>
     /// Game start time
     /// </summary>
     [Required(ErrorMessage = "Start time is required")]
@@ -105,6 +110,21 @@ public class TransferGame : IValidatableObject
 
         // Note: BloodBonus range validation (0-1023) is handled by [Range] attributes on BloodBonusSection
     }
+}
+
+public class GameSubmissionControlsSection
+{
+    /// <summary>
+    /// Per-team daily submission limit across the whole game. 0 = unlimited.
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Daily team submission limit must be non-negative")]
+    public int DailyTeam { get; set; }
+
+    /// <summary>
+    /// Cooldown duration in minutes. 0 = cooldown disabled.
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Cooldown minutes must be non-negative")]
+    public int CooldownMinutes { get; set; }
 }
 
 

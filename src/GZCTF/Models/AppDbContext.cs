@@ -98,6 +98,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Property(e => e.ZeroDayBaseScore)
                 .HasDefaultValue(1);
 
+            entity.Property(e => e.DailyTeamSubmissionLimit)
+                .HasDefaultValue(0);
+            entity.Property(e => e.ChallengeCooldownWrongAnswerLimitFactor)
+                .HasDefaultValue(5);
+            entity.Property(e => e.ChallengeDailyTeamSubmissionLimitFactor)
+                .HasDefaultValue(20);
+            entity.Property(e => e.ChallengeTotalTeamSubmissionLimitFactor)
+                .HasDefaultValue(200);
+
             entity.HasMany(e => e.GameEvents)
                 .WithOne(e => e.Game)
                 .HasForeignKey(e => e.GameId);
@@ -289,6 +298,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
             entity.Navigation(e => e.Attachment).AutoInclude();
             entity.Navigation(e => e.TestContainer).AutoInclude();
 
+            entity.Property(e => e.DailyTeamSubmissionLimit)
+                .HasDefaultValue(0);
+            entity.Property(e => e.TotalTeamSubmissionLimit)
+                .HasDefaultValue(0);
+            entity.Property(e => e.CooldownWrongAnswerLimitOverride)
+                .HasDefaultValue(0);
+            entity.Property(e => e.DailyTeamSubmissionLimitMode)
+                .HasConversion<int>()
+                .HasDefaultValue(SubmissionControlLimitMode.InheritDefault);
+            entity.Property(e => e.TotalTeamSubmissionLimitMode)
+                .HasConversion<int>()
+                .HasDefaultValue(SubmissionControlLimitMode.InheritDefault);
+            entity.Property(e => e.CooldownWrongAnswerLimitMode)
+                .HasConversion<int>()
+                .HasDefaultValue(SubmissionControlLimitMode.InheritDefault);
+
             entity.HasIndex(e => e.GameId);
 
             entity.HasMany(e => e.DivisionConfigs)
@@ -347,6 +372,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) :
         builder.Entity<Submission>(entity =>
         {
             entity.Property(e => e.Status).HasConversion<string>();
+
+            entity.HasIndex(e => new { e.GameId, e.ParticipationId, e.SubmitTimeUtc });
+            entity.HasIndex(e => new { e.GameId, e.ParticipationId, e.ChallengeId, e.SubmitTimeUtc });
 
             entity.Navigation(e => e.Team).AutoInclude();
             entity.Navigation(e => e.User).AutoInclude();

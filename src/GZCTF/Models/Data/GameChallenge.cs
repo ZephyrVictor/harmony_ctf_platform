@@ -1,8 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using GZCTF.Models.Request.Edit;
 
 namespace GZCTF.Models.Data;
+
+[JsonConverter(typeof(JsonStringEnumConverter<SubmissionControlLimitMode>))]
+public enum SubmissionControlLimitMode
+{
+    InheritDefault,
+    Custom,
+    Unlimited
+}
 
 public class GameChallenge : Challenge
 {
@@ -42,6 +51,39 @@ public class GameChallenge : Challenge
     public string? Repository { get; set; }
 
     /// <summary>
+    /// 每队每日本题提交上限自定义值。模式为 Custom 时生效。
+    /// </summary>
+    public int DailyTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 每队每日本题提交上限模式。
+    /// </summary>
+    public SubmissionControlLimitMode DailyTeamSubmissionLimitMode { get; set; } =
+        SubmissionControlLimitMode.InheritDefault;
+
+    /// <summary>
+    /// 每队本题累计提交上限自定义值。模式为 Custom 时生效。
+    /// </summary>
+    public int TotalTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 每队本题累计提交上限模式。
+    /// </summary>
+    public SubmissionControlLimitMode TotalTeamSubmissionLimitMode { get; set; } =
+        SubmissionControlLimitMode.InheritDefault;
+
+    /// <summary>
+    /// 本题错答冷却阈值自定义值。模式为 Custom 时生效。
+    /// </summary>
+    public int CooldownWrongAnswerLimitOverride { get; set; }
+
+    /// <summary>
+    /// 本题错答冷却阈值模式。
+    /// </summary>
+    public SubmissionControlLimitMode CooldownWrongAnswerLimitMode { get; set; } =
+        SubmissionControlLimitMode.InheritDefault;
+
+    /// <summary>
     /// Current score of the challenge
     /// </summary>
     [NotMapped]
@@ -79,6 +121,13 @@ public class GameChallenge : Challenge
         MinScoreRate = model.MinScoreRate ?? MinScoreRate;
         Difficulty = model.Difficulty ?? Difficulty;
         Repository = model.Repository ?? Repository;
+        DailyTeamSubmissionLimit = model.DailyTeamSubmissionLimit ?? DailyTeamSubmissionLimit;
+        TotalTeamSubmissionLimit = model.TotalTeamSubmissionLimit ?? TotalTeamSubmissionLimit;
+        CooldownWrongAnswerLimitOverride =
+            model.CooldownWrongAnswerLimitOverride ?? CooldownWrongAnswerLimitOverride;
+        DailyTeamSubmissionLimitMode = model.DailyTeamSubmissionLimitMode ?? DailyTeamSubmissionLimitMode;
+        TotalTeamSubmissionLimitMode = model.TotalTeamSubmissionLimitMode ?? TotalTeamSubmissionLimitMode;
+        CooldownWrongAnswerLimitMode = model.CooldownWrongAnswerLimitMode ?? CooldownWrongAnswerLimitMode;
         FileName = model.FileName ?? FileName;
         DisableBloodBonus = model.DisableBloodBonus ?? DisableBloodBonus;
         LockDurationMinutes = model.LockDurationMinutes ?? LockDurationMinutes;

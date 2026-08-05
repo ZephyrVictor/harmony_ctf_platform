@@ -312,12 +312,24 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var participationId = await context.Participations
+            .Where(p => p.GameId == fx.GameId && p.TeamId == fx.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
         Assert.Equal(1, await context.SubmissionRecords.CountAsync(r =>
             r.GameId == fx.GameId
             && r.ChallengeId == fx.ChallengeId
             && r.TrackId == fx.TrackId
             && r.Level == 3
             && r.ScoreChange > 0));
+        Assert.Equal(4, await context.Submissions.CountAsync(s =>
+            s.ParticipationId == participationId && s.ChallengeId == fx.ChallengeId));
+        Assert.Equal(1, await context.SubmissionRecords.CountAsync(r =>
+            r.ParticipationId == participationId
+            && r.ChallengeId == fx.ChallengeId
+            && r.SubmissionType == "Duplicate"
+            && r.ScoreChange == 0
+            && r.MatchedFlagId == null));
     }
 
     /// <summary>
@@ -369,6 +381,300 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
         Assert.True(state.CooldownUntil > DateTimeOffset.UtcNow);
         Assert.Equal(5, await context.Submissions.CountAsync(s =>
             s.ParticipationId == participationId && s.ChallengeId == fx.ChallengeId));
+    }
+
+    [Fact]
+    public async Task MultiLevel_CooldownBlockedSubmission_DoesNotCreateSubmission()
+    {
+        var fx = await SetupFixtureAsync();
+
+        for (var i = 1; i <= 5; i++)
+        {
+            var response = await fx.UserClient.PostAsJsonAsync(
+                $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+                new FlagSubmitModel { Flag = $"flag{{cooldown_seed_{i}}}", Level = 1 });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var participationId = await context.Participations
+            .Where(p => p.GameId == fx.GameId && p.TeamId == fx.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
+        var before = await context.Submissions.CountAsync(s =>
+            s.ParticipationId == participationId && s.ChallengeId == fx.ChallengeId);
+
+        var blocked = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{cooldown_blocked}", Level = 1 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
+        var body = await blocked.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Cooldown", body.GetProperty("scope").GetString());
+        Assert.Equal(before, await context.Submissions.CountAsync(s =>
+            s.ParticipationId == participationId && s.ChallengeId == fx.ChallengeId));
+    }
+
+    [Fact]
+    public async Task SubmissionQuota_GameDailyTeamLimit_BlocksFurtherSubmissionsWithoutSideEffects()
+    {
+        var fx = await SetupFixtureAsync();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var setupContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var game = await setupContext.Games.SingleAsync(g => g.Id == fx.GameId);
+            game.DailyTeamSubmissionLimit = 1;
+            await setupContext.SaveChangesAsync();
+        }
+
+        var first = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 });
+        first.EnsureSuccessStatusCode();
+
+        var blocked = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{blocked_by_game_daily}", Level = 1 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
+        var body = await blocked.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("GameDailyTeam", body.GetProperty("scope").GetString());
+
+        using var verifyScope = factory.Services.CreateScope();
+        var context = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var participationId = await context.Participations
+            .Where(p => p.GameId == fx.GameId && p.TeamId == fx.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
+        Assert.Equal(1, await context.Submissions.CountAsync(s => s.ParticipationId == participationId));
+        Assert.False(await context.Submissions.AnyAsync(s =>
+            s.ParticipationId == participationId && s.Answer == "flag{blocked_by_game_daily}"));
+    }
+
+    [Fact]
+    public async Task SubmissionQuota_ChallengeTotalTeamLimit_DoesNotBlockOtherTeams()
+    {
+        var fx = await SetupFixtureAsync();
+        var other = await CreateJoinedUserClient(fx.GameId, "QuotaOtherTeam");
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var setupContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var challenge = await setupContext.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+            challenge.TotalTeamSubmissionLimit = 1;
+            challenge.TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom;
+            await setupContext.SaveChangesAsync();
+        }
+
+        var first = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{wrong_team_seed}", Level = 1 });
+        first.EnsureSuccessStatusCode();
+
+        var sameTeamBlocked = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, sameTeamBlocked.StatusCode);
+        var body = await sameTeamBlocked.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("ChallengeTotalTeam", body.GetProperty("scope").GetString());
+
+        var otherTeamAllowed = await other.Client.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 });
+        otherTeamAllowed.EnsureSuccessStatusCode();
+
+        using var verifyScope = factory.Services.CreateScope();
+        var context = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var firstParticipationId = await context.Participations
+            .Where(p => p.GameId == fx.GameId && p.TeamId == fx.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
+        var otherParticipationId = await context.Participations
+            .Where(p => p.GameId == fx.GameId && p.TeamId == other.TeamId)
+            .Select(p => p.Id)
+            .SingleAsync();
+        Assert.Equal(1, await context.Submissions.CountAsync(s => s.ParticipationId == firstParticipationId));
+        Assert.Equal(1, await context.Submissions.CountAsync(s => s.ParticipationId == otherParticipationId));
+    }
+
+    [Fact]
+    public async Task SubmissionQuota_InheritedChallengeDailyLimit_BlocksAfterDefaultFactor()
+    {
+        var fx = await SetupFixtureAsync();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var game = await context.Games.SingleAsync(g => g.Id == fx.GameId);
+            var challenge = await context.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+            game.ChallengeDailyTeamSubmissionLimitFactor = 1;
+            challenge.DailyTeamSubmissionLimitMode = SubmissionControlLimitMode.InheritDefault;
+            await context.SaveChangesAsync();
+        }
+
+        var first = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{wrong_inherited_daily_seed}", Level = 1 });
+        first.EnsureSuccessStatusCode();
+
+        var blocked = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
+        var body = await blocked.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("ChallengeDailyTeam", body.GetProperty("scope").GetString());
+        Assert.Equal(1, body.GetProperty("limit").GetInt32());
+    }
+
+    [Fact]
+    public async Task SubmissionQuota_CustomChallengeLimit_IgnoresDefaultFactor()
+    {
+        var fx = await SetupFixtureAsync();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var game = await context.Games.SingleAsync(g => g.Id == fx.GameId);
+            var challenge = await context.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+            game.ChallengeTotalTeamSubmissionLimitFactor = 1;
+            challenge.TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom;
+            challenge.TotalTeamSubmissionLimit = 2;
+            await context.SaveChangesAsync();
+        }
+
+        var first = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{wrong_custom_total_seed}", Level = 1 });
+        first.EnsureSuccessStatusCode();
+
+        var second = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 });
+        second.EnsureSuccessStatusCode();
+
+        var blocked = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{blocked_custom_total}", Level = 1 });
+        Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
+        var body = await blocked.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("ChallengeTotalTeam", body.GetProperty("scope").GetString());
+        Assert.Equal(2, body.GetProperty("limit").GetInt32());
+    }
+
+    [Fact]
+    public async Task SubmissionQuota_UnlimitedChallengeLimit_DoesNotBlock()
+    {
+        var fx = await SetupFixtureAsync();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var game = await context.Games.SingleAsync(g => g.Id == fx.GameId);
+            var challenge = await context.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+            game.ChallengeTotalTeamSubmissionLimitFactor = 1;
+            challenge.TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Unlimited;
+            await context.SaveChangesAsync();
+        }
+
+        var first = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{wrong_unlimited_total_seed}", Level = 1 });
+        first.EnsureSuccessStatusCode();
+
+        var second = await fx.UserClient.PostAsJsonAsync(
+            $"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}",
+            new FlagSubmitModel { Flag = "flag{l1_correct}", Level = 1 });
+        second.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task SubmissionControl_ApplyDefaultsToAllChallenges_SetsInheritedModes()
+    {
+        var fx = await SetupFixtureAsync();
+        var adminPassword = "Admin@SubmissionControl123";
+        var admin = await TestDataSeeder.CreateUserAsync(factory.Services,
+            TestDataSeeder.RandomName(), adminPassword, role: Role.Admin);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var challenge = await context.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+            challenge.DailyTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom;
+            challenge.DailyTeamSubmissionLimit = 99;
+            challenge.TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Unlimited;
+            challenge.CooldownWrongAnswerLimitMode = SubmissionControlLimitMode.Custom;
+            challenge.CooldownWrongAnswerLimitOverride = 9;
+            await context.SaveChangesAsync();
+        }
+
+        using var adminClient = factory.CreateClient();
+        var login = await adminClient.PostAsJsonAsync("/api/Account/LogIn",
+            new LoginModel { UserName = admin.UserName, Password = adminPassword });
+        login.EnsureSuccessStatusCode();
+
+        var update = await adminClient.PutAsJsonAsync(
+            $"/api/admin/games/{fx.GameId}/submission-control",
+            new
+            {
+                dailyTeamSubmissionLimit = 0,
+                cooldownMinutes = 5,
+                challengeCooldownWrongAnswerLimitFactor = 3,
+                challengeDailyTeamSubmissionLimitFactor = 4,
+                challengeTotalTeamSubmissionLimitFactor = 5,
+                applyDefaultsToAllChallenges = true,
+                challenges = Array.Empty<object>()
+            });
+        update.EnsureSuccessStatusCode();
+
+        var body = await update.Content.ReadFromJsonAsync<JsonElement>();
+        var challengeDto = body.GetProperty("challenges").EnumerateArray()
+            .Single(c => c.GetProperty("challengeId").GetInt32() == fx.ChallengeId);
+        Assert.Equal("InheritDefault",
+            challengeDto.GetProperty("dailyTeamSubmission").GetProperty("mode").GetString());
+        Assert.Equal(4,
+            challengeDto.GetProperty("dailyTeamSubmission").GetProperty("effectiveValue").GetInt32());
+        Assert.Equal(5,
+            challengeDto.GetProperty("totalTeamSubmission").GetProperty("effectiveValue").GetInt32());
+        Assert.Equal(3,
+            challengeDto.GetProperty("cooldownWrongAnswerLimit").GetProperty("effectiveValue").GetInt32());
+
+        using var verifyScope = factory.Services.CreateScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var persisted = await verifyContext.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+        Assert.Equal(SubmissionControlLimitMode.InheritDefault, persisted.DailyTeamSubmissionLimitMode);
+        Assert.Equal(SubmissionControlLimitMode.InheritDefault, persisted.TotalTeamSubmissionLimitMode);
+        Assert.Equal(SubmissionControlLimitMode.InheritDefault, persisted.CooldownWrongAnswerLimitMode);
+    }
+
+    [Fact]
+    public async Task SubmissionQuota_DetailShowsConfiguredLimitsAndOmitsUnconfigured()
+    {
+        var fx = await SetupFixtureAsync();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var game = await context.Games.SingleAsync(g => g.Id == fx.GameId);
+            var challenge = await context.GameChallenges.SingleAsync(c => c.Id == fx.ChallengeId);
+            game.DailyTeamSubmissionLimit = 10;
+            challenge.TotalTeamSubmissionLimit = 20;
+            challenge.TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom;
+            challenge.DailyTeamSubmissionLimitMode = SubmissionControlLimitMode.Unlimited;
+            await context.SaveChangesAsync();
+        }
+
+        var detailResp = await fx.UserClient.GetAsync($"/api/Game/{fx.GameId}/Challenges/{fx.ChallengeId}");
+        detailResp.EnsureSuccessStatusCode();
+        var detail = await detailResp.Content.ReadFromJsonAsync<JsonElement>();
+        var control = detail.GetProperty("submissionControl");
+
+        Assert.Equal(10, control.GetProperty("gameDailyTeam").GetProperty("limit").GetInt32());
+        Assert.Equal(20, control.GetProperty("challengeTotalTeam").GetProperty("limit").GetInt32());
+        Assert.Equal(JsonValueKind.Null, control.GetProperty("challengeDailyTeam").ValueKind);
     }
 
     [Fact]
@@ -562,5 +868,20 @@ public class MultiLevelFlagFlowTests(GZCTFApplicationFactory factory)
         public HttpClient UserClient { get; init; } = null!;
         public Guid UserId { get; init; }
         public int TeamId { get; init; }
+    }
+
+    private async Task<(HttpClient Client, int TeamId)> CreateJoinedUserClient(int gameId, string teamPrefix)
+    {
+        var password = "User@Pass123";
+        var userName = TestDataSeeder.RandomName();
+        var user = await TestDataSeeder.CreateUserAsync(factory.Services, userName, password);
+        var team = await TestDataSeeder.CreateTeamAsync(factory.Services, user.Id, $"{teamPrefix}-{userName}");
+        await TestDataSeeder.JoinGameAsync(factory.Services, gameId, team.Id, user.Id);
+
+        var client = factory.CreateClient();
+        var loginResp = await client.PostAsJsonAsync("/api/Account/LogIn",
+            new LoginModel { UserName = user.UserName, Password = password });
+        loginResp.EnsureSuccessStatusCode();
+        return (client, team.Id);
     }
 }

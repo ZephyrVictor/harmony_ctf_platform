@@ -27,6 +27,12 @@ public class TransferChallengeTests
             FlagTemplate = null,
             DisableBloodBonus = false,
             EnableTrafficCapture = false,
+            DailyTeamSubmissionLimit = 11,
+            DailyTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom,
+            TotalTeamSubmissionLimit = 22,
+            TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom,
+            CooldownWrongAnswerLimitOverride = 6,
+            CooldownWrongAnswerLimitMode = SubmissionControlLimitMode.Custom,
             Hints = ["Hint 1", "Hint 2"],
             Flags = [new() { FlagValue = "flag{test_flag}" }]
         };
@@ -45,6 +51,9 @@ public class TransferChallengeTests
         Assert.Equal(0.25, transfer.Scoring.MinRate);
         Assert.Equal(5.0, transfer.Scoring.Difficulty);
         Assert.Equal(0, transfer.Limits.Submission);
+        Assert.Equal(11, transfer.Limits.DailyTeamSubmission);
+        Assert.Equal(22, transfer.Limits.TotalTeamSubmission);
+        Assert.Equal(6, transfer.Limits.CooldownWrongAnswerLimitOverride);
         Assert.Null(transfer.Flags.Template);
         Assert.False(transfer.Flags.DisableBloodBonus);
         Assert.Equal(2, transfer.Hints!.Count);
@@ -107,7 +116,14 @@ public class TransferChallengeTests
         Type = ChallengeType.StaticAttachment,
         Enabled = true,
         Scoring = new ScoringSection { Original = 800, MinRate = 0.3, Difficulty = 4.0 },
-        Limits = new LimitsSection { Submission = 10, Deadline = DateTimeOffset.UtcNow.AddDays(5) },
+        Limits = new LimitsSection
+        {
+            Submission = 10,
+            Deadline = DateTimeOffset.UtcNow.AddDays(5),
+            DailyTeamSubmission = 7,
+            TotalTeamSubmission = 8,
+            CooldownWrongAnswerLimitOverride = 6
+        },
         Flags = new FlagsSection
         {
             Template = null,
@@ -134,6 +150,12 @@ public class TransferChallengeTests
         Assert.Equal(0.3, challenge.MinScoreRate);
         Assert.Equal(4.0, challenge.Difficulty);
         Assert.Equal(TransferChallenge.Limits.Deadline, challenge.DeadlineUtc);
+        Assert.Equal(7, challenge.DailyTeamSubmissionLimit);
+        Assert.Equal(8, challenge.TotalTeamSubmissionLimit);
+        Assert.Equal(6, challenge.CooldownWrongAnswerLimitOverride);
+        Assert.Equal(SubmissionControlLimitMode.Custom, challenge.DailyTeamSubmissionLimitMode);
+        Assert.Equal(SubmissionControlLimitMode.Custom, challenge.TotalTeamSubmissionLimitMode);
+        Assert.Equal(SubmissionControlLimitMode.Custom, challenge.CooldownWrongAnswerLimitMode);
         Assert.True(challenge.DisableBloodBonus);
         Assert.Equal(2, challenge.Hints!.Count);
     }
@@ -156,6 +178,10 @@ public class TransferChallengeTests
         Assert.Equal(TransferChallenge.Flags.Static![0].Attachment, deserialized.Flags.Static?[0].Attachment);
         Assert.Equal(TransferChallenge.Flags.Template, deserialized.Flags.Template);
         Assert.Equal(TransferChallenge.Limits.Submission, deserialized.Limits.Submission);
+        Assert.Equal(TransferChallenge.Limits.DailyTeamSubmission, deserialized.Limits.DailyTeamSubmission);
+        Assert.Equal(TransferChallenge.Limits.TotalTeamSubmission, deserialized.Limits.TotalTeamSubmission);
+        Assert.Equal(TransferChallenge.Limits.CooldownWrongAnswerLimitOverride,
+            deserialized.Limits.CooldownWrongAnswerLimitOverride);
     }
 
     [Fact]

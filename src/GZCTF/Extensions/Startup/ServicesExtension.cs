@@ -113,8 +113,10 @@ internal static class ServicesExtension
             builder.Services.AddScoped<IChallengeLockStateRepository, ChallengeLockStateRepository>();
             builder.Services.AddScoped<IChallengeTrackLevelBanStateRepository, ChallengeTrackLevelBanStateRepository>();
             builder.Services.AddScoped<IChallengeCooldownRepository, ChallengeCooldownRepository>();
+            builder.Services.AddScoped<ISubmissionQuotaRepository, SubmissionQuotaRepository>();
             builder.Services.AddScoped<ChallengeScoreService>();
             builder.Services.AddScoped<ScoringService>();
+            builder.Services.AddScoped<SubmissionQuotaService>();
             builder.Services.AddScoped<CompetitionSettingsService>();
 
             builder.Services.AddScoped<ExcelHelper>();

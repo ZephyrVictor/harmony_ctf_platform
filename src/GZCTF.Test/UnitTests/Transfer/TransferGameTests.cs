@@ -23,6 +23,8 @@ public class TransferGameTests
             InviteCode = "TEST2025",
             TeamMemberCountLimit = 5,
             ContainerCountLimit = 3,
+            DailyTeamSubmissionLimit = 120,
+            CooldownMinutes = 2,
             StartTimeUtc = new DateTimeOffset(2025, 10, 1, 0, 0, 0, TimeSpan.FromHours(8)),
             EndTimeUtc = new DateTimeOffset(2025, 10, 3, 23, 59, 59, TimeSpan.FromHours(8)),
             WriteupRequired = true,
@@ -45,6 +47,9 @@ public class TransferGameTests
         Assert.Equal("TEST2025", transfer.InviteCode);
         Assert.Equal(5, transfer.TeamMemberCountLimit);
         Assert.Equal(3, transfer.ContainerCountLimit);
+        Assert.NotNull(transfer.SubmissionControls);
+        Assert.Equal(120, transfer.SubmissionControls.DailyTeam);
+        Assert.Equal(2, transfer.SubmissionControls.CooldownMinutes);
 
         // Writeup
         Assert.NotNull(transfer.Writeup);

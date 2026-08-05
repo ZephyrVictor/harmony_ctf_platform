@@ -23,6 +23,13 @@ public static class TransferExtensions
                 InviteCode = game.InviteCode,
                 TeamMemberCountLimit = game.TeamMemberCountLimit,
                 ContainerCountLimit = game.ContainerCountLimit,
+                SubmissionControls = game.DailyTeamSubmissionLimit > 0 || game.CooldownMinutes > 0
+                    ? new GameSubmissionControlsSection
+                    {
+                        DailyTeam = game.DailyTeamSubmissionLimit,
+                        CooldownMinutes = game.CooldownMinutes
+                    }
+                    : null,
                 StartTime = game.StartTimeUtc,
                 EndTime = game.EndTimeUtc,
                 Divisions = game.Divisions?.Select(d => d.ToTransfer()).ToList() ?? []
@@ -160,7 +167,14 @@ public static class TransferExtensions
                     MinRate = challenge.MinScoreRate,
                     Difficulty = challenge.Difficulty
                 },
-                Limits = new LimitsSection { Submission = 0, Deadline = challenge.DeadlineUtc },
+                Limits = new LimitsSection
+                {
+                    Submission = 0,
+                    Deadline = challenge.DeadlineUtc,
+                    DailyTeamSubmission = challenge.DailyTeamSubmissionLimit,
+                    TotalTeamSubmission = challenge.TotalTeamSubmissionLimit,
+                    CooldownWrongAnswerLimitOverride = challenge.CooldownWrongAnswerLimitOverride
+                },
                 Flags = flagsSection
             };
 
@@ -327,6 +341,18 @@ public static class TransferExtensions
                 MinScoreRate = transfer.Scoring.MinRate,
                 Difficulty = transfer.Scoring.Difficulty,
                 DeadlineUtc = transfer.Limits.Deadline,
+                DailyTeamSubmissionLimit = transfer.Limits.DailyTeamSubmission,
+                TotalTeamSubmissionLimit = transfer.Limits.TotalTeamSubmission,
+                CooldownWrongAnswerLimitOverride = transfer.Limits.CooldownWrongAnswerLimitOverride,
+                DailyTeamSubmissionLimitMode = transfer.Limits.DailyTeamSubmission > 0
+                    ? SubmissionControlLimitMode.Custom
+                    : SubmissionControlLimitMode.Unlimited,
+                TotalTeamSubmissionLimitMode = transfer.Limits.TotalTeamSubmission > 0
+                    ? SubmissionControlLimitMode.Custom
+                    : SubmissionControlLimitMode.Unlimited,
+                CooldownWrongAnswerLimitMode = transfer.Limits.CooldownWrongAnswerLimitOverride > 0
+                    ? SubmissionControlLimitMode.Custom
+                    : SubmissionControlLimitMode.InheritDefault,
                 FlagTemplate = transfer.Flags.Template,
                 DisableBloodBonus = transfer.Flags.DisableBloodBonus,
                 EnableTrafficCapture = transfer.Flags.EnableTrafficCapture,

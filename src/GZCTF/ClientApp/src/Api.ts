@@ -207,6 +207,25 @@ export interface RequestResponse {
   status?: number;
 }
 
+export enum SubmissionControlScope {
+  GameDailyTeam = "GameDailyTeam",
+  ChallengeTotalTeam = "ChallengeTotalTeam",
+  ChallengeDailyTeam = "ChallengeDailyTeam",
+  Cooldown = "Cooldown",
+}
+
+export type SubmissionBlockedResponse = RequestResponse & {
+  scope?: SubmissionControlScope;
+  /** @format int32 */
+  limit?: number;
+  /** @format int32 */
+  used?: number;
+  /** @format int32 */
+  remaining?: number;
+  /** @format uint64 */
+  resetsAt?: number | null;
+};
+
 /** Account registration */
 export type RegisterModel = ModelWithCaptcha & {
   /**
@@ -1021,6 +1040,13 @@ export interface GameInfoModel {
   zeroDayNdayScoreRequirement?: number;
   /** 题目冷却分钟数。0 = 不限流 */
   cooldownMinutes?: number;
+  /**
+   * 每队每日比赛总提交上限。按 PRC 自然日统计，0 = 不限制。
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  dailyTeamSubmissionLimit?: number;
 }
 
 /** List response */
@@ -1250,6 +1276,21 @@ export interface ChallengeEditDetailModel {
    * @maxLength 128
    */
   repository?: string | null;
+  /**
+   * 每队每日本题提交上限。按 PRC 自然日统计，0 = 不限制。
+   * @format int32
+   */
+  dailyTeamSubmissionLimit?: number;
+  /**
+   * 每队本题累计提交上限。0 = 不限制。
+   * @format int32
+   */
+  totalTeamSubmissionLimit?: number;
+  /**
+   * 本题错答冷却阈值覆盖。0 = 使用默认 trackCount × 5。
+   * @format int32
+   */
+  cooldownWrongAnswerLimitOverride?: number;
 }
 
 export interface Attachment {
@@ -1445,6 +1486,27 @@ export interface ChallengeUpdateModel {
    * @maxLength 128
    */
   repository?: string | null;
+  /**
+   * 每队每日本题提交上限。按 PRC 自然日统计，0 = 不限制。
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  dailyTeamSubmissionLimit?: number | null;
+  /**
+   * 每队本题累计提交上限。0 = 不限制。
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  totalTeamSubmissionLimit?: number | null;
+  /**
+   * 本题错答冷却阈值覆盖。0 = 使用默认 trackCount × 5。
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   */
+  cooldownWrongAnswerLimitOverride?: number | null;
 }
 
 /** New attachment information (Edit) */
@@ -3120,6 +3182,8 @@ export interface ChallengeDetailModel {
   activeTrackId?: string | null;
   /** 题目冷却信息（per-challenge 答错次数 + 临时冷却） */
   cooldown?: CooldownInfo | null;
+  /** 当前题目提交控制状态（配额 + 冷却） */
+  submissionControl?: ChallengeSubmissionControlStatus | null;
 }
 
 export interface ClientFlagContext {
@@ -3193,6 +3257,26 @@ export interface CooldownInfo {
   cooldownUntil?: number | null;
 }
 
+export interface SubmissionQuotaStatus {
+  /** @format int32 */
+  limit?: number;
+  /** @format int32 */
+  used?: number;
+  /** @format int32 */
+  remaining?: number;
+  unlimited?: boolean;
+  exceeded?: boolean;
+  /** @format uint64 */
+  resetsAt?: number | null;
+}
+
+export interface ChallengeSubmissionControlStatus {
+  gameDailyTeam?: SubmissionQuotaStatus | null;
+  challengeDailyTeam?: SubmissionQuotaStatus | null;
+  challengeTotalTeam?: SubmissionQuotaStatus | null;
+  cooldown?: CooldownInfo | null;
+}
+
 /** 全题锁状态（选手视图） */
 export interface ChallengeLockStatusModel {
   isLocked?: boolean;
@@ -3259,6 +3343,8 @@ export interface FlagSubmitResponse {
   triggerAnswer?: string | null;
   /** 题目冷却信息（per-challenge 答错次数 + 临时冷却） */
   cooldown?: CooldownInfo | null;
+  /** 当前题目提交控制状态（配额 + 冷却） */
+  submissionControl?: ChallengeSubmissionControlStatus | null;
 }
 
 /** Flag submission */

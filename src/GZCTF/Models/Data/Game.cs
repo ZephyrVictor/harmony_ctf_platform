@@ -86,6 +86,26 @@ public partial class Game
     public int CooldownMinutes { get; set; } = 5;
 
     /// <summary>
+    /// 每队每日比赛总提交上限。按 PRC 自然日统计，0 = 不限制。
+    /// </summary>
+    public int DailyTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 继承默认时的冷却错答阈值系数。实际阈值 = enabledTrackCount × factor，0 = 不限制。
+    /// </summary>
+    public int ChallengeCooldownWrongAnswerLimitFactor { get; set; } = 5;
+
+    /// <summary>
+    /// 继承默认时的每队本题每日提交上限系数。实际阈值 = enabledTrackCount × factor，0 = 不限制。
+    /// </summary>
+    public int ChallengeDailyTeamSubmissionLimitFactor { get; set; } = 20;
+
+    /// <summary>
+    /// 继承默认时的每队本题累计提交上限系数。实际阈值 = enabledTrackCount × factor，0 = 不限制。
+    /// </summary>
+    public int ChallengeTotalTeamSubmissionLimitFactor { get; set; } = 200;
+
+    /// <summary>
     /// Teams can join without review
     /// </summary>
     public bool AcceptWithoutReview { get; set; }
@@ -226,6 +246,7 @@ public partial class Game
         ZeroDayBaseScore = Math.Max(1, model.ZeroDayBaseScore);
         ZeroDayNdayScoreRequirement = model.ZeroDayNdayScoreRequirement;
         CooldownMinutes = model.CooldownMinutes;
+        DailyTeamSubmissionLimit = model.DailyTeamSubmissionLimit;
 
         return this;
     }

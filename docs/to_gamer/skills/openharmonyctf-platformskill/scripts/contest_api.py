@@ -148,14 +148,14 @@ class ContestApi:
         except OSError:
             pass
 
-    def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+    def request(self, method: str, path: str, raise_for_status: bool = True, **kwargs: Any) -> requests.Response:
         url = urljoin(self.base_url, path.lstrip("/"))
         headers = kwargs.pop("headers", {})
         kwargs["headers"] = headers
         kwargs.setdefault("timeout", self.timeout)
         response = self.session.request(method, url, **kwargs)
         self.save_cookies()
-        if response.status_code >= 400:
+        if raise_for_status and response.status_code >= 400:
             raise ApiError(self.format_error(response))
         return response
 
@@ -175,6 +175,26 @@ class ContestApi:
         except ValueError:
             body = response.text
         return f"HTTP {response.status_code} {response.reason}: {json.dumps(redact_sensitive(body), ensure_ascii=False)}"
+
+    @staticmethod
+    def format_blocked_response(response: requests.Response) -> dict[str, Any]:
+        try:
+            body = response.json()
+        except ValueError:
+            return {"httpStatus": response.status_code, "reason": response.reason, "raw": response.text}
+        if not isinstance(body, dict):
+            return {"httpStatus": response.status_code, "reason": response.reason, "raw": body}
+
+        return {
+            "httpStatus": response.status_code,
+            "scope": body.get("scope"),
+            "title": body.get("title"),
+            "limit": body.get("limit"),
+            "used": body.get("used"),
+            "remaining": body.get("remaining"),
+            "resetsAt": body.get("resetsAt"),
+            "status": body.get("status"),
+        }
 
     def get_json(self, path: str, **params: Any) -> Any:
         response = self.request("GET", path, params={k: v for k, v in params.items() if v is not None})
@@ -340,6 +360,8 @@ def compact_challenge(payload: Any) -> dict[str, Any]:
             "bannedLevel": challenge_lock.get("bannedLevel"),
         }
 
+    submission_control = compact_submission_control(payload.get("submissionControl"))
+
     return {
         "id": payload.get("id"),
         "title": payload.get("title"),
@@ -349,9 +371,43 @@ def compact_challenge(payload: Any) -> dict[str, Any]:
         "currentLevel": payload.get("currentLevel"),
         "activeTrackId": payload.get("activeTrackId"),
         "cooldown": payload.get("cooldown"),
+        "submissionControl": submission_control,
         "challengeLock": challenge_lock,
         "tracks": tracks,
         "visibleFlags": visible_flags,
+    }
+
+
+def compact_submission_control(control: Any) -> Any:
+    if not isinstance(control, dict):
+        return control
+
+    def quota(name: str) -> Any:
+        item = control.get(name)
+        if not isinstance(item, dict):
+            return item
+        return {
+            "limit": item.get("limit"),
+            "used": item.get("used"),
+            "remaining": item.get("remaining"),
+            "exceeded": item.get("exceeded"),
+            "resetsAt": item.get("resetsAt"),
+        }
+
+    cooldown = control.get("cooldown")
+    if isinstance(cooldown, dict):
+        cooldown = {
+            "wrongCount": cooldown.get("wrongCount"),
+            "wrongAnswerLimit": cooldown.get("wrongAnswerLimit"),
+            "cooldownMinutes": cooldown.get("cooldownMinutes"),
+            "cooldownUntil": cooldown.get("cooldownUntil"),
+        }
+
+    return {
+        "gameDailyTeam": quota("gameDailyTeam"),
+        "challengeDailyTeam": quota("challengeDailyTeam"),
+        "challengeTotalTeam": quota("challengeTotalTeam"),
+        "cooldown": cooldown,
     }
 
 
@@ -497,7 +553,16 @@ def main(argv: list[str] | None = None) -> int:
                     "Remove --track-id, or pass --allow-track-id-on-level1 only for explicit debugging."
                 )
             payload = api.encrypted_flag_payload(args.answer, args.level, args.track_id)
-            result = api.post_json(f"/api/game/{args.game_id}/challenges/{args.challenge_id}", payload)
+            response = api.request(
+                "POST",
+                f"/api/game/{args.game_id}/challenges/{args.challenge_id}",
+                raise_for_status=False,
+                json=payload,
+            )
+            if response.status_code >= 400:
+                dump(api.format_blocked_response(response))
+                return 1
+            result = api.read_json(response)
             if args.poll and isinstance(result, dict) and result.get("id") is not None:
                 result["status"] = api.get_json(
                     f"/api/game/{args.game_id}/challenges/{args.challenge_id}/status/{result['id']}"

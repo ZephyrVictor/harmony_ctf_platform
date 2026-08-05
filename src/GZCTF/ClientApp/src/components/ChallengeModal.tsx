@@ -24,6 +24,7 @@ import { InstanceEntry } from '@Components/InstanceEntry'
 import { ChallengeLockNotice } from '@Components/ChallengeLockNotice'
 import { CooldownNotice } from '@Components/CooldownNotice'
 import { ContentPlaceholder, InlineMarkdown, Markdown } from '@Components/MarkdownRenderer'
+import { SubmissionControlNotice, getSubmissionControlBlockReason } from '@Components/SubmissionControlNotice'
 import { useLanguage } from '@Utils/I18n'
 import { ChallengeCategoryItemProps } from '@Utils/Shared'
 import {
@@ -337,6 +338,17 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
   }, [deadlineTime])
 
   const isLimitReached = (challenge?.limit && (challenge.attempts ?? 0) >= challenge.limit) || false
+  const [submissionControlNow, setSubmissionControlNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!challenge?.submissionControl?.cooldown?.cooldownUntil) return
+    const timer = setInterval(() => setSubmissionControlNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [challenge?.submissionControl?.cooldown?.cooldownUntil])
+  const submissionBlockedReason = useMemo(
+    () => getSubmissionControlBlockReason(challenge?.submissionControl, submissionControlNow),
+    [challenge?.submissionControl, submissionControlNow]
+  )
+  const isSubmissionControlBlocked = !!submissionBlockedReason
 
   const isContainer =
     challenge?.type === ChallengeType.StaticContainer || challenge?.type === ChallengeType.DynamicContainer
@@ -397,6 +409,7 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
             />
           )}
           <CooldownNotice cooldown={challenge?.cooldown} />
+          <SubmissionControlNotice control={challenge?.submissionControl} />
           {isHybridLine && (
             <Stack gap="xs" className={classes.flagList}>
               <Group justify="space-between" gap="xs">
@@ -531,7 +544,7 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
 
   // Allow submission if deadline not passed OR (game ended AND practice mode enabled)
   const canSubmitDespiteDeadline = !isDeadlinePassed || (gameEnded && practiceMode)
-  const inputDisabled = disabled || solved || isLimitReached || !canSubmitDespiteDeadline
+  const inputDisabled = disabled || solved || isLimitReached || isSubmissionControlBlocked || !canSubmitDespiteDeadline
 
   const footer = (
     <Stack gap="xs" className={classes.footer}>
@@ -547,7 +560,7 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          if (!solved && canSubmitDespiteDeadline) {
+          if (!inputDisabled) {
             onSubmitFlag()
           }
         }}
@@ -569,7 +582,7 @@ export const ChallengeModal: FC<ChallengeModalProps> = (props) => {
             onChange={setFlag}
             classNames={{ root: misc.flexGrow, input: misc.ffmono }}
           />
-          <Button miw="6rem" type="submit" disabled={inputDisabled}>
+          <Button miw="6rem" type="submit" disabled={inputDisabled} title={submissionBlockedReason ?? undefined}>
             {t('challenge.button.submit_flag')}
           </Button>
         </Group>

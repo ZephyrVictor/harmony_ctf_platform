@@ -1024,6 +1024,70 @@ public class ScoreboardCalculationTests(GZCTFApplicationFactory factory, ITestOu
         Assert.Equal(200, team.Score);
     }
 
+    [Fact]
+    public async Task ScoreAdjustment_ZeroDayBonus_ShouldIgnoreSubmissionQuotaControls()
+    {
+        var game = await CreateGameWithBloodBonus("0day Quota Isolation Test", packBloods(1.0f, 1.0f, 1.0f));
+        var challenge = await CreateChallenge(game.Id, "Quota Locked Challenge", "flag{quota-lock}", 1000);
+        var teams = await CreateMultipleTeams(1, "ZeroDayQuotaTeam");
+        await JoinGame(teams[0], game.Id);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var gameEntity = await context.Games.FindAsync(game.Id)
+                             ?? throw new InvalidOperationException("Game not found");
+            var challengeEntity = await context.GameChallenges.FindAsync(challenge.Id)
+                                  ?? throw new InvalidOperationException("Challenge not found");
+            gameEntity.DailyTeamSubmissionLimit = 1;
+            challengeEntity.TotalTeamSubmissionLimit = 1;
+            challengeEntity.TotalTeamSubmissionLimitMode = SubmissionControlLimitMode.Custom;
+            await context.SaveChangesAsync();
+        }
+
+        using (var first = await SubmitFlag(teams[0].client, game.Id, challenge.Id, "flag{wrong-quota-seed}"))
+        {
+            first.EnsureSuccessStatusCode();
+        }
+
+        using (var blocked = await SubmitFlag(teams[0].client, game.Id, challenge.Id, "flag{quota-lock}",
+                   ensureSuccess: false))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
+        }
+
+        const string adminPassword = "Admin@ZeroDayQuota123";
+        var admin = await TestDataSeeder.CreateUserAsync(
+            factory.Services,
+            TestDataSeeder.RandomName(),
+            adminPassword,
+            role: Role.Admin);
+
+        using var adminClient = factory.CreateClient();
+        using (var loginResponse = await adminClient.PostAsJsonAsync("/api/Account/LogIn",
+                   new LoginModel { UserName = admin.UserName, Password = adminPassword }))
+        {
+            loginResponse.EnsureSuccessStatusCode();
+        }
+
+        var createResponse = await adminClient.PostAsJsonAsync(
+            $"/api/admin/games/{game.Id}/score-adjustments",
+            new ScoreAdjustmentCreateModel
+            {
+                TeamId = teams[0].team.Id,
+                Delta = 0,
+                Reason = "0day bonus should bypass flag submission quotas",
+                Category = ScoreAdjustmentCategory.ZeroDayBonus,
+                ZeroDaySeverity = ZeroDaySeverity.Low,
+                RelatedInfo = "CVE-2026-QUOTA"
+            });
+
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<ScoreAdjustmentDtoResponse>(ScoreboardJsonOptions)
+                      ?? throw new InvalidOperationException("Missing score adjustment response");
+        Assert.Equal(10, created.Delta);
+    }
+
     /// <summary>
     /// Test 0day bonus creation requires structured severity
     /// </summary>

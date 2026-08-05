@@ -57,6 +57,7 @@ public class GameController(
     AppDbContext dbContext,
     ChallengeScoreService challengeScoreService,
     ScoringService scoringService,
+    SubmissionQuotaService submissionQuotaService,
     IChallengeTrackRepository trackRepository,
     IChallengeLevelConfigRepository levelConfigRepository,
     IChallengeLockStateRepository lockStateRepository,
@@ -1088,7 +1089,11 @@ public class GameController(
         // 题目冷却状态（per-challenge 答错次数 + 临时冷却）
         var cooldownState = await cooldownRepository.Get(context.Participation!.Id, challengeId, token);
         var gameCooldownMinutes = context.Game?.CooldownMinutes ?? 0;
-        var wrongAnswerLimit = tracks.Length * 5;
+        var cooldownFactor = context.Game?.ChallengeCooldownWrongAnswerLimitFactor ?? 5;
+        var wrongAnswerLimit = ScoringService.GetEffectiveWrongAnswerLimit(
+            instance.Challenge,
+            tracks.Count(t => t.IsEnabled),
+            cooldownFactor);
         result.Cooldown = new CooldownInfo
         {
             WrongCount = cooldownState?.WrongCount ?? 0,
@@ -1096,6 +1101,8 @@ public class GameController(
             CooldownMinutes = gameCooldownMinutes,
             CooldownUntil = cooldownState?.CooldownUntil
         };
+        result.SubmissionControl = await submissionQuotaService.GetStatus(context.Game!, instance.Challenge,
+            context.Participation!, result.Cooldown, token);
 
         return Ok(result);
     }
@@ -1158,6 +1165,14 @@ public class GameController(
                 return BadRequest(
                     new RequestResponse(localizer[nameof(Resources.Program.Challenge_SubmissionNoPermission)]));
 
+            var quota = await submissionQuotaService.CheckAndLock(context.Game!, instance.Challenge,
+                context.Participation!, token);
+            if (quota.Block is { } quotaBlock)
+            {
+                await transaction.RollbackAsync(token);
+                return SubmissionBlocked(quotaBlock);
+            }
+
             ScoreResult? scoreResult = null;
             try
             {
@@ -1173,6 +1188,20 @@ public class GameController(
             }
 
             var result = scoreResult!;
+            if (result.Cooldown?.CooldownUntil is not null
+                && result.Cooldown.CooldownUntil > DateTimeOffset.UtcNow
+                && result.CooldownBlocked)
+            {
+                await transaction.RollbackAsync(token);
+                return BadRequest(new SubmissionBlockedResponse(
+                    result.Message ?? "题目冷却中",
+                    SubmissionControlScope.Cooldown,
+                    result.Cooldown.WrongAnswerLimit,
+                    result.Cooldown.WrongCount,
+                    0,
+                    result.Cooldown.CooldownUntil));
+            }
+
             Submission submission = new()
             {
                 Game = context.Game!,
@@ -1260,7 +1289,9 @@ public class GameController(
                     BannedTrackId = result.BannedTrackId,
                     BannedLevel = result.BannedLevel,
                     TriggerAnswer = triggerAnswer,
-                    Cooldown = result.Cooldown
+                    Cooldown = result.Cooldown,
+                    SubmissionControl = await submissionQuotaService.GetStatus(context.Game!, instance.Challenge,
+                        context.Participation!, result.Cooldown, token)
                 });
             }
             catch (DbUpdateConcurrencyException) when (retry < maxRetries - 1)
@@ -1286,6 +1317,29 @@ public class GameController(
 
                 if (existingRecord is not null)
                 {
+                    var duplicateSubmission = new Submission
+                    {
+                        GameId = context.Game!.Id,
+                        UserId = context.User!.Id,
+                        ChallengeId = instance.Challenge.Id,
+                        TeamId = context.Participation!.TeamId,
+                        ParticipationId = context.Participation.Id,
+                        Status = AnswerResult.FlagSubmitted,
+                        SubmitTimeUtc = submitTime,
+                        Answer = answer
+                    };
+                    duplicateSubmission = await submissionRepository.AddSubmission(duplicateSubmission, token);
+                    await scoringService.CreateRecord(duplicateSubmission, new ScoreResult
+                    {
+                        Status = AnswerResult.FlagSubmitted,
+                        ScoreChange = 0,
+                        TrackId = existingRecord.TrackId,
+                        Level = existingRecord.Level,
+                        Message = "This flag has already been submitted"
+                    }, token);
+                    await submissionRepository.SendSubmission(duplicateSubmission);
+                    await cacheHelper.FlushScoreboardCache(context.Game!.Id, token);
+
                     // 重复提交：仍然计算 SolvedCount / IsTrackComplete / ActiveTrackId 供前端更新
                     var dupSolvedTrackLevels = await submissionRecordRepository.GetSolvedTrackLevels(
                         challengeId, context.Participation!.Id, token);
@@ -1306,13 +1360,15 @@ public class GameController(
 
                     return Ok(new FlagSubmitResponse
                     {
-                        Id = existingRecord.SubmissionId,
+                        Id = duplicateSubmission.Id,
                         Message = "This flag has already been submitted",
                         TrackId = existingRecord.TrackId,
                         Level = existingRecord.Level,
                         SolvedCount = dupSolvedCount,
                         ActiveTrackId = existingRecord.TrackId,
-                        IsTrackComplete = dupIsTrackComplete
+                        IsTrackComplete = dupIsTrackComplete,
+                        SubmissionControl = await submissionQuotaService.GetStatus(context.Game!, instance.Challenge,
+                            context.Participation!, null, token)
                     });
                 }
 
@@ -1357,6 +1413,10 @@ public class GameController(
         && postgres.ConstraintName is ParticipationTeamGameUniqueIndexName
             or "IX_UserParticipations_UserId_GameId"
             or "PK_UserParticipations";
+
+    IActionResult SubmissionBlocked(SubmissionQuotaBlock block) =>
+        BadRequest(new SubmissionBlockedResponse(block.Message, block.Scope, block.Limit, block.Used,
+            block.Remaining, block.ResetsAt));
 
     private static int ResolveCurrentLevel(IEnumerable<int> enabledLevels, ISet<int> solvedLevels)
         => enabledLevels

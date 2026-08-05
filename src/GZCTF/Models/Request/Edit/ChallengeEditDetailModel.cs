@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using GZCTF.Models.Data;
 using GZCTF.Models.Request.Game;
 
 namespace GZCTF.Models.Request.Edit;
@@ -160,6 +161,30 @@ public class ChallengeEditDetailModel
     [MaxLength(128)]
     public string? Repository { get; set; }
 
+    /// <summary>
+    /// 每队每日本题提交上限。按 PRC 自然日统计，0 = 不限制。
+    /// </summary>
+    public int DailyTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 每队本题累计提交上限。0 = 不限制。
+    /// </summary>
+    public int TotalTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 本题错答冷却阈值覆盖。0 = 使用默认 trackCount × 5。
+    /// </summary>
+    public int CooldownWrongAnswerLimitOverride { get; set; }
+
+    public SubmissionControlLimitMode DailyTeamSubmissionLimitMode { get; set; } =
+        SubmissionControlLimitMode.InheritDefault;
+
+    public SubmissionControlLimitMode TotalTeamSubmissionLimitMode { get; set; } =
+        SubmissionControlLimitMode.InheritDefault;
+
+    public SubmissionControlLimitMode CooldownWrongAnswerLimitMode { get; set; } =
+        SubmissionControlLimitMode.InheritDefault;
+
     internal static ChallengeEditDetailModel FromChallenge(GameChallenge chal) =>
         new()
         {
@@ -183,6 +208,12 @@ public class ChallengeEditDetailModel
             MinScoreRate = chal.MinScoreRate,
             Difficulty = chal.Difficulty,
             Repository = chal.Repository,
+            DailyTeamSubmissionLimit = chal.DailyTeamSubmissionLimit,
+            TotalTeamSubmissionLimit = chal.TotalTeamSubmissionLimit,
+            CooldownWrongAnswerLimitOverride = chal.CooldownWrongAnswerLimitOverride,
+            DailyTeamSubmissionLimitMode = chal.DailyTeamSubmissionLimitMode,
+            TotalTeamSubmissionLimitMode = chal.TotalTeamSubmissionLimitMode,
+            CooldownWrongAnswerLimitMode = chal.CooldownWrongAnswerLimitMode,
             FileName = chal.FileName,
             Attachment = chal.Attachment,
             LockDurationMinutes = chal.LockDurationMinutes,

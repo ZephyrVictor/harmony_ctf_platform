@@ -223,6 +223,8 @@ public class GameImportService(
                 AcceptWithoutReview = context.Game.AcceptWithoutReview,
                 TeamMemberCountLimit = context.Game.TeamMemberCountLimit,
                 ContainerCountLimit = context.Game.ContainerCountLimit,
+                DailyTeamSubmissionLimit = context.Game.SubmissionControls?.DailyTeam ?? 0,
+                CooldownMinutes = context.Game.SubmissionControls?.CooldownMinutes ?? 5,
                 InviteCode = string.Empty, // Generate new invite code
                 PracticeMode = false,
                 Hidden = true // Import as hidden by default
@@ -402,6 +404,18 @@ public class GameImportService(
 
             // Limits
             DeadlineUtc = transferChallenge.Limits.Deadline,
+            DailyTeamSubmissionLimit = transferChallenge.Limits.DailyTeamSubmission,
+            TotalTeamSubmissionLimit = transferChallenge.Limits.TotalTeamSubmission,
+            CooldownWrongAnswerLimitOverride = transferChallenge.Limits.CooldownWrongAnswerLimitOverride,
+            DailyTeamSubmissionLimitMode = transferChallenge.Limits.DailyTeamSubmission > 0
+                ? SubmissionControlLimitMode.Custom
+                : SubmissionControlLimitMode.Unlimited,
+            TotalTeamSubmissionLimitMode = transferChallenge.Limits.TotalTeamSubmission > 0
+                ? SubmissionControlLimitMode.Custom
+                : SubmissionControlLimitMode.Unlimited,
+            CooldownWrongAnswerLimitMode = transferChallenge.Limits.CooldownWrongAnswerLimitOverride > 0
+                ? SubmissionControlLimitMode.Custom
+                : SubmissionControlLimitMode.InheritDefault,
 
             // Flags configuration
             FlagTemplate = transferChallenge.Flags.Template,

@@ -7,6 +7,7 @@ using GZCTF.Models.Request.Admin;
 using GZCTF.Models.Request.Edit;
 using GZCTF.Models.Request.Game;
 using GZCTF.Models.Request.Info;
+using GZCTF.Models.Response;
 using GZCTF.Services.Container.Provider;
 using Namotion.Reflection;
 using NJsonSchema;
@@ -56,6 +57,16 @@ namespace GZCTF.Utils;
 [JsonSerializable(typeof(GameDetailModel))]
 [JsonSerializable(typeof(ParticipationInfoModel[]))]
 [JsonSerializable(typeof(ChallengeDetailModel))]
+[JsonSerializable(typeof(FlagSubmitResponse))]
+[JsonSerializable(typeof(SubmissionBlockedResponse))]
+[JsonSerializable(typeof(SubmissionControlScope))]
+[JsonSerializable(typeof(SubmissionControlLimitMode))]
+[JsonSerializable(typeof(ChallengeSubmissionControlStatus))]
+[JsonSerializable(typeof(SubmissionQuotaStatus))]
+[JsonSerializable(typeof(SubmissionControlOverviewDto))]
+[JsonSerializable(typeof(SubmissionControlLimitDto))]
+[JsonSerializable(typeof(SubmissionControlTeamDetailDto))]
+[JsonSerializable(typeof(SubmissionControlUpdateModel))]
 [JsonSerializable(typeof(BasicWriteupInfoModel))]
 [JsonSerializable(typeof(PostInfoModel[]))]
 [JsonSerializable(typeof(ClientConfig))]

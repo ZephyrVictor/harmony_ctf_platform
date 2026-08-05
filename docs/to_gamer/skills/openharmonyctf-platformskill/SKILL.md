@@ -147,6 +147,7 @@ Important fields:
 - `tracks[].trackId`: track IDs to use for Level 2+.
 - `tracks[].levels[].status`: `Unsolved`, `Solved`, `Banned`, or `Locked`.
 - `cooldown.cooldownUntil`: pause submissions if present and in the future.
+- `submissionControl`: effective contestant-facing submission limits. If any returned quota is exceeded, stop submitting and wait for `resetsAt` when present.
 - `challengeLock.isLocked`: stop until `unlocksAt` if locked.
 
 The compact `challenge` command intentionally returns only safe challenge-state summaries. It does not print raw visible flag objects, trap trigger answers, or any answer-bearing fields by default.
@@ -253,8 +254,10 @@ When a ban appears, stop submitting that track/level and ask the user before try
 
 Cooldown behavior:
 
-- Wrong-answer limit is `track count * 5`.
-- If `cooldown.cooldownUntil` is present and in the future, pause that challenge until the timestamp.
+- The wrong-answer limit is configured by administrators and may inherit a per-track default, use a custom value, or be disabled. Do not assume a fixed `track count * 5` limit.
+- If `submissionControl.cooldown.cooldownUntil` or `cooldown.cooldownUntil` is present and in the future, pause that challenge until the timestamp.
+- If `submissionControl.gameDailyTeam`, `submissionControl.challengeDailyTeam`, or `submissionControl.challengeTotalTeam` is exceeded, stop submitting. Use `resetsAt` when present; otherwise ask the user/admin before continuing.
+- If a submit error returns `scope` as `GameDailyTeam`, `ChallengeDailyTeam`, `ChallengeTotalTeam`, or `Cooldown`, treat it as a platform limit, not as a normal wrong answer.
 - If `challengeLocked` is true, pause until `unlocksAt`.
 
 ## 0day Handling
@@ -291,6 +294,6 @@ Use these endpoints if the script is unavailable:
 5. Inspect selected contest, team list, join checks, divisions, and invite requirements.
 6. Ask before team creation/invite acceptance/game join.
 7. After joining, run `details` and show available challenges.
-8. Before every answer, run `challenge` and verify level, track, cooldown, lock, and ban state.
+8. Before every answer, run `challenge` and verify level, track, submission-control limits, cooldown, lock, and ban state.
 9. Ask before submitting any answer.
 10. Poll status after submission and preserve returned `trackId`.

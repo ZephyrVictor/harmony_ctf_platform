@@ -865,6 +865,21 @@ namespace GZCTF.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("BloodBonus");
 
+                    b.Property<int>("ChallengeCooldownWrongAnswerLimitFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5);
+
+                    b.Property<int>("ChallengeDailyTeamSubmissionLimitFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(20);
+
+                    b.Property<int>("ChallengeTotalTeamSubmissionLimitFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(200);
+
                     b.Property<int>("ContainerCountLimit")
                         .HasColumnType("integer");
 
@@ -874,6 +889,11 @@ namespace GZCTF.Migrations
 
                     b.Property<int>("CooldownMinutes")
                         .HasColumnType("integer");
+
+                    b.Property<int>("DailyTeamSubmissionLimit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTimeOffset>("EndTimeUtc")
                         .HasColumnType("timestamp with time zone")
@@ -976,8 +996,28 @@ namespace GZCTF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("CooldownWrongAnswerLimitOverride")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("CooldownWrongAnswerLimitMode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTimeOffset?>("DeadlineUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DailyTeamSubmissionLimit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("DailyTeamSubmissionLimitMode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<double>("Difficulty")
                         .HasColumnType("double precision");
@@ -1037,6 +1077,16 @@ namespace GZCTF.Migrations
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("TotalTeamSubmissionLimit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalTeamSubmissionLimitMode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<byte>("Type")
                         .HasColumnType("smallint");
@@ -1419,6 +1469,10 @@ namespace GZCTF.Migrations
                     b.HasIndex("ParticipationId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("GameId", "ParticipationId", "SubmitTimeUtc");
+
+                    b.HasIndex("GameId", "ParticipationId", "ChallengeId", "SubmitTimeUtc");
 
                     b.HasIndex("TeamId", "ChallengeId", "GameId");
 

@@ -107,6 +107,11 @@ public class ChallengeDetailModel
     /// </summary>
     public CooldownInfo? Cooldown { get; set; }
 
+    /// <summary>
+    /// 当前题目提交控制状态（配额 + 冷却）
+    /// </summary>
+    public ChallengeSubmissionControlStatus? SubmissionControl { get; set; }
+
     internal static ChallengeDetailModel FromInstance(GameInstance gameInstance, int attemptCount,
         ChallengeInfo? scoreboardChallenge = null, ISet<Guid>? solvedFlagIds = null) =>
         new()

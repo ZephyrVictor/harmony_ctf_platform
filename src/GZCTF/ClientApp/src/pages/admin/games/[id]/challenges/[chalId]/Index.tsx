@@ -254,6 +254,14 @@ const GameChallengeEdit: FC = () => {
               disabled={disabled}
               component={Link}
               variant="light"
+              to={`/admin/games/${numId}/submission-control`}
+            >
+              {t('admin.button.challenges.submission_control', { defaultValue: '提交控制' })}
+            </Button>
+            <Button
+              disabled={disabled}
+              component={Link}
+              variant="light"
               to={`/admin/games/${numId}/challenges/${numCId}/tracks`}
             >
               {t('admin.button.challenges.tracks', { defaultValue: 'Tracks' })}
@@ -383,6 +391,11 @@ const GameChallengeEdit: FC = () => {
                 value={challengeInfo.repository ?? ''}
                 onChange={(e) => setChallengeInfo({ ...challengeInfo, repository: e.target.value })}
               />
+              <Text size="xs" c="dimmed">
+                {t('admin.content.games.challenges.submission_control_moved', {
+                  defaultValue: '本题提交配额和冷却阈值请在比赛“提交控制”页统一配置。',
+                })}
+              </Text>
             </Stack>
           </Grid.Col>
           <Grid.Col span={1}>

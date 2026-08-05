@@ -72,4 +72,9 @@ public class FlagSubmitResponse
     /// 题目冷却信息（per-challenge 答错次数 + 临时冷却）
     /// </summary>
     public CooldownInfo? Cooldown { get; set; }
+
+    /// <summary>
+    /// 当前题目提交控制状态（配额 + 冷却）
+    /// </summary>
+    public ChallengeSubmissionControlStatus? SubmissionControl { get; set; }
 }

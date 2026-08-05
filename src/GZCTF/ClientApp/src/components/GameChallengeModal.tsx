@@ -259,10 +259,12 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
         attempts,
         ...challenge,
         cooldown: res.data.cooldown ?? challenge?.cooldown,
+        submissionControl: res.data.submissionControl ?? challenge?.submissionControl,
       })
       return
     } catch (e) {
       showErrorMsg(e, t)
+      mutate()
       setDisabled(false)
       return
     }
@@ -308,6 +310,25 @@ export const GameChallengeModal: FC<GameChallengeModalProps> = (props) => {
       setSolvedChallengeId(null)
     }
   }, [status, challengeId, challenge])
+
+  useEffect(() => {
+    const control = challenge?.submissionControl
+    if (!control) return
+
+    const timestamps = [
+      control.gameDailyTeam?.resetsAt,
+      control.challengeDailyTeam?.resetsAt,
+      control.cooldown?.cooldownUntil,
+    ]
+      .map((value) => (typeof value === 'number' ? value : value ? new Date(value).getTime() : 0))
+      .filter((value) => value > Date.now())
+
+    if (timestamps.length === 0) return
+
+    const nextRefresh = Math.min(...timestamps)
+    const timer = setTimeout(() => mutate(), nextRefresh - Date.now() + 1000)
+    return () => clearTimeout(timer)
+  }, [challenge?.submissionControl, mutate])
 
   const checkDataFlag = async (id: number, data: string) => {
     if (data === AnswerResult.Accepted) {

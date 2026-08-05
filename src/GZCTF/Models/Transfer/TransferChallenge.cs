@@ -122,6 +122,24 @@ public class LimitsSection
     /// Challenge deadline (null = no deadline)
     /// </summary>
     public DateTimeOffset? Deadline { get; set; }
+
+    /// <summary>
+    /// Per-team daily submission limit for this challenge. 0 = unlimited.
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Daily team submission limit must be non-negative")]
+    public int DailyTeamSubmission { get; set; }
+
+    /// <summary>
+    /// Per-team total submission limit for this challenge. 0 = unlimited.
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Total team submission limit must be non-negative")]
+    public int TotalTeamSubmission { get; set; }
+
+    /// <summary>
+    /// Wrong-answer cooldown threshold override for this challenge. 0 = trackCount × 5.
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Cooldown wrong-answer limit must be non-negative")]
+    public int CooldownWrongAnswerLimitOverride { get; set; }
 }
 
 public class FlagsSection

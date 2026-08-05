@@ -128,6 +128,12 @@ public class GameInfoModel
     /// </summary>
     public int CooldownMinutes { get; set; } = 5;
 
+    /// <summary>
+    /// 每队每日比赛总提交上限。按 PRC 自然日统计，0 = 不限制。
+    /// </summary>
+    [Range(0, int.MaxValue)]
+    public int DailyTeamSubmissionLimit { get; set; }
+
     internal static GameInfoModel FromGame(Data.Game game) =>
         new()
         {
@@ -152,6 +158,7 @@ public class GameInfoModel
             ZeroDayInfoMarkdown = game.ZeroDayInfoMarkdown,
             ZeroDayBaseScore = game.ZeroDayBaseScore,
             ZeroDayNdayScoreRequirement = game.ZeroDayNdayScoreRequirement,
-            CooldownMinutes = game.CooldownMinutes
+            CooldownMinutes = game.CooldownMinutes,
+            DailyTeamSubmissionLimit = game.DailyTeamSubmissionLimit
         };
 }

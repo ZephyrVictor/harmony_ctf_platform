@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using GZCTF.Extensions;
+using GZCTF.Models.Data;
 
 namespace GZCTF.Models.Request.Edit;
 
@@ -125,6 +126,30 @@ public class ChallengeUpdateModel
     /// </summary>
     [MaxLength(128)]
     public string? Repository { get; set; }
+
+    /// <summary>
+    /// 每队每日本题提交上限。按 PRC 自然日统计，0 = 不限制。
+    /// </summary>
+    [Range(0, int.MaxValue)]
+    public int? DailyTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 每队本题累计提交上限。0 = 不限制。
+    /// </summary>
+    [Range(0, int.MaxValue)]
+    public int? TotalTeamSubmissionLimit { get; set; }
+
+    /// <summary>
+    /// 本题错答冷却阈值覆盖。0 = 使用默认 trackCount × 5。
+    /// </summary>
+    [Range(0, int.MaxValue)]
+    public int? CooldownWrongAnswerLimitOverride { get; set; }
+
+    public SubmissionControlLimitMode? DailyTeamSubmissionLimitMode { get; set; }
+
+    public SubmissionControlLimitMode? TotalTeamSubmissionLimitMode { get; set; }
+
+    public SubmissionControlLimitMode? CooldownWrongAnswerLimitMode { get; set; }
 
     /// <summary>
     /// Check if hints are updated

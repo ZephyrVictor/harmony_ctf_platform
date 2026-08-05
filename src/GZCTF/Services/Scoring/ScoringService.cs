@@ -148,13 +148,13 @@ public class ScoringService
         // 与 trap 锁相互独立；冷却中拒绝提交，到点自动解封
         var game = await _context.Games.AsNoTracking()
             .Where(g => g.Id == challenge.GameId)
-            .Select(g => new { g.CooldownMinutes })
+            .Select(g => new { g.CooldownMinutes, g.ChallengeCooldownWrongAnswerLimitFactor })
             .FirstOrDefaultAsync(token);
         var cooldownMinutes = game?.CooldownMinutes ?? 0;
+        var cooldownFactor = game?.ChallengeCooldownWrongAnswerLimitFactor ?? 5;
 
         var tracks = await _trackRepo.GetTracks(challenge.Id, token);
-        var trackCount = tracks.Length;
-        var wrongAnswerLimit = trackCount * 5;
+        var wrongAnswerLimit = GetEffectiveWrongAnswerLimit(challenge, tracks.Count(t => t.IsEnabled), cooldownFactor);
 
         if (cooldownMinutes > 0 && wrongAnswerLimit > 0)
             await _cooldownRepo.AcquireLock(participation.Id, challenge.Id, token);
@@ -167,6 +167,7 @@ public class ScoringService
             {
                 Status = AnswerResult.WrongAnswer,
                 ScoreChange = 0,
+                CooldownBlocked = true,
                 Message = $"题目冷却中，剩 {cooldownState.CooldownUntil.Value - DateTimeOffset.UtcNow:mm\\:ss}",
                 Cooldown = new CooldownInfo
                 {
@@ -389,6 +390,16 @@ public class ScoringService
     public static bool TryMatchForTest(ChallengeFlag flag, string answer, ChallengeLevelConfig? levelConfig = null) =>
         TryMatch(flag, answer, levelConfig);
 
+    public static int GetEffectiveWrongAnswerLimit(GameChallenge challenge, int enabledTrackCount) =>
+        GetEffectiveWrongAnswerLimit(challenge, enabledTrackCount, 5);
+
+    public static int GetEffectiveWrongAnswerLimit(GameChallenge challenge, int enabledTrackCount, int factor) =>
+        SubmissionControlEffectiveLimits.Resolve(
+            challenge.CooldownWrongAnswerLimitMode,
+            challenge.CooldownWrongAnswerLimitOverride,
+            enabledTrackCount,
+            factor);
+
     private async Task<ScoreResult> HandleCorrectSubmission(
         GameChallenge challenge,
         Participation participation,
@@ -530,7 +541,7 @@ public class ScoringService
         }
 
         // 5. 题目冷却计数（per-challenge，所有 track/level 合计）
-        // 阈值 = trackCount × 5（自动）；冷却时长 = game.CooldownMinutes（per-game 配置）
+        // 阈值默认 = enabledTrackCount × game factor，可被题目配置覆盖；冷却时长 = game.CooldownMinutes
         // 重复提交不累加；trap 触发时不进入冷却（trap 用 ChallengeLockState 处理）
         CooldownInfo? cooldownInfo = null;
         if (!duplicate && !triggerChallengeLock && cooldownMinutes > 0 && wrongAnswerLimit > 0)
